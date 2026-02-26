@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TACAM | Control de Clientes</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="topbar">
+        <h1>TACAM</h1>
+        <h2>Control de Clientes</h2>
+      </header>
+
+      <nav class="tabs" aria-label="Secciones">
+        <button class="tab active" data-tab="ingreso">Ingresar Cliente</button>
+        <button class="tab" data-tab="no-contrataron">Lista de No Contrataron</button>
+        <button class="tab" data-tab="contratados">Clientes Contratados</button>
+        <button class="tab" data-tab="agendamiento">Agendamiento</button>
+        <button class="tab" data-tab="visitas">Visitas</button>
+      </nav>
+
+      <section class="panel active" id="ingreso">
+        <h3>Ingreso de Cliente</h3>
+        <form id="form-cliente" class="grid-2">
+          <fieldset>
+            <legend>Ficha de Cliente</legend>
+            <label>Nombre* <input name="nombre" required /></label>
+            <label>RUT* <input name="rut" required placeholder="12.345.678-5" /></label>
+            <label>Teléfono <input name="telefono" /></label>
+            <label>Email <input name="email" type="email" /></label>
+            <label>Dirección <input name="direccion" /></label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Datos de gestión</legend>
+            <label>Observaciones <textarea name="observaciones" rows="5"></textarea></label>
+            <label>Área
+              <select name="area" required>
+                <option value="Penal">Penal</option>
+                <option value="Familia">Familia</option>
+              </select>
+            </label>
+            <label>Materia
+              <select name="materia" required>
+                <option value="Privado de Libertad">Privado de Libertad</option>
+                <option value="En Libertad">En Libertad</option>
+                <option value="Divorcio">Divorcio</option>
+                <option value="Pensión">Pensión</option>
+              </select>
+            </label>
+            <label>Abogada asignada
+              <select name="abogada" required>
+                <option value="Daniela Sierra">Daniela Sierra</option>
+                <option value="Natalie Gómez">Natalie Gómez</option>
+                <option value="Camila Vásquez">Camila Vásquez</option>
+                <option value="Carolina Contreras">Carolina Contreras</option>
+              </select>
+            </label>
+          </fieldset>
+
+          <fieldset class="status-group">
+            <legend>Asistencia a la cita</legend>
+            <label><input type="radio" name="asistencia" value="Vino" checked /> Vino</label>
+            <label><input type="radio" name="asistencia" value="No Vino" /> No Vino</label>
+          </fieldset>
+
+          <fieldset class="status-group">
+            <legend>Estado del contrato</legend>
+            <label><input type="radio" name="contrato" value="Contrató" checked /> Contrató</label>
+            <label><input type="radio" name="contrato" value="No Contrató" /> No Contrató</label>
+          </fieldset>
+
+          <div class="actions-row">
+            <button type="submit" class="primary">Guardar Cliente</button>
+            <p id="cliente-msg" aria-live="polite"></p>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel" id="no-contrataron">
+        <h3>Clientes que No Contrataron</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Cliente</th><th>RUT</th><th>Área</th><th>Materia</th><th>Abogada</th><th>Acción</th></tr></thead>
+            <tbody id="tabla-no-contrataron"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" id="contratados">
+        <h3>Clientes Contratados</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Cliente</th><th>RUT</th><th>Área</th><th>Materia</th><th>Abogada</th></tr></thead>
+            <tbody id="tabla-contratados"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" id="agendamiento">
+        <h3>Agendar Cita</h3>
+        <form id="form-cita" class="grid-2">
+          <fieldset>
+            <legend>Datos principales</legend>
+            <label>Cliente*
+              <select id="cita-cliente" name="clienteId" required></select>
+            </label>
+            <label>Fecha* <input type="date" name="fecha" required /></label>
+            <label>Hora* <input type="time" name="hora" required /></label>
+            <label>Área*
+              <select name="area" required>
+                <option value="Penal">Penal</option>
+                <option value="Familia">Familia</option>
+              </select>
+            </label>
+            <label>Materia* <input name="materia" required /></label>
+            <label>Abogada* <input name="abogada" required /></label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Resumen y recordatorios</legend>
+            <label>Observaciones <textarea name="observaciones" rows="5"></textarea></label>
+            <label><input type="checkbox" name="whatsapp" checked /> Enviar recordatorio por WhatsApp</label>
+            <label><input type="checkbox" name="email" checked /> Enviar recordatorio por E-mail</label>
+            <button type="submit" class="primary">Agendar Cita</button>
+            <p id="cita-msg" aria-live="polite"></p>
+          </fieldset>
+        </form>
+      </section>
+
+      <section class="panel" id="visitas">
+        <div class="split">
+          <div>
+            <h3>Control de Visitas</h3>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Abogada</th><th>Cliente</th><th>Fecha</th><th>Estado</th></tr></thead>
+                <tbody id="tabla-visitas"></tbody>
+              </table>
+            </div>
+          </div>
+          <aside class="card">
+            <h4>Ranking de Abogadas</h4>
+            <ol id="ranking"></ol>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

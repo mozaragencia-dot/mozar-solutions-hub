@@ -1,0 +1,100 @@
+:root {
+  --wine: #8f203a;
+  --wine-dark: #6f1329;
+  --bg: #f3f0f2;
+  --line: #ddd;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  font-family: Georgia, "Times New Roman", serif;
+  color: #30131b;
+}
+.app {
+  max-width: 1080px;
+  margin: 24px auto;
+  background: #fff;
+  border: 1px solid #e4dce0;
+}
+.topbar {
+  background: linear-gradient(#a12f4a, var(--wine-dark));
+  color: #fff;
+  text-align: center;
+  padding: 14px 12px;
+}
+.topbar h1, .topbar h2 { margin: 0; }
+.topbar h1 { font-size: 52px; line-height: 1; }
+.topbar h2 { font-size: 34px; margin-top: 4px; }
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+.tab {
+  border: 1px solid var(--line);
+  background: #f8f8f8;
+  padding: 10px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tab.active {
+  background: var(--wine);
+  color: #fff;
+  border-color: var(--wine-dark);
+}
+.panel { display: none; padding: 16px; }
+.panel.active { display: block; }
+h3 { font-size: 34px; margin: 4px 0 16px; }
+h4 { font-size: 28px; margin: 0 0 10px; }
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+fieldset {
+  margin: 0;
+  border: 1px solid var(--line);
+  padding: 12px;
+}
+legend { font-weight: 700; padding: 0 6px; }
+label { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; font-size: 24px; }
+input, select, textarea, button {
+  font: inherit;
+  padding: 9px;
+  border-radius: 4px;
+  border: 1px solid #bdb7ba;
+}
+.status-group label {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.actions-row {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.primary {
+  background: var(--wine);
+  color: #fff;
+  border-color: var(--wine-dark);
+  cursor: pointer;
+}
+.primary:hover { background: #7f1730; }
+.table-wrap { overflow: auto; border: 1px solid var(--line); }
+table { width: 100%; border-collapse: collapse; }
+th, td { border-bottom: 1px solid var(--line); padding: 8px; text-align: left; font-size: 22px; }
+.split { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+.card { border: 1px solid var(--line); padding: 12px; background: #faf8f9; }
+.empty { color: #7f6f75; font-style: italic; }
+
+@media (max-width: 900px) {
+  .topbar h1 { font-size: 38px; }
+  .topbar h2, h3 { font-size: 28px; }
+  label, th, td, .tab, input, select, textarea, button { font-size: 18px; }
+  .grid-2, .split { grid-template-columns: 1fr; }
+}
