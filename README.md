@@ -1,8 +1,14 @@
 # TACAM Sistema Web (versión estática funcional)
 
-Aplicación web funcional para gestión de clientes, agendamiento y control de visitas.
+Aplicación web funcional para gestión de clientes, agendamiento, visitas y control de usuarios.
+
+## Credenciales iniciales
+- Usuario: `admin`
+- Clave: `admin`
 
 ## Funcionalidades
+- Pantalla de login con sesión persistente local.
+- Módulo de usuarios y niveles de acceso (`Administrador`, `Operador`, `Consulta`).
 - Ingreso de clientes con validación de RUT chileno.
 - Clasificación automática entre **Contrató** y **No Contrató**.
 - Gestión de lista de no contratados con acción para actualizar estado.

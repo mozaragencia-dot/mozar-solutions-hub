@@ -7,10 +7,28 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="app">
+    <section id="login-screen" class="login-screen">
+      <div class="login-card">
+        <img src="assets/logo-color.svg" alt="Logo TACAM institucional" class="login-logo" />
+        <h1>Ingreso al Sistema</h1>
+        <p>Usuario inicial: <strong>admin</strong> | Clave inicial: <strong>admin</strong></p>
+        <form id="login-form">
+          <label>Usuario <input name="username" required /></label>
+          <label>Clave <input name="password" type="password" required /></label>
+          <button type="submit" class="primary">Iniciar Sesión</button>
+          <p id="login-msg" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+
+    <main class="app hidden" id="app-shell">
       <header class="topbar">
-        <h1>TACAM</h1>
-        <h2>Control de Clientes</h2>
+        <img src="assets/logo-white.svg" alt="Logo TACAM blanco" class="header-logo" />
+        <div>
+          <h2>Control de Clientes</h2>
+          <p id="session-info"></p>
+        </div>
+        <button id="logout-btn" class="secondary">Cerrar sesión</button>
       </header>
 
       <nav class="tabs" aria-label="Secciones">
@@ -19,6 +37,7 @@
         <button class="tab" data-tab="contratados">Clientes Contratados</button>
         <button class="tab" data-tab="agendamiento">Agendamiento</button>
         <button class="tab" data-tab="visitas">Visitas</button>
+        <button class="tab admin-only" data-tab="usuarios">Usuarios y Accesos</button>
       </nav>
 
       <section class="panel active" id="ingreso">
@@ -145,6 +164,30 @@
             <h4>Ranking de Abogadas</h4>
             <ol id="ranking"></ol>
           </aside>
+        </div>
+      </section>
+
+      <section class="panel" id="usuarios">
+        <h3>Usuarios y Niveles de Acceso</h3>
+        <form id="form-usuario" class="grid-3">
+          <label>Usuario* <input name="username" required /></label>
+          <label>Clave* <input name="password" required type="password" /></label>
+          <label>Nivel de acceso*
+            <select name="role" required>
+              <option value="admin">Administrador</option>
+              <option value="operador">Operador</option>
+              <option value="consulta">Consulta</option>
+            </select>
+          </label>
+          <button type="submit" class="primary">Crear Usuario</button>
+          <p id="user-msg" aria-live="polite"></p>
+        </form>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Usuario</th><th>Nivel</th><th>Estado</th><th>Acción</th></tr></thead>
+            <tbody id="tabla-usuarios"></tbody>
+          </table>
         </div>
       </section>
     </main>
