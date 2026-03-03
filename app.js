@@ -49,16 +49,37 @@ function saveSession() {
   localStorage.setItem(STORAGE_KEYS.session, JSON.stringify(state.session));
 }
 
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+
+  window.setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-6px)';
+    toast.style.transition = 'all 180ms ease';
+    window.setTimeout(() => toast.remove(), 200);
+  }, 2400);
+}
+
 function isRutValid(rut) {
   const normalized = rut.replace(/\./g, '').replace(/-/g, '').toUpperCase();
   if (!/^[0-9]+[0-9K]$/.test(normalized)) return false;
+
   const body = normalized.slice(0, -1);
   const dv = normalized.slice(-1);
-  let sum = 0, mul = 2;
-  for (let i = body.length - 1; i >= 0; i--) {
+  let sum = 0;
+  let mul = 2;
+
+  for (let i = body.length - 1; i >= 0; i -= 1) {
     sum += Number(body[i]) * mul;
     mul = mul === 7 ? 2 : mul + 1;
   }
+
   const expected = 11 - (sum % 11);
   const expectedDv = expected === 11 ? '0' : expected === 10 ? 'K' : String(expected);
   return dv === expectedDv;
@@ -79,10 +100,11 @@ function canSchedule() {
 function setupTabs() {
   const tabs = document.querySelectorAll('.tab');
   const panels = document.querySelectorAll('.panel');
+
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
-      tabs.forEach(t => t.classList.remove('active'));
-      panels.forEach(p => p.classList.remove('active'));
+      tabs.forEach(item => item.classList.remove('active'));
+      panels.forEach(panel => panel.classList.remove('active'));
       tab.classList.add('active');
       document.getElementById(tab.dataset.tab).classList.add('active');
     });
@@ -93,36 +115,47 @@ function renderTables() {
   const tbodyNo = document.getElementById('tabla-no-contrataron');
   const tbodySi = document.getElementById('tabla-contratados');
 
-  const noContrataron = state.clients.filter(c => c.contrato === 'No Contrató');
-  const contrataron = state.clients.filter(c => c.contrato === 'Contrató');
+  const noContrataron = state.clients.filter(client => client.contrato === 'No Contrató');
+  const contrataron = state.clients.filter(client => client.contrato === 'Contrató');
 
-  tbodyNo.innerHTML = noContrataron.length ? noContrataron.map(c => `
-    <tr>
-      <td>${c.nombre}</td><td>${c.rut}</td><td>${c.area}</td><td>${c.materia}</td><td>${c.abogada}</td>
-      <td>${canEditClients() ? `<button data-promote="${c.id}" class="primary">Marcar contrató</button>` : '<span class="muted">Sin permiso</span>'}</td>
-    </tr>
-  `).join('') : '<tr><td colspan="6" class="empty">Sin registros.</td></tr>';
+  tbodyNo.innerHTML = noContrataron.length
+    ? noContrataron.map(client => `
+      <tr>
+        <td>${client.nombre}</td>
+        <td>${client.rut}</td>
+        <td>${client.area}</td>
+        <td>${client.materia}</td>
+        <td>${client.abogada}</td>
+        <td>${canEditClients() ? `<button data-promote="${client.id}" class="primary">Marcar contrató</button>` : '<span class="muted">Sin permiso</span>'}</td>
+      </tr>
+    `).join('')
+    : '<tr><td colspan="6" class="empty">Sin registros.</td></tr>';
 
-  tbodySi.innerHTML = contrataron.length ? contrataron.map(c => `
-    <tr><td>${c.nombre}</td><td>${c.rut}</td><td>${c.area}</td><td>${c.materia}</td><td>${c.abogada}</td></tr>
-  `).join('') : '<tr><td colspan="5" class="empty">Sin registros.</td></tr>';
+  tbodySi.innerHTML = contrataron.length
+    ? contrataron.map(client => `
+      <tr><td>${client.nombre}</td><td>${client.rut}</td><td>${client.area}</td><td>${client.materia}</td><td>${client.abogada}</td></tr>
+    `).join('')
+    : '<tr><td colspan="5" class="empty">Sin registros.</td></tr>';
 
-  tbodyNo.querySelectorAll('[data-promote]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const client = state.clients.find(c => c.id === btn.dataset.promote);
+  tbodyNo.querySelectorAll('[data-promote]').forEach(button => {
+    button.addEventListener('click', () => {
+      const client = state.clients.find(item => item.id === button.dataset.promote);
       if (!client || !canEditClients()) return;
+
       client.contrato = 'Contrató';
       saveData();
       renderAll();
+      showToast('Cliente actualizado OK');
     });
   });
 }
 
 function renderClientOptions() {
   const select = document.getElementById('cita-cliente');
-  const contracted = state.clients.filter(c => c.contrato === 'Contrató');
+  const contracted = state.clients.filter(client => client.contrato === 'Contrató');
+
   select.innerHTML = contracted.length
-    ? `<option value="">Seleccione cliente...</option>${contracted.map(c => `<option value="${c.id}">${c.nombre} (${c.rut})</option>`).join('')}`
+    ? `<option value="">Seleccione cliente...</option>${contracted.map(client => `<option value="${client.id}">${client.nombre} (${client.rut})</option>`).join('')}`
     : '<option value="">No hay clientes contratados</option>';
 }
 
@@ -132,12 +165,14 @@ function renderVisits() {
 
   tbody.innerHTML = state.appointments.length
     ? state.appointments
-      .slice().sort((a, b) => a.fecha.localeCompare(b.fecha))
-      .map(a => `<tr><td>${a.abogada}</td><td>${a.clienteNombre}</td><td>${a.fecha} ${a.hora}</td><td>${a.estado}</td></tr>`).join('')
+      .slice()
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+      .map(appointment => `<tr><td>${appointment.abogada}</td><td>${appointment.clienteNombre}</td><td>${appointment.fecha} ${appointment.hora}</td><td>${appointment.estado}</td></tr>`)
+      .join('')
     : '<tr><td colspan="4" class="empty">Sin citas agendadas.</td></tr>';
 
-  const totals = state.appointments.reduce((acc, a) => {
-    acc[a.abogada] = (acc[a.abogada] || 0) + 1;
+  const totals = state.appointments.reduce((acc, appointment) => {
+    acc[appointment.abogada] = (acc[appointment.abogada] || 0) + 1;
     return acc;
   }, {});
 
@@ -163,30 +198,33 @@ function renderUsers() {
   tbody.querySelectorAll('[data-toggle-user]').forEach(button => {
     button.addEventListener('click', () => {
       if (state.session?.role !== 'admin') return;
-      const user = state.users.find(u => u.id === button.dataset.toggleUser);
+      const user = state.users.find(item => item.id === button.dataset.toggleUser);
       if (!user) return;
+
       user.active = !user.active;
       saveUsers();
       renderUsers();
+      showToast(`Usuario ${user.active ? 'activado' : 'desactivado'} OK`);
     });
   });
 }
 
 function applyAccessControl() {
   const isAdmin = state.session?.role === 'admin';
-  document.querySelectorAll('.admin-only').forEach(el => {
-    el.style.display = isAdmin ? '' : 'none';
+
+  document.querySelectorAll('.admin-only').forEach(element => {
+    element.style.display = isAdmin ? '' : 'none';
   });
 
-  const clientFormInputs = document.querySelectorAll('#form-cliente input, #form-cliente select, #form-cliente textarea, #form-cliente button');
-  clientFormInputs.forEach(el => {
-    el.disabled = !canEditClients();
-  });
+  document.querySelectorAll('#form-cliente input, #form-cliente select, #form-cliente textarea, #form-cliente button')
+    .forEach(element => {
+      element.disabled = !canEditClients();
+    });
 
-  const citaFormInputs = document.querySelectorAll('#form-cita input, #form-cita select, #form-cita textarea, #form-cita button');
-  citaFormInputs.forEach(el => {
-    el.disabled = !canSchedule();
-  });
+  document.querySelectorAll('#form-cita input, #form-cita select, #form-cita textarea, #form-cita button')
+    .forEach(element => {
+      element.disabled = !canSchedule();
+    });
 }
 
 function renderSessionInfo() {
@@ -222,7 +260,7 @@ function setupLogin() {
   }
 
   if (state.session) {
-    const validUser = state.users.find(u => u.username === state.session.username && u.active);
+    const validUser = state.users.find(user => user.username === state.session.username && user.active);
     if (validUser) {
       state.session.role = validUser.role;
       saveSession();
@@ -230,15 +268,15 @@ function setupLogin() {
     }
   }
 
-  loginForm.addEventListener('submit', e => {
-    e.preventDefault();
+  loginForm.addEventListener('submit', event => {
+    event.preventDefault();
     const data = Object.fromEntries(new FormData(loginForm).entries());
-    const user = state.users.find(
-      u => u.username === data.username.trim() && u.password === data.password && u.active
-    );
+    const username = data.username.trim().toLowerCase();
+    const user = state.users.find(item => item.username === username && item.password === data.password && item.active);
 
     if (!user) {
       loginMsg.textContent = 'Credenciales inválidas o usuario inactivo.';
+      showToast('Error de acceso', 'error');
       return;
     }
 
@@ -247,12 +285,14 @@ function setupLogin() {
     loginForm.reset();
     loginMsg.textContent = '';
     openApp();
+    showToast('Ingreso correcto al sistema');
   });
 
   logoutButton.addEventListener('click', () => {
     state.session = null;
     saveSession();
     openLogin();
+    showToast('Sesión cerrada');
   });
 }
 
@@ -264,10 +304,11 @@ function setupForms() {
   const userForm = document.getElementById('form-usuario');
   const userMsg = document.getElementById('user-msg');
 
-  clientForm.addEventListener('submit', (e) => {
-    e.preventDefault();
+  clientForm.addEventListener('submit', event => {
+    event.preventDefault();
     if (!canEditClients()) {
       clientMsg.textContent = 'No tienes permisos para crear clientes.';
+      showToast('Sin permisos para crear cliente', 'error');
       return;
     }
 
@@ -286,17 +327,19 @@ function setupForms() {
     renderAll();
     clientForm.reset();
     clientMsg.textContent = 'Cliente guardado correctamente.';
+    showToast('Cliente creado OK');
   });
 
-  citaForm.addEventListener('submit', (e) => {
-    e.preventDefault();
+  citaForm.addEventListener('submit', event => {
+    event.preventDefault();
     if (!canSchedule()) {
       citaMsg.textContent = 'No tienes permisos para agendar citas.';
+      showToast('Sin permisos para agendar', 'error');
       return;
     }
 
     const data = Object.fromEntries(new FormData(citaForm).entries());
-    const client = state.clients.find(c => c.id === data.clienteId);
+    const client = state.clients.find(item => item.id === data.clienteId);
     if (!client) {
       citaMsg.textContent = 'Debe seleccionar un cliente contratado.';
       return;
@@ -307,23 +350,26 @@ function setupForms() {
     renderAll();
     citaForm.reset();
     citaMsg.textContent = 'Cita agendada y recordatorio configurado.';
+    showToast('Cita agendada OK');
   });
 
-  userForm.addEventListener('submit', (e) => {
-    e.preventDefault();
+  userForm.addEventListener('submit', event => {
+    event.preventDefault();
     if (state.session?.role !== 'admin') {
       userMsg.textContent = 'Solo administradores pueden crear usuarios.';
+      showToast('Sin permisos para crear usuarios', 'error');
       return;
     }
 
     const data = Object.fromEntries(new FormData(userForm).entries());
     const username = data.username.trim().toLowerCase();
+
     if (!username || !data.password) {
       userMsg.textContent = 'Completa usuario y clave.';
       return;
     }
 
-    if (state.users.some(u => u.username === username)) {
+    if (state.users.some(user => user.username === username)) {
       userMsg.textContent = 'El usuario ya existe.';
       return;
     }
@@ -335,10 +381,12 @@ function setupForms() {
       role: data.role,
       active: true
     });
+
     saveUsers();
     userForm.reset();
     userMsg.textContent = 'Usuario creado correctamente.';
     renderUsers();
+    showToast('Usuario creado OK');
   });
 }
 

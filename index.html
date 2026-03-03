@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
     <section id="login-screen" class="login-screen">
       <div class="login-card">
         <img src="assets/logo-color.svg" alt="Logo TACAM institucional" class="login-logo" />
@@ -16,7 +18,7 @@
           <label>Usuario <input name="username" required /></label>
           <label>Clave <input name="password" type="password" required /></label>
           <button type="submit" class="primary">Iniciar Sesión</button>
-          <p id="login-msg" aria-live="polite"></p>
+          <p id="login-msg" class="form-msg" aria-live="polite"></p>
         </form>
       </div>
     </section>
@@ -93,7 +95,7 @@
 
           <div class="actions-row">
             <button type="submit" class="primary">Guardar Cliente</button>
-            <p id="cliente-msg" aria-live="polite"></p>
+            <p id="cliente-msg" class="form-msg" aria-live="polite"></p>
           </div>
         </form>
       </section>
@@ -144,7 +146,7 @@
             <label><input type="checkbox" name="whatsapp" checked /> Enviar recordatorio por WhatsApp</label>
             <label><input type="checkbox" name="email" checked /> Enviar recordatorio por E-mail</label>
             <button type="submit" class="primary">Agendar Cita</button>
-            <p id="cita-msg" aria-live="polite"></p>
+            <p id="cita-msg" class="form-msg" aria-live="polite"></p>
           </fieldset>
         </form>
       </section>
@@ -180,7 +182,7 @@
             </select>
           </label>
           <button type="submit" class="primary">Crear Usuario</button>
-          <p id="user-msg" aria-live="polite"></p>
+          <p id="user-msg" class="form-msg" aria-live="polite"></p>
         </form>
 
         <div class="table-wrap">

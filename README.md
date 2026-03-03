@@ -14,6 +14,8 @@ Aplicación web funcional para gestión de clientes, agendamiento, visitas y con
 - Gestión de lista de no contratados con acción para actualizar estado.
 - Agendamiento de citas para clientes contratados.
 - Vista de visitas y ranking simple por abogada.
+- Notificaciones flotantes (toast) para acciones exitosas y errores de permiso/acceso.
+- Fuente visual `Lato` cargada desde Google Fonts.
 - Persistencia local en el navegador mediante `localStorage`.
 
 ## Ejecutar localmente
