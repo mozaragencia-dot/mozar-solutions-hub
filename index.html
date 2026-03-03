@@ -35,11 +35,13 @@
 
       <nav class="tabs" aria-label="Secciones">
         <button class="tab active" data-tab="ingreso">Ingresar Cliente</button>
-        <button class="tab" data-tab="no-contrataron">Lista de No Contrataron</button>
-        <button class="tab" data-tab="contratados">Clientes Contratados</button>
+        <button class="tab" data-tab="no-contrataron">No Contrataron</button>
+        <button class="tab" data-tab="contratados">Contratados</button>
         <button class="tab" data-tab="agendamiento">Agendamiento</button>
         <button class="tab" data-tab="visitas">Visitas</button>
-        <button class="tab admin-only" data-tab="usuarios">Usuarios y Accesos</button>
+        <button class="tab" data-tab="abogadas">Perfil Abogada</button>
+        <button class="tab admin-only" data-tab="calendar-admin">Calendario Admin</button>
+        <button class="tab admin-only" data-tab="usuarios">Usuarios</button>
       </nav>
 
       <section class="panel active" id="ingreso">
@@ -82,13 +84,13 @@
           </fieldset>
 
           <fieldset class="status-group">
-            <legend>Asistencia a la cita</legend>
+            <legend>Asistencia</legend>
             <label><input type="radio" name="asistencia" value="Vino" checked /> Vino</label>
             <label><input type="radio" name="asistencia" value="No Vino" /> No Vino</label>
           </fieldset>
 
           <fieldset class="status-group">
-            <legend>Estado del contrato</legend>
+            <legend>Contrato</legend>
             <label><input type="radio" name="contrato" value="Contrató" checked /> Contrató</label>
             <label><input type="radio" name="contrato" value="No Contrató" /> No Contrató</label>
           </fieldset>
@@ -104,17 +106,17 @@
         <h3>Clientes que No Contrataron</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Cliente</th><th>RUT</th><th>Área</th><th>Materia</th><th>Abogada</th><th>Acción</th></tr></thead>
+            <thead><tr><th>Cliente</th><th>RUT</th><th>Área</th><th>Abogada</th><th>Acciones</th></tr></thead>
             <tbody id="tabla-no-contrataron"></tbody>
           </table>
         </div>
       </section>
 
       <section class="panel" id="contratados">
-        <h3>Clientes Contratados</h3>
+        <h3>Clientes Contratados (Editar Ficha)</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Cliente</th><th>RUT</th><th>Área</th><th>Materia</th><th>Abogada</th></tr></thead>
+            <thead><tr><th>Cliente</th><th>RUT</th><th>Área</th><th>Abogada</th><th>Acciones</th></tr></thead>
             <tbody id="tabla-contratados"></tbody>
           </table>
         </div>
@@ -125,26 +127,18 @@
         <form id="form-cita" class="grid-2">
           <fieldset>
             <legend>Datos principales</legend>
-            <label>Cliente*
-              <select id="cita-cliente" name="clienteId" required></select>
-            </label>
+            <label>Cliente* <select id="cita-cliente" name="clienteId" required></select></label>
             <label>Fecha* <input type="date" name="fecha" required /></label>
             <label>Hora* <input type="time" name="hora" required /></label>
-            <label>Área*
-              <select name="area" required>
-                <option value="Penal">Penal</option>
-                <option value="Familia">Familia</option>
-              </select>
-            </label>
+            <label>Área* <select name="area" required><option value="Penal">Penal</option><option value="Familia">Familia</option></select></label>
             <label>Materia* <input name="materia" required /></label>
             <label>Abogada* <input name="abogada" required /></label>
           </fieldset>
-
           <fieldset>
-            <legend>Resumen y recordatorios</legend>
+            <legend>Recordatorios e Integración</legend>
             <label>Observaciones <textarea name="observaciones" rows="5"></textarea></label>
-            <label><input type="checkbox" name="whatsapp" checked /> Enviar recordatorio por WhatsApp</label>
-            <label><input type="checkbox" name="email" checked /> Enviar recordatorio por E-mail</label>
+            <label><input type="checkbox" name="whatsapp" checked /> WhatsApp</label>
+            <label><input type="checkbox" name="email" checked /> E-mail</label>
             <button type="submit" class="primary">Agendar Cita</button>
             <p id="cita-msg" class="form-msg" aria-live="polite"></p>
           </fieldset>
@@ -152,21 +146,46 @@
       </section>
 
       <section class="panel" id="visitas">
-        <div class="split">
-          <div>
-            <h3>Control de Visitas</h3>
-            <div class="table-wrap">
+        <h3>Visitas y Reuniones</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Abogada</th><th>Cliente</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody id="tabla-visitas"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" id="abogadas">
+        <h3>Perfil y Estadísticas de Abogada</h3>
+        <div class="grid-2">
+          <fieldset>
+            <legend>Seleccionar Abogada</legend>
+            <label>Abogada
+              <select id="selector-abogada"></select>
+            </label>
+            <div id="stats-abogada" class="stats-grid"></div>
+          </fieldset>
+          <fieldset>
+            <legend>Reuniones Agendadas</legend>
+            <div class="table-wrap slim">
               <table>
-                <thead><tr><th>Abogada</th><th>Cliente</th><th>Fecha</th><th>Estado</th></tr></thead>
-                <tbody id="tabla-visitas"></tbody>
+                <thead><tr><th>Cliente</th><th>Fecha</th><th>Estado</th><th>Google</th></tr></thead>
+                <tbody id="tabla-abogada-citas"></tbody>
               </table>
             </div>
-          </div>
-          <aside class="card">
-            <h4>Ranking de Abogadas</h4>
-            <ol id="ranking"></ol>
-          </aside>
+          </fieldset>
         </div>
+      </section>
+
+      <section class="panel" id="calendar-admin">
+        <h3>Calendario de Reservas (Administrador)</h3>
+        <div class="actions-row">
+          <button id="btn-export" class="secondary" type="button">Exportar respaldo JSON</button>
+          <label class="file-input">Importar respaldo
+            <input id="import-file" type="file" accept="application/json" />
+          </label>
+        </div>
+        <div id="calendar-grid" class="calendar-grid"></div>
       </section>
 
       <section class="panel" id="usuarios">
@@ -174,17 +193,10 @@
         <form id="form-usuario" class="grid-3">
           <label>Usuario* <input name="username" required /></label>
           <label>Clave* <input name="password" required type="password" /></label>
-          <label>Nivel de acceso*
-            <select name="role" required>
-              <option value="admin">Administrador</option>
-              <option value="operador">Operador</option>
-              <option value="consulta">Consulta</option>
-            </select>
-          </label>
+          <label>Nivel* <select name="role" required><option value="admin">Administrador</option><option value="operador">Operador</option><option value="consulta">Consulta</option></select></label>
           <button type="submit" class="primary">Crear Usuario</button>
           <p id="user-msg" class="form-msg" aria-live="polite"></p>
         </form>
-
         <div class="table-wrap">
           <table>
             <thead><tr><th>Usuario</th><th>Nivel</th><th>Estado</th><th>Acción</th></tr></thead>
@@ -193,6 +205,23 @@
         </div>
       </section>
     </main>
+
+    <dialog id="edit-dialog">
+      <form id="edit-form" method="dialog" class="edit-form">
+        <h4>Editar Ficha de Cliente</h4>
+        <input type="hidden" name="id" />
+        <label>Nombre <input name="nombre" required /></label>
+        <label>RUT <input name="rut" required /></label>
+        <label>Teléfono <input name="telefono" /></label>
+        <label>Email <input name="email" type="email" /></label>
+        <label>Dirección <input name="direccion" /></label>
+        <label>Abogada <input name="abogada" /></label>
+        <menu>
+          <button value="cancel" type="button" id="cancel-edit" class="secondary">Cancelar</button>
+          <button value="default" type="submit" class="primary">Guardar cambios</button>
+        </menu>
+      </form>
+    </dialog>
 
     <script src="app.js"></script>
   </body>
