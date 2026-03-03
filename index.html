@@ -136,9 +136,17 @@
           </fieldset>
           <fieldset>
             <legend>Recordatorios e Integración</legend>
-            <label>Observaciones <textarea name="observaciones" rows="5"></textarea></label>
+            <label>Observaciones <textarea name="observaciones" rows="4"></textarea></label>
             <label><input type="checkbox" name="whatsapp" checked /> WhatsApp</label>
             <label><input type="checkbox" name="email" checked /> E-mail</label>
+            <div class="preview-box">
+              <strong>Vista previa WhatsApp</strong>
+              <pre id="preview-whatsapp">Seleccione cliente, fecha y hora…</pre>
+            </div>
+            <div class="preview-box">
+              <strong>Vista previa correo con membrete</strong>
+              <pre id="preview-email">Seleccione cliente, fecha y hora…</pre>
+            </div>
             <button type="submit" class="primary">Agendar Cita</button>
             <p id="cita-msg" class="form-msg" aria-live="polite"></p>
           </fieldset>
@@ -160,16 +168,14 @@
         <div class="grid-2">
           <fieldset>
             <legend>Seleccionar Abogada</legend>
-            <label>Abogada
-              <select id="selector-abogada"></select>
-            </label>
+            <label>Abogada <select id="selector-abogada"></select></label>
             <div id="stats-abogada" class="stats-grid"></div>
           </fieldset>
           <fieldset>
             <legend>Reuniones Agendadas</legend>
             <div class="table-wrap slim">
               <table>
-                <thead><tr><th>Cliente</th><th>Fecha</th><th>Estado</th><th>Google</th></tr></thead>
+                <thead><tr><th>Cliente</th><th>Fecha</th><th>Estado</th><th>Recordatorios</th></tr></thead>
                 <tbody id="tabla-abogada-citas"></tbody>
               </table>
             </div>
@@ -181,9 +187,7 @@
         <h3>Calendario de Reservas (Administrador)</h3>
         <div class="actions-row">
           <button id="btn-export" class="secondary" type="button">Exportar respaldo JSON</button>
-          <label class="file-input">Importar respaldo
-            <input id="import-file" type="file" accept="application/json" />
-          </label>
+          <label class="file-input">Importar respaldo<input id="import-file" type="file" accept="application/json" /></label>
         </div>
         <div id="calendar-grid" class="calendar-grid"></div>
       </section>
@@ -194,12 +198,13 @@
           <label>Usuario* <input name="username" required /></label>
           <label>Clave* <input name="password" required type="password" /></label>
           <label>Nivel* <select name="role" required><option value="admin">Administrador</option><option value="operador">Operador</option><option value="consulta">Consulta</option></select></label>
+          <label>Foto perfil <input name="avatar" type="file" accept="image/*" /></label>
           <button type="submit" class="primary">Crear Usuario</button>
           <p id="user-msg" class="form-msg" aria-live="polite"></p>
         </form>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Usuario</th><th>Nivel</th><th>Estado</th><th>Acción</th></tr></thead>
+            <thead><tr><th>Foto</th><th>Usuario</th><th>Nivel</th><th>Estado</th><th>Acción</th></tr></thead>
             <tbody id="tabla-usuarios"></tbody>
           </table>
         </div>

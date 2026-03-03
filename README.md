@@ -12,8 +12,9 @@ Aplicación web funcional para gestión de clientes, agendamiento, visitas, esta
 - Reagendamiento de reuniones.
 - Perfil de abogada con estadísticas y listado de reuniones.
 - Calendario de reservas para administradores (vista global por día).
-- Integración con Google Calendar por enlace directo “Crear evento”.
-- Usuarios y niveles de acceso (`Administrador`, `Operador`, `Consulta`).
+- Usuarios y niveles de acceso (`Administrador`, `Operador`, `Consulta`) con **foto de perfil** por usuario.
+- Avisos de reuniones por **WhatsApp** (enlace directo) y correo con **membrete TACAM**.
+- Vista previa del formato de WhatsApp/correo antes de agendar.
 - Respaldo y restauración de información por JSON (exportar/importar).
 
 ## Sobre Google Calendar

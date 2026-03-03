@@ -19,10 +19,42 @@ function load(key) {
   try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
 }
 
+function toDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function defaultAvatar(name) {
+  const initials = (name || 'US').split(' ').filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase() || '').join('');
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='64' height='64' rx='32' fill='%238f203a'/><text x='50%' y='54%' dominant-baseline='middle' text-anchor='middle' font-family='Lato, Arial' font-size='24' fill='white'>${initials || 'U'}</text></svg>`;
+  return `data:image/svg+xml;utf8,${svg}`;
+}
+
+function ensureUserAvatars(users) {
+  users.forEach(user => {
+    if (!user.avatar) user.avatar = defaultAvatar(user.username);
+  });
+}
+
 function loadUsers() {
   const users = load(STORAGE_KEYS.users);
-  if (users.length) return users;
-  const defaults = [{ id: crypto.randomUUID(), username: 'admin', password: 'admin', role: 'admin', active: true }];
+  if (users.length) {
+    ensureUserAvatars(users);
+    localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users));
+    return users;
+  }
+  const defaults = [{
+    id: crypto.randomUUID(),
+    username: 'admin',
+    password: 'admin',
+    role: 'admin',
+    active: true,
+    avatar: defaultAvatar('admin')
+  }];
   localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(defaults));
   return defaults;
 }
@@ -39,12 +71,16 @@ function saveUsers() { localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(s
 function saveSession() { localStorage.setItem(STORAGE_KEYS.session, JSON.stringify(state.session)); }
 
 function showToast(message, type = 'success') {
-  const c = document.getElementById('toast-container');
-  const el = document.createElement('div');
-  el.className = `toast ${type}`;
-  el.textContent = message;
-  c.appendChild(el);
-  setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(-6px)'; setTimeout(() => el.remove(), 200); }, 2400);
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-6px)';
+    setTimeout(() => toast.remove(), 200);
+  }, 2400);
 }
 
 function isRutValid(rut) {
@@ -69,6 +105,72 @@ function roleLabel(role) {
 function canEditClients() { return state.session && ['admin', 'operador'].includes(state.session.role); }
 function canSchedule() { return state.session && ['admin', 'operador'].includes(state.session.role); }
 
+function getClientById(id) {
+  return state.clients.find(client => client.id === id);
+}
+
+function whatsappMessage(appointment, client) {
+  return `Hola ${client.nombre}, te recordamos tu reunión TACAM el ${appointment.fecha} a las ${appointment.hora} con ${appointment.abogada}. Área: ${appointment.area}. Materia: ${appointment.materia}.`;
+}
+
+function emailLetterhead() {
+  return [
+    'TACAM Abogados',
+    'Jorge Washington 2675, Oficinas 102 y 1003, Antofagasta',
+    '+56 9 1234 5678 · www.tacam.cl',
+    '----------------------------------------'
+  ].join('\n');
+}
+
+function emailSubject(appointment, client) {
+  return `Confirmación de reunión TACAM - ${client.nombre}`;
+}
+
+function emailBody(appointment, client) {
+  return `${emailLetterhead()}\n\nEstimado/a ${client.nombre},\n\nTu reunión ha sido agendada con los siguientes datos:\n- Fecha: ${appointment.fecha}\n- Hora: ${appointment.hora}\n- Área: ${appointment.area}\n- Materia: ${appointment.materia}\n- Abogada: ${appointment.abogada}\n\nSi necesitas reagendar, responde este correo o contáctanos por WhatsApp.\n\nSaludos,\nTACAM Abogados`;
+}
+
+function googleCalendarUrl(appointment) {
+  const start = new Date(`${appointment.fecha}T${appointment.hora}:00`);
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  const fmt = date => date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  const text = encodeURIComponent(`Reunión TACAM - ${appointment.clienteNombre}`);
+  const details = encodeURIComponent(`Área: ${appointment.area}\nMateria: ${appointment.materia}\nAbogada: ${appointment.abogada}`);
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${fmt(start)}/${fmt(end)}&details=${details}`;
+}
+
+function whatsappUrl(appointment) {
+  const client = getClientById(appointment.clienteId);
+  const rawPhone = (client?.telefono || '').replace(/\D/g, '');
+  const phone = rawPhone.startsWith('56') ? rawPhone : (rawPhone ? `56${rawPhone}` : '');
+  const message = encodeURIComponent(whatsappMessage(appointment, client || { nombre: appointment.clienteNombre }));
+  return phone ? `https://wa.me/${phone}?text=${message}` : `https://wa.me/?text=${message}`;
+}
+
+function mailtoUrl(appointment) {
+  const client = getClientById(appointment.clienteId);
+  const to = encodeURIComponent(client?.email || '');
+  const subject = encodeURIComponent(emailSubject(appointment, client || { nombre: appointment.clienteNombre }));
+  const body = encodeURIComponent(emailBody(appointment, client || { nombre: appointment.clienteNombre }));
+  return `mailto:${to}?subject=${subject}&body=${body}`;
+}
+
+function renderPreviews() {
+  const form = document.getElementById('form-cita');
+  const data = Object.fromEntries(new FormData(form).entries());
+  const client = getClientById(data.clienteId) || { nombre: 'Cliente' };
+  const appointment = {
+    fecha: data.fecha || 'AAAA-MM-DD',
+    hora: data.hora || 'HH:MM',
+    area: data.area || '-',
+    materia: data.materia || '-',
+    abogada: data.abogada || '-',
+    clienteNombre: client.nombre
+  };
+  document.getElementById('preview-whatsapp').textContent = whatsappMessage(appointment, client);
+  document.getElementById('preview-email').textContent = emailBody(appointment, client);
+}
+
 function setupTabs() {
   const tabs = document.querySelectorAll('.tab');
   const panels = document.querySelectorAll('.panel');
@@ -82,20 +184,11 @@ function setupTabs() {
   });
 }
 
-function googleCalendarUrl(appointment) {
-  const start = new Date(`${appointment.fecha}T${appointment.hora}:00`);
-  const end = new Date(start.getTime() + 60 * 60 * 1000);
-  const fmt = d => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-  const text = encodeURIComponent(`Reunión TACAM - ${appointment.clienteNombre}`);
-  const details = encodeURIComponent(`Área: ${appointment.area}\nMateria: ${appointment.materia}\nAbogada: ${appointment.abogada}`);
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${fmt(start)}/${fmt(end)}&details=${details}`;
-}
-
 function renderClientTables() {
   const tbodyNo = document.getElementById('tabla-no-contrataron');
-  const tbodySi = document.getElementById('tabla-contratados');
-  const noContrataron = state.clients.filter(client => client.contrato === 'No Contrató');
-  const contrataron = state.clients.filter(client => client.contrato === 'Contrató');
+  const tbodyYes = document.getElementById('tabla-contratados');
+  const noContract = state.clients.filter(client => client.contrato === 'No Contrató');
+  const contracted = state.clients.filter(client => client.contrato === 'Contrató');
 
   const actions = client => {
     const editBtn = canEditClients() ? `<button class="secondary" data-edit-client="${client.id}">Editar</button>` : '<span class="muted">Sin permiso</span>';
@@ -103,17 +196,17 @@ function renderClientTables() {
     return `${editBtn} ${promoteBtn}`;
   };
 
-  tbodyNo.innerHTML = noContrataron.length
-    ? noContrataron.map(client => `<tr><td>${client.nombre}</td><td>${client.rut}</td><td>${client.area}</td><td>${client.abogada}</td><td>${actions(client)}</td></tr>`).join('')
+  tbodyNo.innerHTML = noContract.length
+    ? noContract.map(client => `<tr><td>${client.nombre}</td><td>${client.rut}</td><td>${client.area}</td><td>${client.abogada}</td><td>${actions(client)}</td></tr>`).join('')
     : '<tr><td colspan="5" class="empty">Sin registros.</td></tr>';
 
-  tbodySi.innerHTML = contrataron.length
-    ? contrataron.map(client => `<tr><td>${client.nombre}</td><td>${client.rut}</td><td>${client.area}</td><td>${client.abogada}</td><td>${actions(client)}</td></tr>`).join('')
+  tbodyYes.innerHTML = contracted.length
+    ? contracted.map(client => `<tr><td>${client.nombre}</td><td>${client.rut}</td><td>${client.area}</td><td>${client.abogada}</td><td>${actions(client)}</td></tr>`).join('')
     : '<tr><td colspan="5" class="empty">Sin registros.</td></tr>';
 
   document.querySelectorAll('[data-promote]').forEach(button => {
     button.addEventListener('click', () => {
-      const client = state.clients.find(item => item.id === button.dataset.promote);
+      const client = getClientById(button.dataset.promote);
       if (!client || !canEditClients()) return;
       client.contrato = 'Contrató';
       saveData();
@@ -149,6 +242,8 @@ function renderVisits() {
           <td>${appointment.estado}</td>
           <td>
             ${canSchedule() ? `<button class="secondary" data-reschedule="${appointment.id}">Reagendar</button>` : '<span class="muted">Sin permiso</span>'}
+            <a class="link-btn" target="_blank" rel="noreferrer" href="${whatsappUrl(appointment)}">WhatsApp</a>
+            <a class="link-btn" href="${mailtoUrl(appointment)}">Correo</a>
             <a class="link-btn" target="_blank" rel="noreferrer" href="${googleCalendarUrl(appointment)}">Google Calendar</a>
           </td>
         </tr>
@@ -157,7 +252,7 @@ function renderVisits() {
 
   document.querySelectorAll('[data-reschedule]').forEach(button => {
     button.addEventListener('click', () => {
-      const item = state.appointments.find(a => a.id === button.dataset.reschedule);
+      const item = state.appointments.find(appointment => appointment.id === button.dataset.reschedule);
       if (!item || !canSchedule()) return;
       const newDate = prompt('Nueva fecha (YYYY-MM-DD):', item.fecha);
       if (!newDate) return;
@@ -178,39 +273,40 @@ function renderLawyerModule() {
   select.innerHTML = LAWYERS.map(name => `<option value="${name}">${name}</option>`).join('');
   select.value = state.selectedLawyer;
 
-  const scopedAppointments = state.appointments.filter(a => a.abogada === state.selectedLawyer);
-  const upcoming = scopedAppointments.filter(a => new Date(`${a.fecha}T${a.hora}`) >= new Date()).length;
-  const clients = new Set(scopedAppointments.map(a => a.clienteId)).size;
+  const scoped = state.appointments.filter(appointment => appointment.abogada === state.selectedLawyer);
+  const upcoming = scoped.filter(appointment => new Date(`${appointment.fecha}T${appointment.hora}`) >= new Date()).length;
+  const uniqueClients = new Set(scoped.map(appointment => appointment.clienteId)).size;
 
   document.getElementById('stats-abogada').innerHTML = `
-    <div class="stat"><span>Total reuniones</span><strong>${scopedAppointments.length}</strong></div>
+    <div class="stat"><span>Total reuniones</span><strong>${scoped.length}</strong></div>
     <div class="stat"><span>Próximas</span><strong>${upcoming}</strong></div>
-    <div class="stat"><span>Clientes únicos</span><strong>${clients}</strong></div>
-    <div class="stat"><span>Completadas/confirmadas</span><strong>${scopedAppointments.filter(a => a.estado !== 'Reagendada').length}</strong></div>
+    <div class="stat"><span>Clientes únicos</span><strong>${uniqueClients}</strong></div>
+    <div class="stat"><span>Reagendadas</span><strong>${scoped.filter(appointment => appointment.estado === 'Reagendada').length}</strong></div>
   `;
 
-  document.getElementById('tabla-abogada-citas').innerHTML = scopedAppointments.length
-    ? scopedAppointments
+  document.getElementById('tabla-abogada-citas').innerHTML = scoped.length
+    ? scoped
       .sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`))
-      .map(a => `<tr><td>${a.clienteNombre}</td><td>${a.fecha} ${a.hora}</td><td>${a.estado}</td><td><a class="link-btn" target="_blank" rel="noreferrer" href="${googleCalendarUrl(a)}">Crear evento</a></td></tr>`)
+      .map(appointment => `<tr><td>${appointment.clienteNombre}</td><td>${appointment.fecha} ${appointment.hora}</td><td>${appointment.estado}</td><td><a class="link-btn" target="_blank" rel="noreferrer" href="${whatsappUrl(appointment)}">WhatsApp</a> · <a class="link-btn" href="${mailtoUrl(appointment)}">Correo</a></td></tr>`)
       .join('')
     : '<tr><td colspan="4" class="empty">Sin reuniones para esta abogada.</td></tr>';
 }
 
 function renderAdminCalendar() {
   const container = document.getElementById('calendar-grid');
-  const grouped = state.appointments.reduce((acc, a) => {
-    acc[a.fecha] = acc[a.fecha] || [];
-    acc[a.fecha].push(a);
+  const grouped = state.appointments.reduce((acc, appointment) => {
+    acc[appointment.fecha] = acc[appointment.fecha] || [];
+    acc[appointment.fecha].push(appointment);
     return acc;
   }, {});
+
   const days = Object.keys(grouped).sort();
   container.innerHTML = days.length
     ? days.map(day => `
       <article class="day-card">
         <h4>${day}</h4>
         <ul>
-          ${grouped[day].sort((a, b) => a.hora.localeCompare(b.hora)).map(a => `<li>${a.hora} · ${a.clienteNombre} · ${a.abogada} · ${a.estado}</li>`).join('')}
+          ${grouped[day].sort((a, b) => a.hora.localeCompare(b.hora)).map(appointment => `<li>${appointment.hora} · ${appointment.clienteNombre} · ${appointment.abogada} · <a class="link-btn" target="_blank" rel="noreferrer" href="${whatsappUrl(appointment)}">WhatsApp</a> / <a class="link-btn" href="${mailtoUrl(appointment)}">Correo</a></li>`).join('')}
         </ul>
       </article>
     `).join('')
@@ -222,6 +318,7 @@ function renderUsers() {
   const isAdmin = state.session?.role === 'admin';
   tbody.innerHTML = state.users.map(user => `
     <tr>
+      <td><img class="avatar" src="${user.avatar || defaultAvatar(user.username)}" alt="Foto de ${user.username}" /></td>
       <td>${user.username}</td>
       <td>${roleLabel(user.role)}</td>
       <td>${user.active ? 'Activo' : 'Inactivo'}</td>
@@ -247,17 +344,18 @@ function applyAccessControl() {
   document.querySelectorAll('.admin-only').forEach(element => {
     element.style.display = isAdmin ? '' : 'none';
   });
-
-  document.querySelectorAll('#form-cliente input, #form-cliente select, #form-cliente textarea, #form-cliente button').forEach(el => {
-    el.disabled = !canEditClients();
+  document.querySelectorAll('#form-cliente input, #form-cliente select, #form-cliente textarea, #form-cliente button').forEach(element => {
+    element.disabled = !canEditClients();
   });
-  document.querySelectorAll('#form-cita input, #form-cita select, #form-cita textarea, #form-cita button').forEach(el => {
-    el.disabled = !canSchedule();
+  document.querySelectorAll('#form-cita input, #form-cita select, #form-cita textarea, #form-cita button').forEach(element => {
+    element.disabled = !canSchedule();
   });
 }
 
 function renderSessionInfo() {
-  document.getElementById('session-info').textContent = `Sesión activa: ${state.session.username} (${roleLabel(state.session.role)})`;
+  const user = state.users.find(item => item.username === state.session.username);
+  const avatar = user?.avatar || defaultAvatar(state.session.username);
+  document.getElementById('session-info').innerHTML = `<span class="session-chip"><img class="avatar avatar-sm" src="${avatar}" alt="perfil" /> Sesión: ${state.session.username} (${roleLabel(state.session.role)})</span>`;
 }
 
 function renderAll() {
@@ -265,6 +363,7 @@ function renderAll() {
   renderSessionInfo();
   renderClientTables();
   renderClientOptions();
+  renderPreviews();
   renderVisits();
   renderLawyerModule();
   renderAdminCalendar();
@@ -273,7 +372,7 @@ function renderAll() {
 
 function openEditClient(id) {
   if (!canEditClients()) return;
-  const client = state.clients.find(c => c.id === id);
+  const client = getClientById(id);
   if (!client) return;
   const dialog = document.getElementById('edit-dialog');
   const form = document.getElementById('edit-form');
@@ -346,9 +445,11 @@ function setupForms() {
       showToast('Sin permisos para crear cliente', 'error');
       return;
     }
+
     const data = Object.fromEntries(new FormData(clientForm).entries());
     if (!data.nombre.trim()) return clientMsg.textContent = 'Nombre es obligatorio.';
     if (!isRutValid(data.rut.trim())) return clientMsg.textContent = 'RUT inválido.';
+
     state.clients.push({ id: crypto.randomUUID(), ...data, nombre: data.nombre.trim(), rut: data.rut.trim() });
     saveData();
     renderAll();
@@ -364,10 +465,13 @@ function setupForms() {
       showToast('Sin permisos para agendar', 'error');
       return;
     }
+
     const data = Object.fromEntries(new FormData(citaForm).entries());
-    const client = state.clients.find(item => item.id === data.clienteId);
+    const client = getClientById(data.clienteId);
     if (!client) return citaMsg.textContent = 'Debe seleccionar un cliente contratado.';
-    state.appointments.push({ id: crypto.randomUUID(), ...data, clienteNombre: client.nombre, estado: 'Confirmada' });
+
+    const appointment = { id: crypto.randomUUID(), ...data, clienteNombre: client.nombre, estado: 'Confirmada' };
+    state.appointments.push(appointment);
     saveData();
     renderAll();
     citaForm.reset();
@@ -375,18 +479,33 @@ function setupForms() {
     showToast('Cita agendada OK');
   });
 
-  userForm.addEventListener('submit', event => {
+  userForm.addEventListener('submit', async event => {
     event.preventDefault();
     if (state.session?.role !== 'admin') {
       userMsg.textContent = 'Solo administradores pueden crear usuarios.';
       showToast('Sin permisos para crear usuarios', 'error');
       return;
     }
-    const data = Object.fromEntries(new FormData(userForm).entries());
-    const username = data.username.trim().toLowerCase();
-    if (!username || !data.password) return userMsg.textContent = 'Completa usuario y clave.';
+
+    const formData = new FormData(userForm);
+    const username = String(formData.get('username')).trim().toLowerCase();
+    const password = String(formData.get('password'));
+    const role = String(formData.get('role'));
+    const avatarFile = formData.get('avatar');
+
+    if (!username || !password) return userMsg.textContent = 'Completa usuario y clave.';
     if (state.users.some(user => user.username === username)) return userMsg.textContent = 'El usuario ya existe.';
-    state.users.push({ id: crypto.randomUUID(), username, password: data.password, role: data.role, active: true });
+
+    let avatar = defaultAvatar(username);
+    if (avatarFile && avatarFile.size) {
+      try {
+        avatar = await toDataUrl(avatarFile);
+      } catch {
+        showToast('No se pudo cargar la foto, se usó avatar por defecto', 'error');
+      }
+    }
+
+    state.users.push({ id: crypto.randomUUID(), username, password, role, active: true, avatar });
     saveUsers();
     userForm.reset();
     userMsg.textContent = 'Usuario creado correctamente.';
@@ -402,10 +521,11 @@ function setupForms() {
   const editDialog = document.getElementById('edit-dialog');
   const editForm = document.getElementById('edit-form');
   document.getElementById('cancel-edit').addEventListener('click', () => editDialog.close());
+
   editForm.addEventListener('submit', event => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(editForm).entries());
-    const client = state.clients.find(c => c.id === data.id);
+    const client = getClientById(data.id);
     if (!client) return;
     if (!isRutValid(data.rut.trim())) return showToast('RUT inválido', 'error');
     Object.assign(client, data, { nombre: data.nombre.trim(), rut: data.rut.trim() });
@@ -420,7 +540,7 @@ function setupForms() {
     const blob = new Blob([payload], { type: 'application/json' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `tacam-backup-${new Date().toISOString().slice(0,10)}.json`;
+    link.download = `tacam-backup-${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
     URL.revokeObjectURL(link.href);
     showToast('Respaldo exportado OK');
@@ -429,15 +549,15 @@ function setupForms() {
   document.getElementById('import-file').addEventListener('change', async event => {
     const file = event.target.files[0];
     if (!file) return;
+
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      if (!Array.isArray(data.clients) || !Array.isArray(data.appointments) || !Array.isArray(data.users)) {
-        throw new Error('Formato inválido');
-      }
+      if (!Array.isArray(data.clients) || !Array.isArray(data.appointments) || !Array.isArray(data.users)) throw new Error('Formato inválido');
       state.clients = data.clients;
       state.appointments = data.appointments;
       state.users = data.users;
+      ensureUserAvatars(state.users);
       saveData();
       saveUsers();
       renderAll();
@@ -445,6 +565,11 @@ function setupForms() {
     } catch {
       showToast('Error al importar respaldo', 'error');
     }
+  });
+
+  document.querySelectorAll('#form-cita input, #form-cita select, #form-cita textarea').forEach(el => {
+    el.addEventListener('input', renderPreviews);
+    el.addEventListener('change', renderPreviews);
   });
 }
 
