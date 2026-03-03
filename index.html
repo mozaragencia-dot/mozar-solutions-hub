@@ -226,6 +226,21 @@
             <tbody id="tabla-usuarios"></tbody>
           </table>
         </div>
+
+        <fieldset class="config-box admin-only">
+          <legend>Configuración API WhatsApp Cloud</legend>
+          <label>Phone Number ID
+            <input id="wa-phone-id" placeholder="1234567890" />
+          </label>
+          <label>Token de acceso
+            <input id="wa-token" placeholder="EAAG..." />
+          </label>
+          <label>Versión Graph
+            <input id="wa-version" value="v21.0" />
+          </label>
+          <button id="wa-save-config" type="button" class="secondary">Guardar API WhatsApp</button>
+          <p class="form-msg">* Se guarda en este navegador para activar envíos por API.</p>
+        </fieldset>
       </section>
     </main>
 
