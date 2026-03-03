@@ -1,12 +1,12 @@
 {
-  "name": "TACAM Control de Clientes",
-  "short_name": "TACAM",
-  "start_url": ".",
+  "name": "TACAM Pedidos - 3 Apps",
+  "short_name": "TACAM Pedidos",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#8f203a",
   "theme_color": "#8f203a",
   "lang": "es",
-  "description": "Web app TACAM para gestión de clientes y reuniones",
+  "description": "Suite TACAM con apps separadas para usuarios, repartidores y recepción de pedidos.",
   "icons": [
     {
       "src": "assets/logo-color.svg",

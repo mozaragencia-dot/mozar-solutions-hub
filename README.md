@@ -1,43 +1,28 @@
-# TACAM Sistema Web (versión sin API, todo en frontend)
+# TACAM · Suite de 3 apps (frontend)
 
-Aplicación TACAM funcionando 100% en frontend/PWA con almacenamiento local (`localStorage`).
+Ahora el sistema quedó separado en **3 aplicaciones** conectadas por `localStorage`:
 
-## Credenciales iniciales
-- Usuario: `admin`
-- Clave: `admin`
+1. **App Usuarios** (`usuarios-app.html`)
+   - Crear pedidos
+   - Revisar estado por teléfono
 
-## Funcionalidades
-- Portada de sistema con logo TACAM.
-- Login con roles (`admin`, `operador`, `consulta`).
-- Recupera tu contraseña desde portada (prepara correo con membrete TACAM).
-- Gestión de clientes y citas.
-- Botones de mensajería por cita:
-  - **Bienvenida**
-  - **Asentamiento** (incluye enlace Google Maps)
-- Los mensajes se preparan para:
-  - cliente (WhatsApp + correo)
-  - abogada asignada (WhatsApp + correo)
-- Perfil de abogadas, calendario admin, exportar/importar respaldo JSON.
-- Modo luz / nocturno y soporte PWA.
+2. **App Repartidores** (`repartidores-app.html`)
+   - Tomar pedidos
+   - Cambiar estado: asignado → en camino → entregado
 
-## Notas de envío de mensajes
-El sistema abre enlaces de WhatsApp (`wa.me`) y correo (`mailto`) con texto ya armado y membrete.
-Esto evita depender de un backend/API externa.
+3. **App Recepción de Pedidos** (`recepcion-app.html`)
+   - Ver todos los pedidos
+   - Asignar repartidor
+
+## Portal principal
+- `index.html` actúa como portada para entrar a las 3 apps.
+
+## Branding
+- Se usan logos TACAM originales (`assets/logo-color.svg` y `assets/logo-white.svg`) en todas las vistas.
+- Firma visible: **Desarrollo por Agencia Digital**.
 
 ## Ejecutar localmente
 ```bash
 python3 -m http.server 4173
 ```
 Abrir: `http://localhost:4173`
-
-## Subir por FTP (Hostinger básico)
-Sube a `public_html`:
-- `index.html`
-- `app.js`
-- `styles.css`
-- `.htaccess`
-- `manifest.webmanifest`
-- `sw.js`
-- carpeta `assets/`
-
-No necesitas carpeta `backend` ni `tests`.

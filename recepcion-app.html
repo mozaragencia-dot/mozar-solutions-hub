@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TACAM | App Recepción de Pedidos</title>
+  <link rel="stylesheet" href="delivery.css" />
+</head>
+<body>
+  <header>
+    <img src="assets/logo-white.svg" alt="Logo TACAM" />
+    <strong>App Recepción de Pedidos</strong>
+  </header>
+  <main>
+    <section class="card">
+      <h1>Panel de recepción</h1>
+      <p>Revisa, asigna y controla todos los pedidos ingresados por usuarios.</p>
+      <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Teléfono</th><th>Dirección</th><th>Estado</th><th>Asignar</th></tr></thead><tbody id="admin-body"></tbody></table></div>
+    </section>
+    <div class="footer-sign">
+      <img src="assets/logo-color.svg" alt="Logo oficial TACAM" />
+      <span>Desarrollo por <strong>Agencia Digital</strong></span>
+    </div>
+  </main>
+  <script src="delivery-core.js"></script>
+  <script src="recepcion-app.js"></script>
+  <script src="register-sw.js"></script>
+</body>
+</html>
