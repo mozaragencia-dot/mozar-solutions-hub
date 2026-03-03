@@ -3,6 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#8f203a" />
+    <link rel="manifest" href="manifest.webmanifest" />
     <title>TACAM | Control de Clientes</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -30,7 +32,11 @@
           <h2>Control de Clientes</h2>
           <p id="session-info"></p>
         </div>
-        <button id="logout-btn" class="secondary">Cerrar sesión</button>
+        <div class="topbar-actions">
+          <button id="theme-light" class="secondary">Modo luz</button>
+          <button id="theme-dark" class="secondary">Modo nocturno</button>
+          <button id="logout-btn" class="secondary">Cerrar sesión</button>
+        </div>
       </header>
 
       <nav class="tabs" aria-label="Secciones">

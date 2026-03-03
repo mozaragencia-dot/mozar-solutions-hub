@@ -2,7 +2,8 @@ const STORAGE_KEYS = {
   clients: 'tacam_clients',
   appointments: 'tacam_appointments',
   users: 'tacam_users',
-  session: 'tacam_session'
+  session: 'tacam_session',
+  theme: 'tacam_theme'
 };
 
 const LAWYERS = ['Daniela Sierra', 'Natalie Gómez', 'Camila Vásquez', 'Carolina Contreras'];
@@ -12,7 +13,8 @@ const state = {
   appointments: load(STORAGE_KEYS.appointments),
   users: loadUsers(),
   session: loadSession(),
-  selectedLawyer: LAWYERS[0]
+  selectedLawyer: LAWYERS[0],
+  theme: localStorage.getItem(STORAGE_KEYS.theme) || 'light'
 };
 
 function load(key) {
@@ -63,6 +65,27 @@ function loadSession() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.session) || 'null'); } catch { return null; }
 }
 
+
+
+function applyTheme(theme) {
+  document.body.classList.toggle('theme-dark', theme === 'dark');
+  state.theme = theme;
+  localStorage.setItem(STORAGE_KEYS.theme, theme);
+}
+
+function setupThemeButtons() {
+  const light = document.getElementById('theme-light');
+  const dark = document.getElementById('theme-dark');
+  if (!light || !dark) return;
+  light.addEventListener('click', () => { applyTheme('light'); showToast('Modo luz activado'); });
+  dark.addEventListener('click', () => { applyTheme('dark'); showToast('Modo nocturno activado'); });
+}
+
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+  }
+}
 function saveData() {
   localStorage.setItem(STORAGE_KEYS.clients, JSON.stringify(state.clients));
   localStorage.setItem(STORAGE_KEYS.appointments, JSON.stringify(state.appointments));
@@ -573,6 +596,9 @@ function setupForms() {
   });
 }
 
+applyTheme(state.theme);
+setupThemeButtons();
 setupTabs();
 setupForms();
 setupLogin();
+registerServiceWorker();
