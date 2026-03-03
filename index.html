@@ -14,7 +14,7 @@
     <section id="login-screen" class="login-screen">
       <div class="login-card">
         <img src="assets/logo-color.svg" alt="Logo TACAM institucional" class="login-logo" />
-        <h1>Ingreso al Sistema</h1>
+        <h1>Portada del Sistema</h1>
         <p>Usuario inicial: <strong>admin</strong> | Clave inicial: <strong>admin</strong></p>
         <form id="login-form">
           <label>Usuario <input name="username" required /></label>
@@ -22,6 +22,17 @@
           <button type="submit" class="primary">Iniciar Sesión</button>
           <p id="login-msg" class="form-msg" aria-live="polite"></p>
         </form>
+
+        <details class="recover-box">
+          <summary>¿Olvidaste tu clave? Recupera tu contraseña</summary>
+          <div>
+            <img src="assets/logo-white.svg" alt="Logo TACAM" class="recover-logo" />
+            <label>Email de recuperación
+              <input id="recover-email" type="email" placeholder="correo@ejemplo.com" />
+            </label>
+            <button id="recover-btn" type="button" class="secondary">Enviar recuperación</button>
+          </div>
+        </details>
       </div>
     </section>
 
@@ -57,7 +68,7 @@
             <legend>Ficha de Cliente</legend>
             <label>Nombre* <input name="nombre" required /></label>
             <label>RUT* <input name="rut" required placeholder="12.345.678-5" /></label>
-            <label>Teléfono <input name="telefono" /></label>
+            <label>Teléfono <input name="telefono" placeholder="+56912345678" /></label>
             <label>Email <input name="email" type="email" /></label>
             <label>Dirección <input name="direccion" /></label>
           </fieldset>
@@ -119,7 +130,7 @@
       </section>
 
       <section class="panel" id="contratados">
-        <h3>Clientes Contratados (Editar Ficha)</h3>
+        <h3>Clientes Contratados</h3>
         <div class="table-wrap">
           <table>
             <thead><tr><th>Cliente</th><th>RUT</th><th>Área</th><th>Abogada</th><th>Acciones</th></tr></thead>
@@ -129,7 +140,7 @@
       </section>
 
       <section class="panel" id="agendamiento">
-        <h3>Agendar Cita</h3>
+        <h3>Agendamiento</h3>
         <form id="form-cita" class="grid-2">
           <fieldset>
             <legend>Datos principales</legend>
@@ -139,19 +150,20 @@
             <label>Área* <select name="area" required><option value="Penal">Penal</option><option value="Familia">Familia</option></select></label>
             <label>Materia* <input name="materia" required /></label>
             <label>Abogada* <input name="abogada" required /></label>
+            <label>Link Google Maps oficina <input name="mapsLink" placeholder="https://maps.google.com/..." value="https://maps.google.com/?q=Jorge+Washington+2675+Antofagasta" /></label>
           </fieldset>
           <fieldset>
-            <legend>Recordatorios e Integración</legend>
+            <legend>Mensajes automáticos (cliente y abogada)</legend>
             <label>Observaciones <textarea name="observaciones" rows="4"></textarea></label>
             <label><input type="checkbox" name="whatsapp" checked /> WhatsApp</label>
-            <label><input type="checkbox" name="email" checked /> E-mail</label>
+            <label><input type="checkbox" name="email" checked /> Correo</label>
             <div class="preview-box">
-              <strong>Vista previa WhatsApp</strong>
-              <pre id="preview-whatsapp">Seleccione cliente, fecha y hora…</pre>
+              <strong>Vista previa Bienvenida</strong>
+              <pre id="preview-bienvenida">Seleccione cliente, fecha y hora…</pre>
             </div>
             <div class="preview-box">
-              <strong>Vista previa correo con membrete</strong>
-              <pre id="preview-email">Seleccione cliente, fecha y hora…</pre>
+              <strong>Vista previa Asentamiento + Maps</strong>
+              <pre id="preview-asentamiento">Seleccione cliente, fecha y hora…</pre>
             </div>
             <button type="submit" class="primary">Agendar Cita</button>
             <p id="cita-msg" class="form-msg" aria-live="polite"></p>
@@ -163,7 +175,7 @@
         <h3>Visitas y Reuniones</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Abogada</th><th>Cliente</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Abogada</th><th>Cliente</th><th>Fecha</th><th>Estado</th><th>Mensajes</th></tr></thead>
             <tbody id="tabla-visitas"></tbody>
           </table>
         </div>
@@ -181,7 +193,7 @@
             <legend>Reuniones Agendadas</legend>
             <div class="table-wrap slim">
               <table>
-                <thead><tr><th>Cliente</th><th>Fecha</th><th>Estado</th><th>Recordatorios</th></tr></thead>
+                <thead><tr><th>Cliente</th><th>Fecha</th><th>Estado</th><th>Mensajes</th></tr></thead>
                 <tbody id="tabla-abogada-citas"></tbody>
               </table>
             </div>

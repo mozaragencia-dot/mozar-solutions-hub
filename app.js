@@ -7,6 +7,12 @@ const STORAGE_KEYS = {
 };
 
 const LAWYERS = ['Daniela Sierra', 'Natalie Gómez', 'Camila Vásquez', 'Carolina Contreras'];
+const LAWYER_CONTACTS = {
+  'Daniela Sierra': { phone: '56911111111', email: 'daniela@tacam.cl' },
+  'Natalie Gómez': { phone: '56922222222', email: 'natalie@tacam.cl' },
+  'Camila Vásquez': { phone: '56933333333', email: 'camila@tacam.cl' },
+  'Carolina Contreras': { phone: '56944444444', email: 'carolina@tacam.cl' }
+};
 
 const state = {
   clients: load(STORAGE_KEYS.clients),
@@ -37,9 +43,7 @@ function defaultAvatar(name) {
 }
 
 function ensureUserAvatars(users) {
-  users.forEach(user => {
-    if (!user.avatar) user.avatar = defaultAvatar(user.username);
-  });
+  users.forEach(user => { if (!user.avatar) user.avatar = defaultAvatar(user.username); });
 }
 
 function loadUsers() {
@@ -49,14 +53,7 @@ function loadUsers() {
     localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users));
     return users;
   }
-  const defaults = [{
-    id: crypto.randomUUID(),
-    username: 'admin',
-    password: 'admin',
-    role: 'admin',
-    active: true,
-    avatar: defaultAvatar('admin')
-  }];
+  const defaults = [{ id: crypto.randomUUID(), username: 'admin', password: 'admin', role: 'admin', active: true, avatar: defaultAvatar('admin') }];
   localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(defaults));
   return defaults;
 }
@@ -65,8 +62,6 @@ function loadSession() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.session) || 'null'); } catch { return null; }
 }
 
-
-
 function applyTheme(theme) {
   document.body.classList.toggle('theme-dark', theme === 'dark');
   state.theme = theme;
@@ -74,11 +69,8 @@ function applyTheme(theme) {
 }
 
 function setupThemeButtons() {
-  const light = document.getElementById('theme-light');
-  const dark = document.getElementById('theme-dark');
-  if (!light || !dark) return;
-  light.addEventListener('click', () => { applyTheme('light'); showToast('Modo luz activado'); });
-  dark.addEventListener('click', () => { applyTheme('dark'); showToast('Modo nocturno activado'); });
+  document.getElementById('theme-light')?.addEventListener('click', () => { applyTheme('light'); showToast('Modo luz activado'); });
+  document.getElementById('theme-dark')?.addEventListener('click', () => { applyTheme('dark'); showToast('Modo nocturno activado'); });
 }
 
 function registerServiceWorker() {
@@ -86,6 +78,7 @@ function registerServiceWorker() {
     window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
   }
 }
+
 function saveData() {
   localStorage.setItem(STORAGE_KEYS.clients, JSON.stringify(state.clients));
   localStorage.setItem(STORAGE_KEYS.appointments, JSON.stringify(state.appointments));
@@ -95,6 +88,7 @@ function saveSession() { localStorage.setItem(STORAGE_KEYS.session, JSON.stringi
 
 function showToast(message, type = 'success') {
   const container = document.getElementById('toast-container');
+  if (!container) return;
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   toast.textContent = message;
@@ -122,18 +116,21 @@ function isRutValid(rut) {
   return dv === expectedDv;
 }
 
-function roleLabel(role) {
-  return role === 'admin' ? 'Administrador' : role === 'operador' ? 'Operador' : 'Consulta';
-}
+function roleLabel(role) { return role === 'admin' ? 'Administrador' : role === 'operador' ? 'Operador' : 'Consulta'; }
 function canEditClients() { return state.session && ['admin', 'operador'].includes(state.session.role); }
 function canSchedule() { return state.session && ['admin', 'operador'].includes(state.session.role); }
+function getClientById(id) { return state.clients.find(client => client.id === id); }
 
-function getClientById(id) {
-  return state.clients.find(client => client.id === id);
+function mapsLink(appointment) {
+  return appointment.mapsLink || 'https://maps.google.com/?q=Jorge+Washington+2675+Antofagasta';
 }
 
-function whatsappMessage(appointment, client) {
-  return `Hola ${client.nombre}, te recordamos tu reunión TACAM el ${appointment.fecha} a las ${appointment.hora} con ${appointment.abogada}. Área: ${appointment.area}. Materia: ${appointment.materia}.`;
+function bienvenidaText(appointment, client) {
+  return `Bienvenida a TACAM, ${client.nombre}. Tu reunión fue agendada para ${appointment.fecha} a las ${appointment.hora} con ${appointment.abogada}.`;
+}
+
+function asentamientoText(appointment, client) {
+  return `Asentamiento TACAM para ${client.nombre}: Fecha ${appointment.fecha}, Hora ${appointment.hora}, Área ${appointment.area}, Materia ${appointment.materia}. Ubicación: ${mapsLink(appointment)}`;
 }
 
 function emailLetterhead() {
@@ -141,41 +138,40 @@ function emailLetterhead() {
     'TACAM Abogados',
     'Jorge Washington 2675, Oficinas 102 y 1003, Antofagasta',
     '+56 9 1234 5678 · www.tacam.cl',
-    '----------------------------------------'
+    '--------------------------------------------------'
   ].join('\n');
 }
 
-function emailSubject(appointment, client) {
-  return `Confirmación de reunión TACAM - ${client.nombre}`;
+function emailBodyWithLetterhead(kind, appointment, client) {
+  const intro = kind === 'bienvenida' ? 'Bienvenida TACAM' : 'Asentamiento TACAM';
+  const text = kind === 'bienvenida' ? bienvenidaText(appointment, client) : asentamientoText(appointment, client);
+  return `${emailLetterhead()}\n\n${intro}\n\n${text}\n\nSaludos,\nTACAM Abogados`;
 }
 
-function emailBody(appointment, client) {
-  return `${emailLetterhead()}\n\nEstimado/a ${client.nombre},\n\nTu reunión ha sido agendada con los siguientes datos:\n- Fecha: ${appointment.fecha}\n- Hora: ${appointment.hora}\n- Área: ${appointment.area}\n- Materia: ${appointment.materia}\n- Abogada: ${appointment.abogada}\n\nSi necesitas reagendar, responde este correo o contáctanos por WhatsApp.\n\nSaludos,\nTACAM Abogados`;
+function openWhatsapp(phone, text) {
+  const normalized = String(phone || '').replace(/\D/g, '');
+  const withCode = normalized.startsWith('56') ? normalized : (normalized ? `56${normalized}` : '');
+  const url = withCode ? `https://wa.me/${withCode}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
+  window.open(url, '_blank', 'noopener');
 }
 
-function googleCalendarUrl(appointment) {
-  const start = new Date(`${appointment.fecha}T${appointment.hora}:00`);
-  const end = new Date(start.getTime() + 60 * 60 * 1000);
-  const fmt = date => date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-  const text = encodeURIComponent(`Reunión TACAM - ${appointment.clienteNombre}`);
-  const details = encodeURIComponent(`Área: ${appointment.area}\nMateria: ${appointment.materia}\nAbogada: ${appointment.abogada}`);
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${fmt(start)}/${fmt(end)}&details=${details}`;
+function openMail(email, subject, body) {
+  const url = `mailto:${encodeURIComponent(email || '')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(url, '_blank');
 }
 
-function whatsappUrl(appointment) {
-  const client = getClientById(appointment.clienteId);
-  const rawPhone = (client?.telefono || '').replace(/\D/g, '');
-  const phone = rawPhone.startsWith('56') ? rawPhone : (rawPhone ? `56${rawPhone}` : '');
-  const message = encodeURIComponent(whatsappMessage(appointment, client || { nombre: appointment.clienteNombre }));
-  return phone ? `https://wa.me/${phone}?text=${message}` : `https://wa.me/?text=${message}`;
-}
+function sendMessagePack(kind, appointment) {
+  const client = getClientById(appointment.clienteId) || { nombre: appointment.clienteNombre, telefono: '', email: '' };
+  const lawyerContact = LAWYER_CONTACTS[appointment.abogada] || { phone: '', email: '' };
+  const text = kind === 'bienvenida' ? bienvenidaText(appointment, client) : asentamientoText(appointment, client);
+  const subject = kind === 'bienvenida' ? `Bienvenida TACAM - ${client.nombre}` : `Asentamiento TACAM - ${client.nombre}`;
+  const emailBody = emailBodyWithLetterhead(kind, appointment, client);
 
-function mailtoUrl(appointment) {
-  const client = getClientById(appointment.clienteId);
-  const to = encodeURIComponent(client?.email || '');
-  const subject = encodeURIComponent(emailSubject(appointment, client || { nombre: appointment.clienteNombre }));
-  const body = encodeURIComponent(emailBody(appointment, client || { nombre: appointment.clienteNombre }));
-  return `mailto:${to}?subject=${subject}&body=${body}`;
+  openWhatsapp(client.telefono, text);
+  openWhatsapp(lawyerContact.phone, `${text} (Copia para abogada)`);
+  openMail(client.email, subject, emailBody);
+  openMail(lawyerContact.email, `${subject} (Abogada)`, emailBody);
+  showToast(`Mensajes de ${kind} enviados a cliente y abogada`);
 }
 
 function renderPreviews() {
@@ -188,10 +184,12 @@ function renderPreviews() {
     area: data.area || '-',
     materia: data.materia || '-',
     abogada: data.abogada || '-',
-    clienteNombre: client.nombre
+    clienteNombre: client.nombre,
+    mapsLink: data.mapsLink || ''
   };
-  document.getElementById('preview-whatsapp').textContent = whatsappMessage(appointment, client);
-  document.getElementById('preview-email').textContent = emailBody(appointment, client);
+
+  document.getElementById('preview-bienvenida').textContent = bienvenidaText(appointment, client);
+  document.getElementById('preview-asentamiento').textContent = asentamientoText(appointment, client);
 }
 
 function setupTabs() {
@@ -265,9 +263,8 @@ function renderVisits() {
           <td>${appointment.estado}</td>
           <td>
             ${canSchedule() ? `<button class="secondary" data-reschedule="${appointment.id}">Reagendar</button>` : '<span class="muted">Sin permiso</span>'}
-            <a class="link-btn" target="_blank" rel="noreferrer" href="${whatsappUrl(appointment)}">WhatsApp</a>
-            <a class="link-btn" href="${mailtoUrl(appointment)}">Correo</a>
-            <a class="link-btn" target="_blank" rel="noreferrer" href="${googleCalendarUrl(appointment)}">Google Calendar</a>
+            <button class="secondary" data-msg-bienvenida="${appointment.id}">Bienvenida</button>
+            <button class="secondary" data-msg-asentamiento="${appointment.id}">Asentamiento</button>
           </td>
         </tr>
       `).join('')
@@ -287,6 +284,20 @@ function renderVisits() {
       saveData();
       renderAll();
       showToast('Horario de reunión actualizado OK');
+    });
+  });
+
+  document.querySelectorAll('[data-msg-bienvenida]').forEach(button => {
+    button.addEventListener('click', () => {
+      const appointment = state.appointments.find(a => a.id === button.dataset.msgBienvenida);
+      if (appointment) sendMessagePack('bienvenida', appointment);
+    });
+  });
+
+  document.querySelectorAll('[data-msg-asentamiento]').forEach(button => {
+    button.addEventListener('click', () => {
+      const appointment = state.appointments.find(a => a.id === button.dataset.msgAsentamiento);
+      if (appointment) sendMessagePack('asentamiento', appointment);
     });
   });
 }
@@ -310,9 +321,23 @@ function renderLawyerModule() {
   document.getElementById('tabla-abogada-citas').innerHTML = scoped.length
     ? scoped
       .sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`))
-      .map(appointment => `<tr><td>${appointment.clienteNombre}</td><td>${appointment.fecha} ${appointment.hora}</td><td>${appointment.estado}</td><td><a class="link-btn" target="_blank" rel="noreferrer" href="${whatsappUrl(appointment)}">WhatsApp</a> · <a class="link-btn" href="${mailtoUrl(appointment)}">Correo</a></td></tr>`)
+      .map(appointment => `<tr><td>${appointment.clienteNombre}</td><td>${appointment.fecha} ${appointment.hora}</td><td>${appointment.estado}</td><td><button class="secondary" data-msg-bienvenida="${appointment.id}">Bienvenida</button> <button class="secondary" data-msg-asentamiento="${appointment.id}">Asentamiento</button></td></tr>`)
       .join('')
     : '<tr><td colspan="4" class="empty">Sin reuniones para esta abogada.</td></tr>';
+
+  document.querySelectorAll('#tabla-abogada-citas [data-msg-bienvenida]').forEach(button => {
+    button.addEventListener('click', () => {
+      const appointment = state.appointments.find(a => a.id === button.dataset.msgBienvenida);
+      if (appointment) sendMessagePack('bienvenida', appointment);
+    });
+  });
+
+  document.querySelectorAll('#tabla-abogada-citas [data-msg-asentamiento]').forEach(button => {
+    button.addEventListener('click', () => {
+      const appointment = state.appointments.find(a => a.id === button.dataset.msgAsentamiento);
+      if (appointment) sendMessagePack('asentamiento', appointment);
+    });
+  });
 }
 
 function renderAdminCalendar() {
@@ -329,11 +354,25 @@ function renderAdminCalendar() {
       <article class="day-card">
         <h4>${day}</h4>
         <ul>
-          ${grouped[day].sort((a, b) => a.hora.localeCompare(b.hora)).map(appointment => `<li>${appointment.hora} · ${appointment.clienteNombre} · ${appointment.abogada} · <a class="link-btn" target="_blank" rel="noreferrer" href="${whatsappUrl(appointment)}">WhatsApp</a> / <a class="link-btn" href="${mailtoUrl(appointment)}">Correo</a></li>`).join('')}
+          ${grouped[day].sort((a, b) => a.hora.localeCompare(b.hora)).map(appointment => `<li>${appointment.hora} · ${appointment.clienteNombre} · ${appointment.abogada} · <button class="secondary" data-msg-bienvenida="${appointment.id}">Bienvenida</button> <button class="secondary" data-msg-asentamiento="${appointment.id}">Asentamiento</button></li>`).join('')}
         </ul>
       </article>
     `).join('')
     : '<p class="empty">No hay reservas aún.</p>';
+
+  container.querySelectorAll('[data-msg-bienvenida]').forEach(button => {
+    button.addEventListener('click', () => {
+      const appointment = state.appointments.find(a => a.id === button.dataset.msgBienvenida);
+      if (appointment) sendMessagePack('bienvenida', appointment);
+    });
+  });
+
+  container.querySelectorAll('[data-msg-asentamiento]').forEach(button => {
+    button.addEventListener('click', () => {
+      const appointment = state.appointments.find(a => a.id === button.dataset.msgAsentamiento);
+      if (appointment) sendMessagePack('asentamiento', appointment);
+    });
+  });
 }
 
 function renderUsers() {
@@ -364,15 +403,9 @@ function renderUsers() {
 
 function applyAccessControl() {
   const isAdmin = state.session?.role === 'admin';
-  document.querySelectorAll('.admin-only').forEach(element => {
-    element.style.display = isAdmin ? '' : 'none';
-  });
-  document.querySelectorAll('#form-cliente input, #form-cliente select, #form-cliente textarea, #form-cliente button').forEach(element => {
-    element.disabled = !canEditClients();
-  });
-  document.querySelectorAll('#form-cita input, #form-cita select, #form-cita textarea, #form-cita button').forEach(element => {
-    element.disabled = !canSchedule();
-  });
+  document.querySelectorAll('.admin-only').forEach(element => { element.style.display = isAdmin ? '' : 'none'; });
+  document.querySelectorAll('#form-cliente input, #form-cliente select, #form-cliente textarea, #form-cliente button').forEach(element => { element.disabled = !canEditClients(); });
+  document.querySelectorAll('#form-cita input, #form-cita select, #form-cita textarea, #form-cita button').forEach(element => { element.disabled = !canSchedule(); });
 }
 
 function renderSessionInfo() {
@@ -451,6 +484,15 @@ function setupLogin() {
     openLogin();
     showToast('Sesión cerrada');
   });
+
+  document.getElementById('recover-btn').addEventListener('click', () => {
+    const email = document.getElementById('recover-email').value.trim();
+    if (!email) return showToast('Ingresa email para recuperar', 'error');
+    const subject = 'Recuperación de contraseña TACAM';
+    const body = `${emailLetterhead()}\n\nHola,\n\nSolicitaste recuperación de contraseña.\nUsuario inicial por defecto: admin\nClave inicial por defecto: admin\n\nSi ya la cambiaste, contacta a administración.`;
+    openMail(email, subject, body);
+    showToast('Correo de recuperación preparado');
+  });
 }
 
 function setupForms() {
@@ -498,7 +540,7 @@ function setupForms() {
     saveData();
     renderAll();
     citaForm.reset();
-    citaMsg.textContent = 'Cita agendada y recordatorio configurado.';
+    citaMsg.textContent = 'Cita agendada. Usa los botones de Bienvenida / Asentamiento para enviar mensajes.';
     showToast('Cita agendada OK');
   });
 
@@ -521,11 +563,7 @@ function setupForms() {
 
     let avatar = defaultAvatar(username);
     if (avatarFile && avatarFile.size) {
-      try {
-        avatar = await toDataUrl(avatarFile);
-      } catch {
-        showToast('No se pudo cargar la foto, se usó avatar por defecto', 'error');
-      }
+      try { avatar = await toDataUrl(avatarFile); } catch { showToast('No se pudo cargar la foto', 'error'); }
     }
 
     state.users.push({ id: crypto.randomUUID(), username, password, role, active: true, avatar });
