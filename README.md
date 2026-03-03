@@ -1,57 +1,54 @@
-# TACAM Sistema Web (versión estática funcional)
+# TACAM Sistema Web
 
-Aplicación web funcional para gestión de clientes, agendamiento, visitas, estadísticas por abogada y control de usuarios.
+Aplicación TACAM con dos modos:
+1. **Frontend estático (PWA)**
+2. **API backend opcional** para cubrir lo faltante de producción (usuarios/clientes/citas centralizados)
 
 ## Credenciales iniciales
 - Usuario: `admin`
 - Clave: `admin`
 
-## Módulos clave
-- Login y sesión local.
-- Ingreso y edición de fichas de cliente.
-- Reagendamiento de reuniones.
-- Perfil de abogada con estadísticas y listado de reuniones.
-- Calendario de reservas para administradores (vista global por día).
-- Usuarios y niveles de acceso (`Administrador`, `Operador`, `Consulta`) con **foto de perfil** por usuario.
-- Avisos de reuniones por **WhatsApp** (enlace directo) y correo con **membrete TACAM**.
-- Vista previa del formato de WhatsApp/correo antes de agendar.
-- Botones de **modo luz / modo nocturno** para mejor visualización.
-- Respaldo y restauración de información por JSON (exportar/importar).
+## Lo que ya incluye
+- Login, roles, gestión de clientes, citas, visitas, perfil abogada, calendario admin.
+- Recordatorios por WhatsApp/correo con membrete.
+- Modo luz/nocturno.
+- PWA (`manifest.webmanifest` + `sw.js`).
+- Exportar/importar respaldo JSON en frontend.
 
-## Sobre Google Calendar
-Esta versión estática abre enlaces para crear eventos en Google Calendar con los datos de la cita.
-Para sincronización automática 100% bidireccional se requiere backend + OAuth de Google Workspace.
+## Nuevo: Backend API (cubre faltantes clave)
+Se agregó `backend/server.js` con almacenamiento central en `backend/db.json`.
 
-## ¿Cómo se guarda la información?
-Actualmente se guarda en `localStorage` del navegador (mismo equipo/mismo navegador).
-Para mitigar riesgo de pérdida:
-- Usa **Exportar respaldo JSON** periódicamente.
-- Puedes restaurar con **Importar respaldo**.
+### Endpoints principales
+- `POST /api/auth/login`
+- `GET/POST/PATCH /api/users`
+- `GET/POST/PUT /api/clients`
+- `GET/POST/PUT /api/appointments`
+- `GET /api/notifications/appointment/:id`
 
-## Ejecutar localmente
+Con esto ya tienes una base real para dejar de depender solo de `localStorage`.
+
+## Ejecutar frontend estático
 ```bash
 python3 -m http.server 4173
 ```
-Abrir: `http://localhost:4173`
+Abrir `http://localhost:4173`.
 
-## Subir a Hostinger básico
-1. Subir archivos a `public_html`.
-2. Mantener `.htaccess` en la raíz publicada.
-3. Probar carga y navegación.
+## Ejecutar backend API
+```bash
+npm run start:api
+```
+API en `http://localhost:8787`.
 
+## Testing
+```bash
+npm test
+```
+Incluye pruebas de login, creación de cliente/cita y plantillas de notificación.
 
-## Un solo código para Web + Android + iOS
-Esta base ya quedó preparada como **PWA** (`manifest.webmanifest` + `sw.js`), lo que permite usar el mismo código para publicar en web y empaquetar móvil.
-
-### Ruta recomendada para App Store y Google Play
-1. Mantener esta web app como código único.
-2. Empaquetar con **Capacitor**:
+## Un solo código Web + Android + iOS
+La app sigue preparada como PWA. Para tiendas, empaqueta con Capacitor:
 ```bash
 npm init @capacitor/app
 npx cap add android
 npx cap add ios
 ```
-3. Apuntar Capacitor al mismo `index.html` y assets estáticos.
-4. Compilar/publicar desde Android Studio y Xcode.
-
-> Nota: para publicar en tiendas se requieren cuentas de desarrollador y revisión de políticas de Apple/Google.

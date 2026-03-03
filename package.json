@@ -1,0 +1,14 @@
+{
+  "name": "mozar-solutions-hub",
+  "version": "1.0.0",
+  "description": "Aplicación web funcional para gestión de clientes, agendamiento, visitas, estadísticas por abogada y control de usuarios.",
+  "main": "app.js",
+  "scripts": {
+    "test": "node --test tests/api.test.js",
+    "start:api": "node backend/server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

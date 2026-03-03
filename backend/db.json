@@ -1,0 +1,39 @@
+{
+  "users": [
+    {
+      "id": "u-admin",
+      "username": "admin",
+      "passwordHash": "a7b713f322ed68045b17c2a3e64406bc:8efad670f097a61de3b09e04e46c92b253b618d039d0e1e7da8a04f878389ab7",
+      "role": "admin",
+      "active": true,
+      "avatar": "",
+      "createdAt": "2026-03-03T13:17:59.658Z"
+    }
+  ],
+  "clients": [
+    {
+      "id": "c_79bcc32b37072c99",
+      "nombre": "Cliente API",
+      "rut": "11.111.111-1",
+      "telefono": "912345678",
+      "email": "c@x.com",
+      "createdAt": "2026-03-03T13:17:59.786Z",
+      "updatedAt": "2026-03-03T13:17:59.786Z"
+    }
+  ],
+  "appointments": [
+    {
+      "id": "a_3a96f0d2134c5f7c",
+      "clienteId": "c_79bcc32b37072c99",
+      "fecha": "2026-12-10",
+      "hora": "10:00",
+      "area": "Penal",
+      "materia": "Demo",
+      "abogada": "Daniela Sierra",
+      "clienteNombre": "Cliente API",
+      "estado": "Confirmada",
+      "createdAt": "2026-03-03T13:17:59.794Z",
+      "updatedAt": "2026-03-03T13:17:59.794Z"
+    }
+  ]
+}
