@@ -1,133 +1,138 @@
-const ordersBody = document.getElementById('orders-body');
-const courierBody = document.getElementById('courier-body');
-const orderForm = document.getElementById('order-form');
-const courierName = document.getElementById('courier-name');
+const bookingsBody = document.getElementById('bookings-body');
+const agendaBody = document.getElementById('agenda-body');
+const bookingForm = document.getElementById('booking-form');
+const lawyerFilter = document.getElementById('lawyer-filter');
 const lawyerForm = document.getElementById('lawyer-form');
 const lawyerList = document.getElementById('lawyer-list');
 
-function notifyOrder(order) {
-  const destination = cleanPhone(order.phone);
+function notifyBooking(booking) {
+  const destination = cleanPhone(booking.phone);
   if (!destination) return;
-  const msg = encodeURIComponent(buildTacamMessage(order));
+  const msg = encodeURIComponent(buildTacamMessage(booking));
   window.open(`https://wa.me/${destination}?text=${msg}`, '_blank', 'noopener');
 }
 
-function updateOrder(orderId, updater) {
-  const orders = getOrders();
-  const order = orders.find(o => o.id === orderId);
-  if (!order) return;
-  updater(order);
-  saveOrders(orders);
+function updateBooking(bookingId, updater) {
+  const bookings = getBookings();
+  const booking = bookings.find(item => item.id === bookingId);
+  if (!booking) return;
+  updater(booking);
+  saveBookings(bookings);
   renderAll();
 }
 
-function renderOrders() {
-  const orders = getOrders();
-  ordersBody.innerHTML = orders.length ? orders.map(order => `
-    <tr>
-      <td>${fmtDate(order.createdAt)}</td>
-      <td>${order.customer}</td>
-      <td>${order.phone}</td>
-      <td>${order.address}</td>
-      <td><span class="badge ${order.status}">${statusLabel(order.status)}</span></td>
-      <td>
-        <input data-assign-input="${order.id}" value="${order.assignedTo || ''}" placeholder="Nombre repartidor" />
-        <button data-assign-btn="${order.id}">Guardar</button>
-      </td>
-      <td><button data-notify-btn="${order.id}">WhatsApp</button></td>
-    </tr>
-  `).join('') : '<tr><td colspan="7">Sin pedidos</td></tr>';
+function formatAppointment(booking) {
+  return `${booking.date || '-'} ${booking.time || ''}`.trim();
+}
 
-  ordersBody.querySelectorAll('[data-assign-btn]').forEach(btn => {
-    btn.onclick = () => updateOrder(btn.dataset.assignBtn, order => {
-      const input = ordersBody.querySelector(`[data-assign-input="${order.id}"]`);
-      order.assignedTo = input.value.trim();
-      order.status = order.assignedTo ? 'asignado' : 'nuevo';
+function renderBookings() {
+  const bookings = getBookings();
+  bookingsBody.innerHTML = bookings.length ? bookings.map(booking => `
+    <tr>
+      <td>${fmtDate(booking.createdAt)}</td>
+      <td>${booking.customer}</td>
+      <td>${booking.phone}</td>
+      <td>${formatAppointment(booking)}</td>
+      <td>
+        <input data-assign-input="${booking.id}" value="${booking.assignedTo || ''}" placeholder="Nombre abogado" />
+      </td>
+      <td><span class="badge ${booking.status}">${statusLabel(booking.status)}</span></td>
+      <td>
+        <button data-confirm-btn="${booking.id}">Confirmar</button>
+        <button data-cancel-btn="${booking.id}">Cancelar</button>
+        <button data-save-btn="${booking.id}">Guardar</button>
+      </td>
+      <td><button data-notify-btn="${booking.id}">WhatsApp</button></td>
+    </tr>
+  `).join('') : '<tr><td colspan="8">Sin reservas registradas</td></tr>';
+
+  bookingsBody.querySelectorAll('[data-save-btn]').forEach(btn => {
+    btn.onclick = () => updateBooking(btn.dataset.saveBtn, booking => {
+      const input = bookingsBody.querySelector(`[data-assign-input="${booking.id}"]`);
+      booking.assignedTo = input.value.trim();
     });
   });
-  ordersBody.querySelectorAll('[data-notify-btn]').forEach(btn => {
+
+  bookingsBody.querySelectorAll('[data-confirm-btn]').forEach(btn => {
+    btn.onclick = () => updateBooking(btn.dataset.confirmBtn, booking => { booking.status = 'confirmada'; });
+  });
+
+  bookingsBody.querySelectorAll('[data-cancel-btn]').forEach(btn => {
+    btn.onclick = () => updateBooking(btn.dataset.cancelBtn, booking => { booking.status = 'cancelada'; });
+  });
+
+  bookingsBody.querySelectorAll('[data-notify-btn]').forEach(btn => {
     btn.onclick = () => {
-      const order = getOrders().find(o => o.id === btn.dataset.notifyBtn);
-      if (order) notifyOrder(order);
+      const booking = getBookings().find(item => item.id === btn.dataset.notifyBtn);
+      if (booking) notifyBooking(booking);
     };
   });
 }
 
-function renderCourier() {
-  const name = courierName.value.trim();
-  const orders = getOrders().filter(o => o.status !== 'entregado' && (!o.assignedTo || o.assignedTo === name));
-  courierBody.innerHTML = orders.length ? orders.map(order => `
+function renderAgenda() {
+  const selectedLawyer = lawyerFilter.value.trim();
+  const bookings = getBookings().filter(booking =>
+    booking.status !== 'cancelada' && (!selectedLawyer || booking.assignedTo === selectedLawyer)
+  );
+
+  agendaBody.innerHTML = bookings.length ? bookings.map(booking => `
     <tr>
-      <td>${order.customer}</td>
-      <td>${order.address}</td>
-      <td><span class="badge ${order.status}">${statusLabel(order.status)}</span></td>
+      <td>${booking.customer}</td>
+      <td>${formatAppointment(booking)}</td>
+      <td>${booking.notes || '-'}</td>
+      <td><span class="badge ${booking.status}">${statusLabel(booking.status)}</span></td>
       <td>
-        <button data-take="${order.id}">Tomar</button>
-        <button data-route="${order.id}">En camino</button>
-        <button data-done="${order.id}">Entregado</button>
+        <button data-attend="${booking.id}">Marcar atendida</button>
       </td>
     </tr>
-  `).join('') : '<tr><td colspan="4">Sin pedidos</td></tr>';
+  `).join('') : '<tr><td colspan="5">Sin citas para mostrar</td></tr>';
 
-  courierBody.querySelectorAll('[data-take]').forEach(btn => {
-    btn.onclick = () => updateOrder(btn.dataset.take, order => {
-      if (!name) return;
-      order.assignedTo = name;
-      order.status = 'asignado';
-    });
-  });
-  courierBody.querySelectorAll('[data-route]').forEach(btn => {
-    btn.onclick = () => updateOrder(btn.dataset.route, order => {
-      if (name && order.assignedTo === name) order.status = 'en_camino';
-    });
-  });
-  courierBody.querySelectorAll('[data-done]').forEach(btn => {
-    btn.onclick = () => updateOrder(btn.dataset.done, order => {
-      if (name && order.assignedTo === name) order.status = 'entregado';
-    });
+  agendaBody.querySelectorAll('[data-attend]').forEach(btn => {
+    btn.onclick = () => updateBooking(btn.dataset.attend, booking => { booking.status = 'atendida'; });
   });
 }
 
 function renderLawyers() {
   const lawyers = getLawyers();
-  lawyerList.innerHTML = lawyers.length ? lawyers.map(l => `
+  lawyerList.innerHTML = lawyers.length ? lawyers.map(lawyer => `
     <article class="lawyer-card">
-      <img src="${l.photo}" alt="Foto de ${l.name}" />
+      <img src="${lawyer.photo}" alt="Foto de ${lawyer.name}" />
       <div>
-        <h3>${l.name}</h3>
-        <p>${l.specialty || 'Sin especialidad'}</p>
-        <small>${l.phone || 'Sin WhatsApp'}</small>
+        <h3>${lawyer.name}</h3>
+        <p>${lawyer.specialty || 'Sin especialidad'}</p>
+        <small>${lawyer.phone || 'Sin WhatsApp'}</small>
       </div>
     </article>
   `).join('') : '<p>No hay abogados cargados.</p>';
 }
 
 function renderAll() {
-  renderOrders();
-  renderCourier();
+  renderBookings();
+  renderAgenda();
   renderLawyers();
 }
 
-orderForm.addEventListener('submit', event => {
+bookingForm.addEventListener('submit', event => {
   event.preventDefault();
-  const data = new FormData(orderForm);
-  const orders = getOrders();
-  orders.unshift({
+  const data = new FormData(bookingForm);
+  const bookings = getBookings();
+  bookings.unshift({
     id: crypto.randomUUID(),
     customer: String(data.get('customer') || '').trim(),
     phone: String(data.get('phone') || '').trim(),
-    address: String(data.get('address') || '').trim(),
+    date: String(data.get('date') || '').trim(),
+    time: String(data.get('time') || '').trim(),
+    assignedTo: String(data.get('assignedTo') || '').trim(),
     notes: String(data.get('notes') || '').trim(),
-    assignedTo: '',
-    status: 'nuevo',
+    status: 'nueva',
     createdAt: new Date().toISOString()
   });
-  saveOrders(orders);
-  orderForm.reset();
+  saveBookings(bookings);
+  bookingForm.reset();
   renderAll();
 });
 
-courierName.addEventListener('input', renderCourier);
+lawyerFilter.addEventListener('change', renderAgenda);
 
 lawyerForm.addEventListener('submit', async event => {
   event.preventDefault();
@@ -148,4 +153,4 @@ lawyerForm.addEventListener('submit', async event => {
 });
 
 renderAll();
-setInterval(renderOrders, 4000);
+setInterval(renderBookings, 5000);

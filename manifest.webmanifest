@@ -1,12 +1,12 @@
 {
-  "name": "TACAM Gestion de Pedidos",
-  "short_name": "TACAM",
+  "name": "TACAM Sistema de Reservas",
+  "short_name": "TACAM Reservas",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#8f203a",
   "theme_color": "#8f203a",
   "lang": "es",
-  "description": "Aplicación unificada TACAM para pedidos, reparto y recepción con perfil de abogados.",
+  "description": "Sistema de reserva de personas para oficina de abogados TACAM.",
   "icons": [
     {
       "src": "assets/logo-color.svg",

@@ -5,48 +5,66 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#8f203a" />
   <link rel="manifest" href="manifest.webmanifest" />
-  <title>TACAM | Gestión de Pedidos</title>
+  <title>TACAM | Reservas Oficina Jurídica</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="topbar">
     <img src="assets/logo-white.svg" alt="Logo TACAM" />
     <div>
-      <h1>TACAM · Gestión de Pedidos</h1>
-      <p>App unificada para usuarios, repartidores y recepción</p>
+      <h1>TACAM · Sistema de Reservas</h1>
+      <p>Reserva de personas para atención en oficina de abogados</p>
     </div>
   </header>
 
   <main>
     <section class="card">
-      <h2>Ingresar Pedido (Usuarios)</h2>
-      <form id="order-form" class="grid">
-        <label>Nombre <input name="customer" required /></label>
+      <h2>Crear Reserva</h2>
+      <form id="booking-form" class="grid">
+        <label>Nombre de la persona <input name="customer" required /></label>
         <label>Teléfono <input name="phone" required placeholder="+569..." /></label>
-        <label>Dirección <input name="address" required /></label>
-        <label class="full">Detalle <textarea name="notes" rows="3"></textarea></label>
-        <button type="submit">Guardar pedido</button>
+        <label>Fecha de reserva <input name="date" type="date" required /></label>
+        <label>Hora de reserva <input name="time" type="time" required /></label>
+        <label>Abogado asignado
+          <select name="assignedTo" required>
+            <option value="">Seleccione</option>
+            <option value="Daniela Sierra">Daniela Sierra</option>
+            <option value="Natalie Gómez">Natalie Gómez</option>
+            <option value="Camila Vásquez">Camila Vásquez</option>
+            <option value="Carolina Contreras">Carolina Contreras</option>
+          </select>
+        </label>
+        <label class="full">Motivo de consulta <textarea name="notes" rows="3" placeholder="Detalle del caso..."></textarea></label>
+        <button type="submit">Guardar reserva</button>
       </form>
     </section>
 
     <section class="card">
-      <h2>Pedidos y Asignación (Recepción)</h2>
+      <h2>Reservas y Confirmación</h2>
       <p class="muted">WhatsApp de notificación TACAM: <strong>+56987591312</strong></p>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Fecha</th><th>Cliente</th><th>Teléfono</th><th>Dirección</th><th>Estado</th><th>Asignar</th><th>Notificar</th></tr></thead>
-          <tbody id="orders-body"></tbody>
+          <thead><tr><th>Fecha creación</th><th>Persona</th><th>Teléfono</th><th>Cita</th><th>Abogado</th><th>Estado</th><th>Gestión</th><th>Notificar</th></tr></thead>
+          <tbody id="bookings-body"></tbody>
         </table>
       </div>
     </section>
 
     <section class="card">
-      <h2>Panel de Repartidores</h2>
-      <label>Nombre repartidor <input id="courier-name" placeholder="Ej: Juan Pérez" /></label>
+      <h2>Agenda por Abogado</h2>
+      <label>Filtrar por abogado
+        <select id="lawyer-filter">
+          <option value="">Todos</option>
+          <option value="Daniela Sierra">Daniela Sierra</option>
+          <option value="Natalie Gómez">Natalie Gómez</option>
+          <option value="Camila Vásquez">Camila Vásquez</option>
+          <option value="Carolina Contreras">Carolina Contreras</option>
+        </select>
+      </label>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Cliente</th><th>Dirección</th><th>Estado</th><th>Acciones</th></tr></thead>
-          <tbody id="courier-body"></tbody>
+          <thead><tr><th>Persona</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody id="agenda-body"></tbody>
         </table>
       </div>
     </section>

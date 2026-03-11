@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tacam-single-app-v1';
+const CACHE_NAME = 'tacam-reservas-v2';
 const ASSETS = [
   './',
   './index.html',

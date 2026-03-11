@@ -1,16 +1,17 @@
-# TACAM · App Unificada de Pedidos
+# TACAM · Sistema de Reserva de Personas (Oficina de Abogados)
 
-Se corrigió el error de las 3 aplicaciones. Ahora existe **una sola app** en `index.html`.
+Aplicación web unificada para gestionar reservas de atención jurídica.
 
-## Módulos dentro de la misma app
-- Ingreso de pedidos (usuarios).
-- Asignación y estado de pedidos (recepción).
-- Flujo operativo de repartidores (tomar / en camino / entregado).
-- Perfiles de abogados con carga de foto.
+## Funcionalidades
+- Registro de reserva con: nombre, teléfono, fecha, hora, abogado asignado y motivo de consulta.
+- Gestión de reservas: confirmar, cancelar, reasignar abogado y notificar por WhatsApp.
+- Agenda por abogado: filtro por profesional y opción para marcar cita como atendida.
+- Perfiles de abogados con foto, especialidad y WhatsApp.
+- Persistencia local en navegador (`localStorage`) y soporte PWA.
 
-## WhatsApp de notificaciones
+## WhatsApp de notificación
 - Número de referencia TACAM: **+56987591312**.
-- Mensaje base: "Desde TACAM, informamos toda la información de su pedido..."
+- Mensaje base: "Desde TACAM, informamos toda la información de su reserva..."
 
 ## Ejecutar localmente
 ```bash

@@ -1,7 +1,6 @@
-const DELIVERY_KEYS = {
-  orders: 'tacam_delivery_orders',
-  couriers: 'tacam_delivery_couriers',
-  lawyers: 'tacam_delivery_lawyers'
+const STORAGE_KEYS = {
+  bookings: 'tacam_bookings',
+  lawyers: 'tacam_lawyers'
 };
 
 function loadJson(key, fallback) {
@@ -17,31 +16,31 @@ function saveJson(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
-function seedDeliveryData() {
-  const orders = loadJson(DELIVERY_KEYS.orders, []);
-  if (!orders.length) {
-    const initial = [
+function seedData() {
+  const bookings = loadJson(STORAGE_KEYS.bookings, []);
+  if (!bookings.length) {
+    saveJson(STORAGE_KEYS.bookings, [
       {
         id: crypto.randomUUID(),
         customer: 'Cliente Demo',
         phone: '+56911111111',
-        address: 'Jorge Washington 2675, Antofagasta',
-        notes: 'Llamar antes de llegar',
-        assignedTo: '',
-        status: 'nuevo',
+        date: new Date().toISOString().slice(0, 10),
+        time: '10:30',
+        assignedTo: 'Daniela Sierra',
+        notes: 'Consulta por materia familiar.',
+        status: 'nueva',
         createdAt: new Date().toISOString()
       }
-    ];
-    saveJson(DELIVERY_KEYS.orders, initial);
+    ]);
   }
 
-  const lawyers = loadJson(DELIVERY_KEYS.lawyers, []);
+  const lawyers = loadJson(STORAGE_KEYS.lawyers, []);
   if (!lawyers.length) {
-    saveJson(DELIVERY_KEYS.lawyers, [
+    saveJson(STORAGE_KEYS.lawyers, [
       {
         id: crypto.randomUUID(),
-        name: 'Abogado TACAM',
-        specialty: 'Atención General',
+        name: 'Daniela Sierra',
+        specialty: 'Derecho de Familia',
         phone: '+56987591312',
         photo: 'assets/logo-color.svg'
       }
@@ -49,28 +48,28 @@ function seedDeliveryData() {
   }
 }
 
-function getOrders() {
-  return loadJson(DELIVERY_KEYS.orders, []);
+function getBookings() {
+  return loadJson(STORAGE_KEYS.bookings, []);
 }
 
-function saveOrders(orders) {
-  saveJson(DELIVERY_KEYS.orders, orders);
+function saveBookings(bookings) {
+  saveJson(STORAGE_KEYS.bookings, bookings);
 }
 
 function getLawyers() {
-  return loadJson(DELIVERY_KEYS.lawyers, []);
+  return loadJson(STORAGE_KEYS.lawyers, []);
 }
 
 function saveLawyers(lawyers) {
-  saveJson(DELIVERY_KEYS.lawyers, lawyers);
+  saveJson(STORAGE_KEYS.lawyers, lawyers);
 }
 
 function statusLabel(status) {
   return ({
-    nuevo: 'Nuevo',
-    asignado: 'Asignado',
-    en_camino: 'En camino',
-    entregado: 'Entregado'
+    nueva: 'Nueva',
+    confirmada: 'Confirmada',
+    atendida: 'Atendida',
+    cancelada: 'Cancelada'
   })[status] || status;
 }
 
@@ -82,8 +81,9 @@ function cleanPhone(phone) {
   return String(phone || '').replace(/\D/g, '');
 }
 
-function buildTacamMessage(order) {
-  return `Desde TACAM, informamos toda la información de su pedido. Cliente: ${order.customer}. Dirección: ${order.address}. Estado actual: ${statusLabel(order.status)}.`;
+function buildTacamMessage(booking) {
+  const appointment = `${booking.date || ''} ${booking.time || ''}`.trim();
+  return `Desde TACAM, informamos toda la información de su reserva. Persona: ${booking.customer}. Fecha/Hora: ${appointment}. Abogado: ${booking.assignedTo || 'Por confirmar'}. Estado: ${statusLabel(booking.status)}.`;
 }
 
 function fileToDataUrl(file) {
@@ -95,4 +95,4 @@ function fileToDataUrl(file) {
   });
 }
 
-seedDeliveryData();
+seedData();
