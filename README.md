@@ -26,3 +26,7 @@ Ahora el sistema quedó separado en **3 aplicaciones** conectadas por `localStor
 python3 -m http.server 4173
 ```
 Abrir: `http://localhost:4173`
+
+
+## Limpieza de estructura
+- Se eliminó la app antigua monolítica para dejar únicamente las 3 apps de pedidos solicitadas.
