@@ -15,8 +15,31 @@
     <section class="card">
       <h1>Panel de recepción</h1>
       <p>Revisa, asigna y controla todos los pedidos ingresados por usuarios.</p>
-      <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Teléfono</th><th>Dirección</th><th>Estado</th><th>Asignar</th></tr></thead><tbody id="admin-body"></tbody></table></div>
+      <p class="whatsapp-note">WhatsApp de notificación TACAM: <strong>+56987591312</strong></p>
+      <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Teléfono</th><th>Dirección</th><th>Estado</th><th>Asignar</th><th>Notificar</th></tr></thead><tbody id="admin-body"></tbody></table></div>
     </section>
+
+    <section class="card">
+      <h2>Perfiles de Abogados</h2>
+      <p>Sube foto y datos del abogado para mantener su perfil disponible en la interfaz.</p>
+      <form id="lawyer-form" class="grid">
+        <label>Nombre completo
+          <input name="name" required placeholder="Ej: Daniela Sierra" />
+        </label>
+        <label>Especialidad
+          <input name="specialty" placeholder="Ej: Derecho Penal" />
+        </label>
+        <label>WhatsApp
+          <input name="phone" placeholder="+569..." />
+        </label>
+        <label style="grid-column:1/-1">Foto de perfil
+          <input name="photo" type="file" accept="image/*" required />
+        </label>
+        <button type="submit">Guardar perfil de abogado</button>
+      </form>
+      <div id="lawyer-list" class="lawyer-grid"></div>
+    </section>
+
     <div class="footer-sign">
       <img src="assets/logo-color.svg" alt="Logo oficial TACAM" />
       <span>Desarrollo por <strong>Agencia Digital</strong></span>

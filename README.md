@@ -30,3 +30,11 @@ Abrir: `http://localhost:4173`
 
 ## Limpieza de estructura
 - Se eliminó la app antigua monolítica para dejar únicamente las 3 apps de pedidos solicitadas.
+
+
+## Nuevo: Perfiles de abogados y notificaciones
+- En `recepcion-app.html` puedes crear perfiles de abogados subiendo foto, nombre, especialidad y WhatsApp.
+- Se guarda en `localStorage` y cada perfil aparece en su propia interfaz visual.
+- Desde recepción puedes enviar notificaciones por WhatsApp con el mensaje base:
+  - "Desde TACAM, informamos toda la información de su pedido..."
+- Número de referencia TACAM para notificación: **+56987591312**.

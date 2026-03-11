@@ -1,6 +1,7 @@
 const DELIVERY_KEYS = {
   orders: 'tacam_delivery_orders',
-  couriers: 'tacam_delivery_couriers'
+  couriers: 'tacam_delivery_couriers',
+  lawyers: 'tacam_delivery_lawyers'
 };
 
 function loadJson(key, fallback) {
@@ -18,20 +19,34 @@ function saveJson(key, value) {
 
 function seedDeliveryData() {
   const orders = loadJson(DELIVERY_KEYS.orders, []);
-  if (orders.length) return;
-  const initial = [
-    {
-      id: crypto.randomUUID(),
-      customer: 'Cliente Demo',
-      phone: '+56911111111',
-      address: 'Jorge Washington 2675, Antofagasta',
-      notes: 'Llamar antes de llegar',
-      assignedTo: '',
-      status: 'nuevo',
-      createdAt: new Date().toISOString()
-    }
-  ];
-  saveJson(DELIVERY_KEYS.orders, initial);
+  if (!orders.length) {
+    const initial = [
+      {
+        id: crypto.randomUUID(),
+        customer: 'Cliente Demo',
+        phone: '+56911111111',
+        address: 'Jorge Washington 2675, Antofagasta',
+        notes: 'Llamar antes de llegar',
+        assignedTo: '',
+        status: 'nuevo',
+        createdAt: new Date().toISOString()
+      }
+    ];
+    saveJson(DELIVERY_KEYS.orders, initial);
+  }
+
+  const lawyers = loadJson(DELIVERY_KEYS.lawyers, []);
+  if (!lawyers.length) {
+    saveJson(DELIVERY_KEYS.lawyers, [
+      {
+        id: crypto.randomUUID(),
+        name: 'Abogado TACAM',
+        specialty: 'Atención General',
+        phone: '+56987591312',
+        photo: 'assets/logo-color.svg'
+      }
+    ]);
+  }
 }
 
 function getOrders() {
@@ -40,6 +55,14 @@ function getOrders() {
 
 function saveOrders(orders) {
   saveJson(DELIVERY_KEYS.orders, orders);
+}
+
+function getLawyers() {
+  return loadJson(DELIVERY_KEYS.lawyers, []);
+}
+
+function saveLawyers(lawyers) {
+  saveJson(DELIVERY_KEYS.lawyers, lawyers);
 }
 
 function statusLabel(status) {
@@ -53,6 +76,23 @@ function statusLabel(status) {
 
 function fmtDate(iso) {
   return new Date(iso).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+function cleanPhone(phone) {
+  return String(phone || '').replace(/\D/g, '');
+}
+
+function buildTacamMessage(order) {
+  return `Desde TACAM, informamos toda la información de su pedido. Cliente: ${order.customer}. Dirección: ${order.address}. Estado actual: ${statusLabel(order.status)}.`;
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 seedDeliveryData();

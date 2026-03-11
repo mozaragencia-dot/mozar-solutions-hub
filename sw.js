@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tacam-delivery-v2';
+const CACHE_NAME = 'tacam-delivery-v3';
 const ASSETS = [
   './',
   './index.html',
