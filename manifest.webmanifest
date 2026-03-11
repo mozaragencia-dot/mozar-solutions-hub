@@ -1,12 +1,12 @@
 {
-  "name": "TACAM Pedidos - 3 Apps",
-  "short_name": "TACAM Pedidos",
+  "name": "TACAM Gestion de Pedidos",
+  "short_name": "TACAM",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#8f203a",
   "theme_color": "#8f203a",
   "lang": "es",
-  "description": "Suite TACAM con apps separadas para usuarios, repartidores y recepción de pedidos.",
+  "description": "Aplicación unificada TACAM para pedidos, reparto y recepción con perfil de abogados.",
   "icons": [
     {
       "src": "assets/logo-color.svg",

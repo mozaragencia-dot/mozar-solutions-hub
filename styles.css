@@ -1,0 +1,19 @@
+:root { --wine:#8f203a; --wine-dark:#6f1329; --bg:#f6f1f3; --surface:#fff; --line:#dfd4d8; }
+*{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:#2f1a21}
+.topbar{background:linear-gradient(135deg,#a12f4a,var(--wine-dark));color:#fff;padding:14px;display:flex;gap:12px;align-items:center}
+.topbar img{width:170px}.topbar h1{margin:0}.topbar p{margin:4px 0 0}
+main{max-width:1100px;margin:16px auto;padding:0 12px 24px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
+h2{margin:0 0 10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+label{display:flex;flex-direction:column;gap:4px;font-size:14px}.full{grid-column:1/-1}
+input,textarea,button{font:inherit;padding:9px;border-radius:8px;border:1px solid #c9bdc1}
+button{background:var(--wine);color:#fff;border-color:var(--wine-dark);cursor:pointer;font-weight:700}
+.table-wrap{overflow:auto} table{width:100%;border-collapse:collapse} th,td{padding:8px;border-bottom:1px solid #eee;text-align:left;font-size:14px;vertical-align:top}
+.badge{font-size:12px;font-weight:700;padding:3px 8px;border-radius:999px;display:inline-block;background:#eee}
+.badge.nuevo{background:#f5d3dc}.badge.asignado{background:#ead8fa}.badge.en_camino{background:#ffe6b6}.badge.entregado{background:#ceefd8}
+.lawyer-grid{margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.lawyer-card{border:1px solid #eadce2;border-radius:10px;background:#fff8fb;padding:10px;display:flex;gap:10px;align-items:center}
+.lawyer-card img{width:74px;height:74px;border-radius:10px;object-fit:cover;border:1px solid #d8c7ce}
+.muted{color:#6f1329}.footer-sign{margin-top:10px;color:#6f1329;font-size:14px;display:flex;align-items:center;gap:8px}.footer-sign img{width:120px}
+@media (max-width:768px){.topbar{flex-direction:column;align-items:flex-start}.topbar img{width:140px}.grid{grid-template-columns:1fr}.footer-sign{flex-direction:column;align-items:flex-start}}

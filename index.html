@@ -1,51 +1,76 @@
 <!doctype html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#8f203a" />
-    <link rel="manifest" href="manifest.webmanifest" />
-    <title>TACAM | Portal de Apps</title>
-    <link rel="stylesheet" href="delivery.css" />
-  </head>
-  <body>
-    <header>
-      <img src="assets/logo-white.svg" alt="Logo TACAM blanco" />
-      <strong>Portal TACAM · Gestión de Pedidos</strong>
-    </header>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#8f203a" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <title>TACAM | Gestión de Pedidos</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <img src="assets/logo-white.svg" alt="Logo TACAM" />
+    <div>
+      <h1>TACAM · Gestión de Pedidos</h1>
+      <p>App unificada para usuarios, repartidores y recepción</p>
+    </div>
+  </header>
 
-    <main>
-      <section class="card">
-        <h1>Selecciona una app</h1>
-        <p>Se separó el flujo en 3 aplicaciones: usuarios, repartidores y recepción de pedidos.</p>
-      </section>
+  <main>
+    <section class="card">
+      <h2>Ingresar Pedido (Usuarios)</h2>
+      <form id="order-form" class="grid">
+        <label>Nombre <input name="customer" required /></label>
+        <label>Teléfono <input name="phone" required placeholder="+569..." /></label>
+        <label>Dirección <input name="address" required /></label>
+        <label class="full">Detalle <textarea name="notes" rows="3"></textarea></label>
+        <button type="submit">Guardar pedido</button>
+      </form>
+    </section>
 
-      <section class="portal">
-        <a href="usuarios-app.html">
-          <article class="card">
-            <h2>App Usuarios</h2>
-            <p>Los clientes crean y revisan sus pedidos.</p>
-          </article>
-        </a>
-        <a href="repartidores-app.html">
-          <article class="card">
-            <h2>App Repartidores</h2>
-            <p>Los repartidores toman pedidos y actualizan el estado de entrega.</p>
-          </article>
-        </a>
-        <a href="recepcion-app.html">
-          <article class="card">
-            <h2>App Recepción de Pedidos</h2>
-            <p>Panel para recepción, asignación y seguimiento global.</p>
-          </article>
-        </a>
-      </section>
-
-      <div class="footer-sign">
-        <img src="assets/logo-color.svg" alt="Logo oficial TACAM" />
-        <span>Desarrollo por <strong>Agencia Digital</strong></span>
+    <section class="card">
+      <h2>Pedidos y Asignación (Recepción)</h2>
+      <p class="muted">WhatsApp de notificación TACAM: <strong>+56987591312</strong></p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Fecha</th><th>Cliente</th><th>Teléfono</th><th>Dirección</th><th>Estado</th><th>Asignar</th><th>Notificar</th></tr></thead>
+          <tbody id="orders-body"></tbody>
+        </table>
       </div>
-    </main>
-    <script src="register-sw.js"></script>
+    </section>
+
+    <section class="card">
+      <h2>Panel de Repartidores</h2>
+      <label>Nombre repartidor <input id="courier-name" placeholder="Ej: Juan Pérez" /></label>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Cliente</th><th>Dirección</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody id="courier-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Perfiles de Abogados</h2>
+      <form id="lawyer-form" class="grid">
+        <label>Nombre completo <input name="name" required /></label>
+        <label>Especialidad <input name="specialty" /></label>
+        <label>WhatsApp <input name="phone" placeholder="+569..." /></label>
+        <label class="full">Foto de perfil <input name="photo" type="file" accept="image/*" required /></label>
+        <button type="submit">Guardar perfil</button>
+      </form>
+      <div id="lawyer-list" class="lawyer-grid"></div>
+    </section>
+
+    <footer class="footer-sign">
+      <img src="assets/logo-color.svg" alt="Logo TACAM" />
+      <span>Desarrollo por <strong>Agencia Digital</strong></span>
+    </footer>
+  </main>
+
+  <script src="delivery-core.js"></script>
+  <script src="app.js"></script>
+  <script src="register-sw.js"></script>
 </body>
 </html>

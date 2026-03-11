@@ -1,15 +1,10 @@
-const CACHE_NAME = 'tacam-delivery-v3';
+const CACHE_NAME = 'tacam-single-app-v1';
 const ASSETS = [
   './',
   './index.html',
-  './usuarios-app.html',
-  './repartidores-app.html',
-  './recepcion-app.html',
-  './delivery.css',
+  './styles.css',
+  './app.js',
   './delivery-core.js',
-  './usuarios-app.js',
-  './repartidores-app.js',
-  './recepcion-app.js',
   './register-sw.js',
   './manifest.webmanifest',
   './assets/logo-color.svg',

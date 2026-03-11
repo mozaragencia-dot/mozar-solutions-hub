@@ -1,40 +1,19 @@
-# TACAM · Suite de 3 apps (frontend)
+# TACAM · App Unificada de Pedidos
 
-Ahora el sistema quedó separado en **3 aplicaciones** conectadas por `localStorage`:
+Se corrigió el error de las 3 aplicaciones. Ahora existe **una sola app** en `index.html`.
 
-1. **App Usuarios** (`usuarios-app.html`)
-   - Crear pedidos
-   - Revisar estado por teléfono
+## Módulos dentro de la misma app
+- Ingreso de pedidos (usuarios).
+- Asignación y estado de pedidos (recepción).
+- Flujo operativo de repartidores (tomar / en camino / entregado).
+- Perfiles de abogados con carga de foto.
 
-2. **App Repartidores** (`repartidores-app.html`)
-   - Tomar pedidos
-   - Cambiar estado: asignado → en camino → entregado
-
-3. **App Recepción de Pedidos** (`recepcion-app.html`)
-   - Ver todos los pedidos
-   - Asignar repartidor
-
-## Portal principal
-- `index.html` actúa como portada para entrar a las 3 apps.
-
-## Branding
-- Se usan logos TACAM originales (`assets/logo-color.svg` y `assets/logo-white.svg`) en todas las vistas.
-- Firma visible: **Desarrollo por Agencia Digital**.
+## WhatsApp de notificaciones
+- Número de referencia TACAM: **+56987591312**.
+- Mensaje base: "Desde TACAM, informamos toda la información de su pedido..."
 
 ## Ejecutar localmente
 ```bash
 python3 -m http.server 4173
 ```
 Abrir: `http://localhost:4173`
-
-
-## Limpieza de estructura
-- Se eliminó la app antigua monolítica para dejar únicamente las 3 apps de pedidos solicitadas.
-
-
-## Nuevo: Perfiles de abogados y notificaciones
-- En `recepcion-app.html` puedes crear perfiles de abogados subiendo foto, nombre, especialidad y WhatsApp.
-- Se guarda en `localStorage` y cada perfil aparece en su propia interfaz visual.
-- Desde recepción puedes enviar notificaciones por WhatsApp con el mensaje base:
-  - "Desde TACAM, informamos toda la información de su pedido..."
-- Número de referencia TACAM para notificación: **+56987591312**.
