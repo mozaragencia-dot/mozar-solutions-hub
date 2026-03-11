@@ -35,3 +35,17 @@ th, td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; font-siz
 .lawyer-card img { width: 74px; height: 74px; border-radius: 10px; object-fit: cover; border: 1px solid #d8c7ce; }
 .lawyer-card p { margin: 0 0 4px; font-size: 14px; }
 .lawyer-card small { color: #6f1329; }
+
+
+@media (max-width: 768px) {
+  header { flex-direction: column; align-items: flex-start; padding: 12px; }
+  header img { width: 140px; }
+  main { margin: 12px auto; padding: 0 10px 20px; }
+  .card { padding: 12px; }
+  h1, h2, h3 { font-size: 20px; }
+  .grid { grid-template-columns: 1fr; }
+  .portal { grid-template-columns: 1fr; }
+  th, td { font-size: 13px; padding: 7px; }
+  .footer-sign { flex-direction: column; align-items: flex-start; }
+  .lawyer-card { align-items: flex-start; }
+}
