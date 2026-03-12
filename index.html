@@ -9,90 +9,129 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="topbar">
-    <img src="assets/logo-white.svg" alt="Logo TACAM" />
-    <div>
-      <h1>TACAM · Sistema de Reservas</h1>
-      <p>Reserva de personas para atención en oficina de abogados</p>
+  <section id="login-screen" class="login-screen">
+    <div class="login-panel">
+      <img src="assets/logo-color.svg" alt="Logo TACAM" />
+      <h2>Ingreso Administrador</h2>
+      <p>Acceso restringido al sistema TACAM.</p>
+      <form id="login-form" class="grid">
+        <label>Usuario <input name="username" required placeholder="admin" /></label>
+        <label>Contraseña <input name="password" type="password" required placeholder="admin" /></label>
+        <button type="submit">Ingresar</button>
+      </form>
+      <p id="login-error" class="login-error" hidden>Credenciales inválidas. Usa admin/admin.</p>
     </div>
-  </header>
+  </section>
 
-  <main>
-    <nav class="module-tabs" aria-label="Módulos TACAM">
-      <button type="button" class="module-tab active" data-module-tab="create">Ingreso de Cliente</button>
-      <button type="button" class="module-tab" data-module-tab="bookings">No Contrataron / Contratados</button>
-      <button type="button" class="module-tab" data-module-tab="agenda">Agendamiento y Visitas</button>
-      <button type="button" class="module-tab" data-module-tab="lawyers">Perfiles de Abogados</button>
-    </nav>
+  <div id="app-shell" hidden>
+    <header class="topbar">
+      <img src="assets/logo-white.svg" alt="Logo TACAM" />
+      <div>
+        <h1>TACAM · Sistema de Reservas</h1>
+        <p>Reserva de personas para atención en oficina de abogados</p>
+      </div>
+    </header>
 
-    <section class="card module-panel active" data-module-panel="create">
-      <h2>Crear Reserva</h2>
-      <form id="booking-form" class="grid">
-        <label>Nombre de la persona <input name="customer" required /></label>
-        <label>Teléfono <input name="phone" required placeholder="+569..." /></label>
-        <label>Fecha de reserva <input name="date" type="date" required /></label>
-        <label>Hora de reserva <input name="time" type="time" required /></label>
-        <label>Abogado asignado
-          <select name="assignedTo" required>
-            <option value="">Seleccione</option>
+    <main>
+      <nav class="module-tabs" aria-label="Módulos TACAM">
+        <button type="button" class="module-tab active" data-module-tab="create">Ingreso de Cliente</button>
+        <button type="button" class="module-tab" data-module-tab="bookings">No Contrataron / Contratados</button>
+        <button type="button" class="module-tab" data-module-tab="agenda">Agendamiento y Visitas</button>
+        <button type="button" class="module-tab" data-module-tab="lawyers">Perfiles de Abogados</button>
+      </nav>
+
+      <section class="card module-panel active" data-module-panel="create">
+        <h2>Crear Reserva</h2>
+        <form id="booking-form" class="grid">
+          <label>Nombre de la persona <input name="customer" required /></label>
+          <label>Teléfono <input name="phone" required placeholder="+569..." /></label>
+          <label>Fecha de reserva <input name="date" type="date" required /></label>
+          <label>Hora de reserva <input name="time" type="time" required /></label>
+          <label>Abogado asignado
+            <select name="assignedTo" required>
+              <option value="">Seleccione</option>
+              <option value="Daniela Sierra">Daniela Sierra</option>
+              <option value="Natalie Gómez">Natalie Gómez</option>
+              <option value="Camila Vásquez">Camila Vásquez</option>
+              <option value="Carolina Contreras">Carolina Contreras</option>
+            </select>
+          </label>
+          <label class="full">Motivo de consulta <textarea name="notes" rows="3" placeholder="Detalle del caso..."></textarea></label>
+          <button type="submit">Guardar reserva</button>
+        </form>
+      </section>
+
+      <section class="card module-panel" data-module-panel="bookings">
+        <h2>Reservas y Confirmación</h2>
+        <p class="muted">WhatsApp de notificación TACAM: <strong>+56987591312</strong></p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Fecha creación</th><th>Persona</th><th>Teléfono</th><th>Cita</th><th>Abogado</th><th>Estado</th><th>Gestión</th><th>Notificar</th></tr></thead>
+            <tbody id="bookings-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card module-panel" data-module-panel="agenda">
+        <h2>Agenda por Abogado</h2>
+        <label>Filtrar por abogado
+          <select id="lawyer-filter">
+            <option value="">Todos</option>
             <option value="Daniela Sierra">Daniela Sierra</option>
             <option value="Natalie Gómez">Natalie Gómez</option>
             <option value="Camila Vásquez">Camila Vásquez</option>
             <option value="Carolina Contreras">Carolina Contreras</option>
           </select>
         </label>
-        <label class="full">Motivo de consulta <textarea name="notes" rows="3" placeholder="Detalle del caso..."></textarea></label>
-        <button type="submit">Guardar reserva</button>
-      </form>
-    </section>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Persona</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody id="agenda-body"></tbody>
+          </table>
+        </div>
+      </section>
 
-    <section class="card module-panel" data-module-panel="bookings">
-      <h2>Reservas y Confirmación</h2>
-      <p class="muted">WhatsApp de notificación TACAM: <strong>+56987591312</strong></p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Fecha creación</th><th>Persona</th><th>Teléfono</th><th>Cita</th><th>Abogado</th><th>Estado</th><th>Gestión</th><th>Notificar</th></tr></thead>
-          <tbody id="bookings-body"></tbody>
-        </table>
-      </div>
-    </section>
+      <section class="card module-panel" data-module-panel="lawyers">
+        <h2>Perfiles de Abogados</h2>
+        <form id="lawyer-form" class="grid">
+          <label>Nombre completo <input name="name" required /></label>
+          <label>Especialidad <input name="specialty" /></label>
+          <label>WhatsApp <input name="phone" placeholder="+569..." /></label>
+          <label class="full">Foto de perfil <input name="photo" type="file" accept="image/*" required /></label>
+          <button type="submit">Guardar perfil</button>
+        </form>
+        <div id="lawyer-list" class="lawyer-grid"></div>
 
-    <section class="card module-panel" data-module-panel="agenda">
-      <h2>Agenda por Abogado</h2>
-      <label>Filtrar por abogado
-        <select id="lawyer-filter">
-          <option value="">Todos</option>
-          <option value="Daniela Sierra">Daniela Sierra</option>
-          <option value="Natalie Gómez">Natalie Gómez</option>
-          <option value="Camila Vásquez">Camila Vásquez</option>
-          <option value="Carolina Contreras">Carolina Contreras</option>
-        </select>
-      </label>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Persona</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Acciones</th></tr></thead>
-          <tbody id="agenda-body"></tbody>
-        </table>
-      </div>
-    </section>
+        <h3>Creador de Perfil (Permisos)</h3>
+        <form id="profile-form" class="grid">
+          <label>Nombre <input name="name" required /></label>
+          <label>Usuario <input name="username" required /></label>
+          <label>Rol
+            <select name="role" required>
+              <option value="">Seleccione</option>
+              <option value="Admin">Admin</option>
+              <option value="Recepción">Recepción</option>
+              <option value="Abogada">Abogada</option>
+            </select>
+          </label>
+          <fieldset class="full permissions-box">
+            <legend>Permisos (marcar/tickear)</legend>
+            <label><input type="checkbox" name="permBookings" /> Reservas</label>
+            <label><input type="checkbox" name="permAgenda" /> Agenda</label>
+            <label><input type="checkbox" name="permLawyers" /> Abogadas</label>
+            <label><input type="checkbox" name="permReports" /> Estadísticas</label>
+          </fieldset>
+          <button type="submit">Crear / Actualizar perfil</button>
+        </form>
+        <div id="profile-list" class="profile-grid"></div>
+      </section>
 
-    <section class="card module-panel" data-module-panel="lawyers">
-      <h2>Perfiles de Abogados</h2>
-      <form id="lawyer-form" class="grid">
-        <label>Nombre completo <input name="name" required /></label>
-        <label>Especialidad <input name="specialty" /></label>
-        <label>WhatsApp <input name="phone" placeholder="+569..." /></label>
-        <label class="full">Foto de perfil <input name="photo" type="file" accept="image/*" required /></label>
-        <button type="submit">Guardar perfil</button>
-      </form>
-      <div id="lawyer-list" class="lawyer-grid"></div>
-    </section>
-
-    <footer class="footer-sign">
-      <img src="assets/logo-color.svg" alt="Logo TACAM" />
-      <span>Desarrollo por <strong>Agencia Digital</strong></span>
-    </footer>
-  </main>
+      <footer class="footer-sign">
+        <img src="assets/logo-color.svg" alt="Logo TACAM" />
+        <span>Desarrollo por <strong>Agencia Digital</strong></span>
+      </footer>
+    </main>
+  </div>
 
   <script src="delivery-core.js"></script>
   <script src="app.js"></script>

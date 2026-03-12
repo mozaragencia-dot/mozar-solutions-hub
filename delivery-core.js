@@ -1,6 +1,8 @@
 const STORAGE_KEYS = {
   bookings: 'tacam_bookings',
-  lawyers: 'tacam_lawyers'
+  lawyers: 'tacam_lawyers',
+  profiles: 'tacam_profiles',
+  session: 'tacam_session'
 };
 
 function loadJson(key, fallback) {
@@ -46,6 +48,19 @@ function seedData() {
       }
     ]);
   }
+
+  const profiles = loadJson(STORAGE_KEYS.profiles, []);
+  if (!profiles.length) {
+    saveJson(STORAGE_KEYS.profiles, [
+      {
+        id: crypto.randomUUID(),
+        name: 'Administrador TACAM',
+        username: 'admin',
+        role: 'Admin',
+        permissions: ['Reservas', 'Agenda', 'Abogadas', 'Estadísticas']
+      }
+    ]);
+  }
 }
 
 function getBookings() {
@@ -62,6 +77,22 @@ function getLawyers() {
 
 function saveLawyers(lawyers) {
   saveJson(STORAGE_KEYS.lawyers, lawyers);
+}
+
+function getProfiles() {
+  return loadJson(STORAGE_KEYS.profiles, []);
+}
+
+function saveProfiles(profiles) {
+  saveJson(STORAGE_KEYS.profiles, profiles);
+}
+
+function getSession() {
+  return loadJson(STORAGE_KEYS.session, { loggedIn: false });
+}
+
+function saveSession(session) {
+  saveJson(STORAGE_KEYS.session, session);
 }
 
 function statusLabel(status) {

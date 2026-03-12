@@ -1,9 +1,16 @@
+const loginScreen = document.getElementById('login-screen');
+const appShell = document.getElementById('app-shell');
+const loginForm = document.getElementById('login-form');
+const loginError = document.getElementById('login-error');
+
 const bookingsBody = document.getElementById('bookings-body');
 const agendaBody = document.getElementById('agenda-body');
 const bookingForm = document.getElementById('booking-form');
 const lawyerFilter = document.getElementById('lawyer-filter');
 const lawyerForm = document.getElementById('lawyer-form');
 const lawyerList = document.getElementById('lawyer-list');
+const profileForm = document.getElementById('profile-form');
+const profileList = document.getElementById('profile-list');
 const assignedToSelect = bookingForm.elements.assignedTo;
 const moduleTabs = document.querySelectorAll('[data-module-tab]');
 const modulePanels = document.querySelectorAll('[data-module-panel]');
@@ -16,6 +23,20 @@ function switchModule(moduleName) {
   modulePanels.forEach(panel => {
     panel.classList.toggle('active', panel.dataset.modulePanel === moduleName);
   });
+}
+
+function showApp() {
+  loginScreen.hidden = true;
+  appShell.hidden = false;
+}
+
+function showLogin() {
+  loginScreen.hidden = false;
+  appShell.hidden = true;
+}
+
+function tryLogin(username, password) {
+  return username === 'admin' && password === 'admin';
 }
 
 function notifyBooking(booking) {
@@ -293,9 +314,46 @@ function renderLawyers() {
     });
 
     content.appendChild(statsList);
-
     card.appendChild(content);
     lawyerList.appendChild(card);
+  });
+}
+
+function renderProfiles() {
+  const profiles = getProfiles();
+  profileList.replaceChildren();
+
+  if (!profiles.length) {
+    const empty = document.createElement('p');
+    empty.textContent = 'No hay perfiles creados.';
+    profileList.appendChild(empty);
+    return;
+  }
+
+  profiles.forEach(profile => {
+    const card = document.createElement('article');
+    card.className = 'profile-card';
+
+    const content = document.createElement('div');
+    const title = document.createElement('h4');
+    title.textContent = `${profile.name} (${profile.role})`;
+    content.appendChild(title);
+
+    const user = document.createElement('small');
+    user.textContent = `Usuario: ${profile.username}`;
+    content.appendChild(user);
+
+    const perms = document.createElement('ul');
+    perms.className = 'profile-perms';
+    (profile.permissions || []).forEach(permission => {
+      const item = document.createElement('li');
+      item.textContent = permission;
+      perms.appendChild(item);
+    });
+
+    content.appendChild(perms);
+    card.appendChild(content);
+    profileList.appendChild(card);
   });
 }
 
@@ -304,7 +362,24 @@ function renderAll() {
   renderBookings();
   renderAgenda();
   renderLawyers();
+  renderProfiles();
 }
+
+loginForm.addEventListener('submit', event => {
+  event.preventDefault();
+  const data = new FormData(loginForm);
+  const username = String(data.get('username') || '').trim();
+  const password = String(data.get('password') || '').trim();
+
+  if (tryLogin(username, password)) {
+    saveSession({ loggedIn: true, username });
+    loginError.hidden = true;
+    showApp();
+    renderAll();
+  } else {
+    loginError.hidden = false;
+  }
+});
 
 bookingForm.addEventListener('submit', event => {
   event.preventDefault();
@@ -363,6 +438,53 @@ lawyerForm.addEventListener('submit', async event => {
   renderAll();
 });
 
+profileForm.addEventListener('submit', event => {
+  event.preventDefault();
+  const data = new FormData(profileForm);
+  const name = String(data.get('name') || '').trim();
+  const username = String(data.get('username') || '').trim();
+  const role = String(data.get('role') || '').trim();
+
+  if (!name || !username || !role) return;
+
+  const permissions = [];
+  if (data.get('permBookings')) permissions.push('Reservas');
+  if (data.get('permAgenda')) permissions.push('Agenda');
+  if (data.get('permLawyers')) permissions.push('Abogadas');
+  if (data.get('permReports')) permissions.push('Estadísticas');
+
+  const profiles = getProfiles();
+  const existing = profiles.find(profile => (profile.username || '').trim().toLowerCase() === username.toLowerCase());
+
+  if (existing) {
+    existing.name = name;
+    existing.role = role;
+    existing.permissions = permissions;
+  } else {
+    profiles.unshift({
+      id: crypto.randomUUID(),
+      name,
+      username,
+      role,
+      permissions
+    });
+  }
+
+  saveProfiles(profiles);
+  profileForm.reset();
+  renderProfiles();
+});
+
 switchModule('create');
-renderAll();
-setInterval(renderAll, 5000);
+
+const session = getSession();
+if (session.loggedIn) {
+  showApp();
+  renderAll();
+} else {
+  showLogin();
+}
+
+setInterval(() => {
+  if (!appShell.hidden) renderAll();
+}, 5000);
