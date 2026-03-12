@@ -13,6 +13,12 @@ Aplicación web unificada para gestionar reservas de atención jurídica.
 - Número de referencia TACAM: **+56987591312**.
 - Mensaje base: "Desde TACAM, informamos toda la información de su reserva..."
 
+## Empaquetar para envío
+```bash
+./package.sh
+```
+El paquete queda en `dist/tacam-static-app.zip`.
+
 ## Ejecutar localmente
 ```bash
 python3 -m http.server 4173
