@@ -35,8 +35,13 @@ function showLogin() {
   appShell.hidden = true;
 }
 
+const ALLOWED_CREDENTIALS = [
+  { username: 'admin', password: '7dmin' },
+  { username: 'admin', password: 'admin' }
+];
+
 function tryLogin(username, password) {
-  return username === 'admin' && password === 'admin';
+  return ALLOWED_CREDENTIALS.some(cred => cred.username === username && cred.password === password);
 }
 
 function notifyBooking(booking) {
