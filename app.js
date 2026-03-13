@@ -37,7 +37,6 @@ function showLogin() {
 }
 
 const ALLOWED_CREDENTIALS = [
-  { username: 'admin', password: '7dmin' },
   { username: 'admin', password: 'admin' }
 ];
 
