@@ -48,6 +48,7 @@
         <form id="booking-form" class="grid">
           <label>Nombre de la persona <input name="customer" required /></label>
           <label>Teléfono <input name="phone" required placeholder="+569..." /></label>
+          <label>Correo (opcional) <input name="email" type="email" placeholder="cliente@correo.com" /></label>
           <label>Fecha de reserva <input name="date" type="date" required /></label>
           <label>Hora de reserva <input name="time" type="time" required /></label>
           <label>Abogado asignado
@@ -92,6 +93,7 @@
           </label>
         </div>
         <div id="agenda-color-legend" class="calendar-legend"></div>
+        <p class="muted">Tip: puedes arrastrar y soltar una cita a otro día para reagendar.</p>
         <div id="agenda-calendar" class="calendar"></div>
         <div class="table-wrap">
           <table>
@@ -127,6 +129,7 @@
           </label>
         </div>
         <div id="lawyer-calendar-legend" class="calendar-legend"></div>
+        <p class="muted">Tip: usa drag &amp; drop para mover reuniones de día.</p>
         <div id="lawyer-calendar" class="calendar"></div>
 
         <h3>Creador de Perfil (Permisos)</h3>

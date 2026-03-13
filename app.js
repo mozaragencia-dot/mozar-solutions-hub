@@ -61,6 +61,49 @@ function notifyBooking(booking) {
   window.open(`https://wa.me/${destination}?text=${msg}`, '_blank', 'noopener');
 }
 
+function buildRescheduleMessage(booking, fromDate, toDate) {
+  const fromText = `${fromDate || '-'} ${booking.time || ''}`.trim();
+  const toText = `${toDate || '-'} ${booking.time || ''}`.trim();
+  return `TACAM: su cita fue reagendada. Cliente: ${booking.customer || 'Cliente'}. Antes: ${fromText}. Nueva fecha: ${toText}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+}
+
+function getLawyerPhone(lawyerName) {
+  const lawyer = getLawyers().find(item => (item.name || '').trim() === (lawyerName || '').trim());
+  return lawyer ? cleanPhone(lawyer.phone) : '';
+}
+
+function notifyReschedule(booking, fromDate, toDate) {
+  const message = buildRescheduleMessage(booking, fromDate, toDate);
+  const encoded = encodeURIComponent(message);
+  const targets = [cleanPhone(booking.phone), getLawyerPhone(booking.assignedTo)].filter(Boolean);
+  const uniqueTargets = [...new Set(targets)];
+
+  if (uniqueTargets.length) {
+    uniqueTargets.forEach(target => {
+      window.open(`https://wa.me/${target}?text=${encoded}`, '_blank', 'noopener');
+    });
+  }
+
+  const email = String(booking.email || '').trim();
+  if (email) {
+    const subject = encodeURIComponent('Reagendamiento de cita TACAM');
+    window.open(`mailto:${encodeURIComponent(email)}?subject=${subject}&body=${encoded}`, '_blank', 'noopener');
+  }
+}
+
+function moveBookingDate(bookingId, newDate) {
+  if (!newDate) return;
+  const bookings = getBookings();
+  const booking = bookings.find(item => item.id === bookingId);
+  if (!booking || booking.date === newDate) return;
+
+  const oldDate = booking.date;
+  booking.date = newDate;
+  saveBookings(bookings);
+  renderAll();
+  notifyReschedule(booking, oldDate, newDate);
+}
+
 function updateBooking(bookingId, updater) {
   const bookings = getBookings();
   const booking = bookings.find(item => item.id === bookingId);
@@ -246,12 +289,32 @@ function renderCalendar(container, bookings, selectedMonth) {
       dayCell.appendChild(dayLabel);
 
       const dateKey = `${yearStr}-${String(month).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}`;
+      dayCell.dataset.date = dateKey;
+      dayCell.addEventListener('dragover', event => {
+        event.preventDefault();
+        dayCell.classList.add('drag-over');
+      });
+      dayCell.addEventListener('dragleave', () => {
+        dayCell.classList.remove('drag-over');
+      });
+      dayCell.addEventListener('drop', event => {
+        event.preventDefault();
+        dayCell.classList.remove('drag-over');
+        const bookingId = event.dataTransfer?.getData('text/booking-id');
+        if (bookingId) moveBookingDate(bookingId, dateKey);
+      });
+
       const dayBookings = bookingsByDate.get(dateKey) || [];
       dayBookings
         .sort((a, b) => `${a.time || ''}`.localeCompare(`${b.time || ''}`))
         .forEach(booking => {
           const event = document.createElement('div');
           event.className = 'calendar-event';
+          event.draggable = true;
+          event.dataset.bookingId = booking.id;
+          event.addEventListener('dragstart', dragEvent => {
+            dragEvent.dataTransfer?.setData('text/booking-id', booking.id);
+          });
           event.style.setProperty('--event-color', getLawyerColor(booking.assignedTo));
           event.textContent = `${booking.time || '--:--'} · ${booking.assignedTo || 'Sin abogada'} · ${booking.customer || 'Cliente'}`;
           dayCell.appendChild(event);
@@ -544,6 +607,7 @@ bookingForm.addEventListener('submit', event => {
     id: crypto.randomUUID(),
     customer: String(data.get('customer') || '').trim(),
     phone: String(data.get('phone') || '').trim(),
+    email: String(data.get('email') || '').trim(),
     date: String(data.get('date') || '').trim(),
     time: String(data.get('time') || '').trim(),
     assignedTo: String(data.get('assignedTo') || '').trim(),
