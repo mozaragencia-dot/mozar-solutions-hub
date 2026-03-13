@@ -31,5 +31,18 @@ button{background:var(--wine);color:#fff;border-color:var(--wine-dark);cursor:po
 .lawyer-stats,.profile-perms{margin:8px 0 0;padding-left:18px;color:#5a313d;font-size:13px;display:grid;gap:2px}
 .permissions-box{border:1px solid #d9c8ce;border-radius:8px;padding:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
 .permissions-box label{flex-direction:row;align-items:center;gap:6px}
+.calendar-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;align-items:end;margin-bottom:10px}
+.checkbox-inline{flex-direction:row;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#5a313d}
+.calendar-legend{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.legend-item{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid #eadce2;border-radius:999px;background:#fff8fb;font-size:12px}
+.legend-dot{width:10px;height:10px;border-radius:50%}
+.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border:1px solid #eadce2;border-radius:10px;overflow:hidden;background:#fff;margin-bottom:12px}
+.calendar-head{padding:8px;background:#f6e9ee;color:#6f1329;font-size:12px;font-weight:700;text-align:center;border-bottom:1px solid #eadce2}
+.calendar-day{min-height:120px;padding:6px;border-right:1px solid #f1e8eb;border-bottom:1px solid #f1e8eb;background:#fff}
+.calendar-day:nth-child(7n){border-right:0}
+.calendar-day.muted{background:#faf7f8}
+.day-number{font-size:12px;font-weight:700;color:#6f1329;margin-bottom:6px}
+.calendar-event{display:block;font-size:11px;line-height:1.25;padding:4px 5px;border-radius:6px;background:#fff;border-left:4px solid var(--event-color,#8f203a);margin-bottom:5px;box-shadow:0 1px 0 rgba(0,0,0,.04)}
+.calendar-empty{grid-column:1/-1;padding:14px;text-align:center;color:#6f1329}
 .muted{color:#6f1329}.footer-sign{margin-top:10px;color:#6f1329;font-size:14px;display:flex;align-items:center;gap:8px}.footer-sign img{width:120px}
-@media (max-width:768px){.topbar{flex-direction:column;align-items:flex-start}.topbar img{width:140px}.grid{grid-template-columns:1fr}.footer-sign{flex-direction:column;align-items:flex-start}}
+@media (max-width:768px){.topbar{flex-direction:column;align-items:flex-start}.topbar img{width:140px}.grid{grid-template-columns:1fr}.calendar{grid-template-columns:repeat(2,minmax(0,1fr))}.calendar-head{display:none}.calendar-day{min-height:90px}.footer-sign{flex-direction:column;align-items:flex-start}}

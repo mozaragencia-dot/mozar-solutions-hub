@@ -7,8 +7,16 @@ const bookingsBody = document.getElementById('bookings-body');
 const agendaBody = document.getElementById('agenda-body');
 const bookingForm = document.getElementById('booking-form');
 const lawyerFilter = document.getElementById('lawyer-filter');
+const agendaMonthInput = document.getElementById('agenda-month');
+const agendaCalendar = document.getElementById('agenda-calendar');
+const agendaLegend = document.getElementById('agenda-color-legend');
 const lawyerForm = document.getElementById('lawyer-form');
 const lawyerList = document.getElementById('lawyer-list');
+const lawyerCalendarFilter = document.getElementById('lawyer-calendar-filter');
+const lawyerCalendarMonth = document.getElementById('lawyer-calendar-month');
+const lawyerCalendar = document.getElementById('lawyer-calendar');
+const lawyerCalendarLegend = document.getElementById('lawyer-calendar-legend');
+const sharedOnlyInput = document.getElementById('shared-only');
 const profileForm = document.getElementById('profile-form');
 const profileList = document.getElementById('profile-list');
 const assignedToSelect = bookingForm.elements.assignedTo;
@@ -39,6 +47,8 @@ function showLogin() {
 const ALLOWED_CREDENTIALS = [
   { username: 'admin', password: 'admin' }
 ];
+
+const LAWYER_COLORS = ['#8f203a', '#2166a5', '#2a9d8f', '#e76f51', '#6a4c93', '#e9c46a', '#4f772d'];
 
 function tryLogin(username, password) {
   return ALLOWED_CREDENTIALS.some(cred => cred.username === username && cred.password === password);
@@ -117,6 +127,7 @@ function renderLawyerOptions() {
   const names = getLawyerNames();
   fillSelectWithNames(assignedToSelect, names, 'Seleccione');
   fillSelectWithNames(lawyerFilter, names, 'Todos');
+  fillSelectWithNames(lawyerCalendarFilter, names, 'Todas');
 }
 
 function getLawyerStats(lawyerName) {
@@ -131,6 +142,143 @@ function getLawyerStats(lawyerName) {
   });
 
   return stats;
+}
+
+function monthValueFromDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+}
+
+function getLawyerColor(name) {
+  const clean = String(name || '').trim();
+  if (!clean) return LAWYER_COLORS[0];
+  const index = [...clean].reduce((sum, char) => sum + char.charCodeAt(0), 0) % LAWYER_COLORS.length;
+  return LAWYER_COLORS[index];
+}
+
+function getCalendarBookings(selectedLawyer, selectedMonth, onlyShared = false) {
+  const allBookings = getBookings().filter(booking => booking.status !== 'cancelada' && booking.date);
+  const byMonth = allBookings.filter(booking => !selectedMonth || booking.date.slice(0, 7) === selectedMonth);
+  const byLawyer = byMonth.filter(booking => !selectedLawyer || booking.assignedTo === selectedLawyer);
+
+  if (!onlyShared) return byLawyer;
+
+  const slotMap = new Map();
+  byMonth.forEach(booking => {
+    const slot = `${booking.date}|${booking.time || ''}`;
+    if (!slotMap.has(slot)) slotMap.set(slot, new Set());
+    slotMap.get(slot).add((booking.assignedTo || '').trim());
+  });
+
+  return byLawyer.filter(booking => {
+    const slot = `${booking.date}|${booking.time || ''}`;
+    return (slotMap.get(slot) || new Set()).size > 1;
+  });
+}
+
+function renderCalendarLegend(container, lawyerNames) {
+  container.replaceChildren();
+  if (!lawyerNames.length) return;
+
+  lawyerNames.forEach(name => {
+    const item = document.createElement('span');
+    item.className = 'legend-item';
+
+    const dot = document.createElement('span');
+    dot.className = 'legend-dot';
+    dot.style.backgroundColor = getLawyerColor(name);
+    item.appendChild(dot);
+
+    const text = document.createElement('span');
+    text.textContent = name;
+    item.appendChild(text);
+
+    container.appendChild(item);
+  });
+}
+
+function renderCalendar(container, bookings, selectedMonth) {
+  const monthValue = selectedMonth || monthValueFromDate(new Date());
+  const [yearStr, monthStr] = monthValue.split('-');
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+
+  container.replaceChildren();
+
+  const weekDays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  weekDays.forEach(day => {
+    const head = document.createElement('div');
+    head.className = 'calendar-head';
+    head.textContent = day;
+    container.appendChild(head);
+  });
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+    const empty = document.createElement('p');
+    empty.className = 'calendar-empty';
+    empty.textContent = 'Selecciona un mes válido.';
+    container.appendChild(empty);
+    return;
+  }
+
+  const firstDay = new Date(year, month - 1, 1);
+  const lastDayDate = new Date(year, month, 0).getDate();
+  const firstWeekDay = (firstDay.getDay() + 6) % 7;
+  const totalCells = Math.ceil((firstWeekDay + lastDayDate) / 7) * 7;
+
+  const bookingsByDate = new Map();
+  bookings.forEach(booking => {
+    if (!bookingsByDate.has(booking.date)) bookingsByDate.set(booking.date, []);
+    bookingsByDate.get(booking.date).push(booking);
+  });
+
+  for (let cell = 0; cell < totalCells; cell += 1) {
+    const dayNumber = cell - firstWeekDay + 1;
+    const inMonth = dayNumber >= 1 && dayNumber <= lastDayDate;
+    const dayCell = document.createElement('div');
+    dayCell.className = `calendar-day${inMonth ? '' : ' muted'}`;
+
+    if (inMonth) {
+      const dayLabel = document.createElement('div');
+      dayLabel.className = 'day-number';
+      dayLabel.textContent = String(dayNumber);
+      dayCell.appendChild(dayLabel);
+
+      const dateKey = `${yearStr}-${String(month).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}`;
+      const dayBookings = bookingsByDate.get(dateKey) || [];
+      dayBookings
+        .sort((a, b) => `${a.time || ''}`.localeCompare(`${b.time || ''}`))
+        .forEach(booking => {
+          const event = document.createElement('div');
+          event.className = 'calendar-event';
+          event.style.setProperty('--event-color', getLawyerColor(booking.assignedTo));
+          event.textContent = `${booking.time || '--:--'} · ${booking.assignedTo || 'Sin abogada'} · ${booking.customer || 'Cliente'}`;
+          dayCell.appendChild(event);
+        });
+    }
+
+    container.appendChild(dayCell);
+  }
+}
+
+function renderAgendaCalendar() {
+  const selectedLawyer = lawyerFilter.value.trim();
+  const selectedMonth = agendaMonthInput.value;
+  const bookings = getCalendarBookings(selectedLawyer, selectedMonth, false);
+  const names = [...new Set(bookings.map(booking => booking.assignedTo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+  renderCalendarLegend(agendaLegend, names);
+  renderCalendar(agendaCalendar, bookings, selectedMonth);
+}
+
+function renderLawyerCalendar() {
+  const selectedLawyer = lawyerCalendarFilter.value.trim();
+  const selectedMonth = lawyerCalendarMonth.value;
+  const onlyShared = Boolean(sharedOnlyInput.checked);
+  const bookings = getCalendarBookings(selectedLawyer, selectedMonth, onlyShared);
+  const names = [...new Set(bookings.map(booking => booking.assignedTo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+  renderCalendarLegend(lawyerCalendarLegend, names);
+  renderCalendar(lawyerCalendar, bookings, selectedMonth);
 }
 
 function renderBookings() {
@@ -366,7 +514,9 @@ function renderAll() {
   renderLawyerOptions();
   renderBookings();
   renderAgenda();
+  renderAgendaCalendar();
   renderLawyers();
+  renderLawyerCalendar();
   renderProfiles();
 }
 
@@ -406,7 +556,14 @@ bookingForm.addEventListener('submit', event => {
   renderAll();
 });
 
-lawyerFilter.addEventListener('change', renderAgenda);
+lawyerFilter.addEventListener('change', () => {
+  renderAgenda();
+  renderAgendaCalendar();
+});
+agendaMonthInput.addEventListener('change', renderAgendaCalendar);
+lawyerCalendarFilter.addEventListener('change', renderLawyerCalendar);
+lawyerCalendarMonth.addEventListener('change', renderLawyerCalendar);
+sharedOnlyInput.addEventListener('change', renderLawyerCalendar);
 
 moduleTabs.forEach(tab => {
   tab.addEventListener('click', () => switchModule(tab.dataset.moduleTab));
@@ -481,6 +638,10 @@ profileForm.addEventListener('submit', event => {
 });
 
 switchModule('create');
+
+const currentMonth = monthValueFromDate(new Date());
+agendaMonthInput.value = currentMonth;
+lawyerCalendarMonth.value = currentMonth;
 
 saveSession({ loggedIn: false });
 showLogin();

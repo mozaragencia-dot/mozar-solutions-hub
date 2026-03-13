@@ -77,15 +77,22 @@
 
       <section class="card module-panel" data-module-panel="agenda">
         <h2>Agenda por Abogado</h2>
-        <label>Filtrar por abogado
-          <select id="lawyer-filter">
-            <option value="">Todos</option>
-            <option value="Daniela Sierra">Daniela Sierra</option>
-            <option value="Natalie Gómez">Natalie Gómez</option>
-            <option value="Camila Vásquez">Camila Vásquez</option>
-            <option value="Carolina Contreras">Carolina Contreras</option>
-          </select>
-        </label>
+        <div class="calendar-controls">
+          <label>Filtrar por abogado
+            <select id="lawyer-filter">
+              <option value="">Todos</option>
+              <option value="Daniela Sierra">Daniela Sierra</option>
+              <option value="Natalie Gómez">Natalie Gómez</option>
+              <option value="Camila Vásquez">Camila Vásquez</option>
+              <option value="Carolina Contreras">Carolina Contreras</option>
+            </select>
+          </label>
+          <label>Mes
+            <input id="agenda-month" type="month" />
+          </label>
+        </div>
+        <div id="agenda-color-legend" class="calendar-legend"></div>
+        <div id="agenda-calendar" class="calendar"></div>
         <div class="table-wrap">
           <table>
             <thead><tr><th>Persona</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Acciones</th></tr></thead>
@@ -104,6 +111,23 @@
           <button type="submit">Guardar perfil</button>
         </form>
         <div id="lawyer-list" class="lawyer-grid"></div>
+
+        <h3>Calendario General de Abogadas</h3>
+        <div class="calendar-controls">
+          <label>Ver agenda de
+            <select id="lawyer-calendar-filter">
+              <option value="">Todas</option>
+            </select>
+          </label>
+          <label>Mes
+            <input id="lawyer-calendar-month" type="month" />
+          </label>
+          <label class="checkbox-inline">
+            <input id="shared-only" type="checkbox" /> Solo horarios compartidos (más de una abogada)
+          </label>
+        </div>
+        <div id="lawyer-calendar-legend" class="calendar-legend"></div>
+        <div id="lawyer-calendar" class="calendar"></div>
 
         <h3>Creador de Perfil (Permisos)</h3>
         <form id="profile-form" class="grid">
