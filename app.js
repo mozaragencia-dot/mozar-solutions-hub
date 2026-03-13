@@ -33,6 +33,7 @@ function showApp() {
 function showLogin() {
   loginScreen.hidden = false;
   appShell.hidden = true;
+  loginError.hidden = true;
 }
 
 const ALLOWED_CREDENTIALS = [
@@ -482,13 +483,8 @@ profileForm.addEventListener('submit', event => {
 
 switchModule('create');
 
-const session = getSession();
-if (session.loggedIn) {
-  showApp();
-  renderAll();
-} else {
-  showLogin();
-}
+saveSession({ loggedIn: false });
+showLogin();
 
 setInterval(() => {
   if (!appShell.hidden) renderAll();
