@@ -1,9 +1,4 @@
-<svg width="640" height="140" viewBox="0 0 640 140" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="640" height="140" rx="14" fill="white"/>
-  <rect x="22" y="24" width="360" height="92" rx="10" fill="#FFFFFF" stroke="#D8CDD1" stroke-width="2"/>
-  <circle cx="78" cy="70" r="28" fill="#8F203A"/>
-  <path d="M78 50V92M62 66H94" stroke="white" stroke-width="4" stroke-linecap="round"/>
-  <text x="205" y="82" text-anchor="middle" fill="#8F203A" font-size="54" font-family="Lato, Arial" font-weight="700" letter-spacing="6">TACAM</text>
-  <text x="405" y="66" fill="#7E162A" font-size="20" font-family="Lato, Arial" font-weight="700">TACAM Abogados</text>
-  <text x="405" y="94" fill="#8F203A" font-size="15" font-family="Lato, Arial">Especialistas en Derecho Penal y Familia</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 140" role="img" aria-label="TACAM">
+  <rect width="520" height="140" rx="20" fill="none"/>
+  <text x="260" y="88" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="700" fill="#ffffff" letter-spacing="6">TACAM</text>
 </svg>

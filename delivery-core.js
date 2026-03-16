@@ -26,7 +26,7 @@ function seedData() {
         id: crypto.randomUUID(),
         customer: 'Cliente Demo',
         rut: '12.345.678-9',
-        phone: '+5691111111',
+        phone: '+56911111111',
         email: 'cliente.demo@tacam.cl',
         matter: 'Familiar',
         date: new Date().toISOString().slice(0, 10),

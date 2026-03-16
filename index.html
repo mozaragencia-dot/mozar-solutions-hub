@@ -34,6 +34,10 @@
         <p>Reserva de personas para atención en oficina de abogados</p>
         <span class="version-badge">Versión 1</span>
       </div>
+      <div class="header-clock" aria-live="polite">
+        <small>Hora local Chile</small>
+        <strong id="chile-clock">--:--:--</strong>
+      </div>
     </header>
 
     <main>
@@ -50,7 +54,7 @@
         <form id="booking-form" class="grid">
           <label>Nombre de la persona <input name="customer" required /></label>
           <label>RUT <input name="rut" required placeholder="12.345.678-9" maxlength="12" /></label>
-          <label>Teléfono <input name="phone" required placeholder="+5691111111" maxlength="11" /></label>
+          <label>Teléfono <input name="phone" required placeholder="+56912345678" maxlength="12" /></label>
           <label>Correo <input name="email" type="email" required placeholder="cliente@correo.com" /></label>
           <label>Materia
             <select name="matter" required>

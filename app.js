@@ -26,6 +26,7 @@ const profileForm = document.getElementById('profile-form');
 const profileList = document.getElementById('profile-list');
 const rutInput = bookingForm.elements.rut;
 const phoneInput = bookingForm.elements.phone;
+const chileClock = document.getElementById('chile-clock');
 const assignedToSelect = bookingForm.elements.assignedTo;
 const moduleTabs = document.querySelectorAll('[data-module-tab]');
 const modulePanels = document.querySelectorAll('[data-module-panel]');
@@ -205,31 +206,39 @@ function appendCell(row, text) {
 function formatRut(value) {
   const clean = String(value || '').replace(/[^0-9kK]/g, '').toUpperCase();
   if (!clean) return '';
+  if (clean.length === 1) return clean;
 
   const verifier = clean.slice(-1);
   const body = clean.slice(0, -1).slice(0, 8);
-  const padded = body.padStart(8, '0');
-
-  const p1 = padded.slice(0, 2);
-  const p2 = padded.slice(2, 5);
-  const p3 = padded.slice(5, 8);
-  return `${p1}.${p2}.${p3}-${verifier}`;
+  const grouped = body.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${grouped}-${verifier}`;
 }
 
 function formatPhone(value) {
   let digits = String(value || '').replace(/\D/g, '');
   if (digits.startsWith('56')) digits = digits.slice(2);
+  if (digits.startsWith('0')) digits = digits.slice(1);
   if (!digits.startsWith('9')) digits = `9${digits}`;
-  digits = digits.slice(0, 8);
+  digits = digits.slice(0, 9);
   return `+56${digits}`;
 }
 
 function isValidRut(value) {
-  return /^\d{2}\.\d{3}\.\d{3}-[\dK]$/.test(String(value || '').toUpperCase());
+  return /^\d{1,2}(\.\d{3}){1,2}-[\dK]$/.test(String(value || '').toUpperCase());
 }
 
 function isValidPhone(value) {
-  return /^\+569\d{7}$/.test(String(value || ''));
+  return /^\+569\d{8}$/.test(String(value || ''));
+}
+
+function updateChileClock() {
+  if (!chileClock) return;
+  chileClock.textContent = new Date().toLocaleTimeString('es-CL', {
+    timeZone: 'America/Santiago',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
 }
 
 function getLawyerNames() {
@@ -1001,11 +1010,13 @@ const currentMonth = monthValueFromDate(new Date());
 agendaMonthInput.value = currentMonth;
 lawyerCalendarMonth.value = currentMonth;
 phoneInput.value = '+569';
+updateChileClock();
 
 saveSession({ loggedIn: false });
 showLogin();
 
 setInterval(() => {
+  updateChileClock();
   if (!appShell.hidden) {
     renderAll();
     notifyUpcomingAppointments();
