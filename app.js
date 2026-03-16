@@ -24,6 +24,8 @@ const downloadLawyerReportBtn = document.getElementById('download-lawyer-report'
 const downloadBookingsReportBtn = document.getElementById('download-bookings-report');
 const profileForm = document.getElementById('profile-form');
 const profileList = document.getElementById('profile-list');
+const rutInput = bookingForm.elements.rut;
+const phoneInput = bookingForm.elements.phone;
 const assignedToSelect = bookingForm.elements.assignedTo;
 const moduleTabs = document.querySelectorAll('[data-module-tab]');
 const modulePanels = document.querySelectorAll('[data-module-panel]');
@@ -198,6 +200,36 @@ function appendCell(row, text) {
   cell.textContent = text;
   row.appendChild(cell);
   return cell;
+}
+
+function formatRut(value) {
+  const clean = String(value || '').replace(/[^0-9kK]/g, '').toUpperCase();
+  if (!clean) return '';
+
+  const verifier = clean.slice(-1);
+  const body = clean.slice(0, -1).slice(0, 8);
+  const padded = body.padStart(8, '0');
+
+  const p1 = padded.slice(0, 2);
+  const p2 = padded.slice(2, 5);
+  const p3 = padded.slice(5, 8);
+  return `${p1}.${p2}.${p3}-${verifier}`;
+}
+
+function formatPhone(value) {
+  let digits = String(value || '').replace(/\D/g, '');
+  if (digits.startsWith('56')) digits = digits.slice(2);
+  if (!digits.startsWith('9')) digits = `9${digits}`;
+  digits = digits.slice(0, 8);
+  return `+56${digits}`;
+}
+
+function isValidRut(value) {
+  return /^\d{2}\.\d{3}\.\d{3}-[\dK]$/.test(String(value || '').toUpperCase());
+}
+
+function isValidPhone(value) {
+  return /^\+569\d{7}$/.test(String(value || ''));
 }
 
 function getLawyerNames() {
@@ -781,12 +813,38 @@ loginForm.addEventListener('submit', event => {
 bookingForm.addEventListener('submit', event => {
   event.preventDefault();
   const data = new FormData(bookingForm);
+  const rut = formatRut(data.get('rut'));
+  const phone = formatPhone(data.get('phone'));
+  const email = String(data.get('email') || '').trim();
+
+  if (!isValidRut(rut)) {
+    rutInput.setCustomValidity('El RUT debe tener formato xx.xxx.xxx-x');
+    rutInput.reportValidity();
+    return;
+  }
+  rutInput.setCustomValidity('');
+
+  if (!isValidPhone(phone)) {
+    phoneInput.setCustomValidity('El teléfono debe tener formato +5691111111');
+    phoneInput.reportValidity();
+    return;
+  }
+  phoneInput.setCustomValidity('');
+
+  if (!email) {
+    bookingForm.elements.email.setCustomValidity('El correo es obligatorio');
+    bookingForm.elements.email.reportValidity();
+    return;
+  }
+  bookingForm.elements.email.setCustomValidity('');
+
   const bookings = getBookings();
   bookings.unshift({
     id: crypto.randomUUID(),
     customer: String(data.get('customer') || '').trim(),
-    phone: String(data.get('phone') || '').trim(),
-    email: String(data.get('email') || '').trim(),
+    rut,
+    phone,
+    email,
     matter: String(data.get('matter') || '').trim(),
     date: String(data.get('date') || '').trim(),
     time: String(data.get('time') || '').trim(),
@@ -800,7 +858,18 @@ bookingForm.addEventListener('submit', event => {
   saveBookings(bookings);
   notifyVisitScheduled(bookings[0]);
   bookingForm.reset();
+  phoneInput.value = '+569';
   renderAll();
+});
+
+rutInput.addEventListener('input', () => {
+  const cursorAtEnd = rutInput.selectionStart === rutInput.value.length;
+  rutInput.value = formatRut(rutInput.value);
+  if (cursorAtEnd) rutInput.setSelectionRange(rutInput.value.length, rutInput.value.length);
+});
+
+phoneInput.addEventListener('input', () => {
+  phoneInput.value = formatPhone(phoneInput.value);
 });
 
 lawyerFilter.addEventListener('change', () => {
@@ -833,12 +902,13 @@ downloadLawyerReportBtn.addEventListener('click', () => {
 
 downloadBookingsReportBtn.addEventListener('click', () => {
   const rows = [[
-    'ID', 'Cliente', 'Materia', 'Telefono', 'Correo', 'Fecha', 'Hora', 'Abogada', 'Estado', 'Motivo', 'Creada en'
+    'ID', 'Cliente', 'RUT', 'Materia', 'Telefono', 'Correo', 'Fecha', 'Hora', 'Abogada', 'Estado', 'Motivo', 'Creada en'
   ]];
   getBookings().forEach(booking => {
     rows.push([
       booking.id,
       booking.customer,
+      booking.rut,
       booking.matter,
       booking.phone,
       booking.email,
@@ -930,6 +1000,7 @@ switchModule('create');
 const currentMonth = monthValueFromDate(new Date());
 agendaMonthInput.value = currentMonth;
 lawyerCalendarMonth.value = currentMonth;
+phoneInput.value = '+569';
 
 saveSession({ loggedIn: false });
 showLogin();

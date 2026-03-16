@@ -49,8 +49,9 @@
         <h2>Crear Reserva</h2>
         <form id="booking-form" class="grid">
           <label>Nombre de la persona <input name="customer" required /></label>
-          <label>Teléfono <input name="phone" required placeholder="+569..." /></label>
-          <label>Correo (opcional) <input name="email" type="email" placeholder="cliente@correo.com" /></label>
+          <label>RUT <input name="rut" required placeholder="12.345.678-9" maxlength="12" /></label>
+          <label>Teléfono <input name="phone" required placeholder="+5691111111" maxlength="11" /></label>
+          <label>Correo <input name="email" type="email" required placeholder="cliente@correo.com" /></label>
           <label>Materia
             <select name="matter" required>
               <option value="">Seleccione materia</option>
