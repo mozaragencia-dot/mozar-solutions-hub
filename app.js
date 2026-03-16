@@ -82,24 +82,32 @@ function buildReminderMessage(booking, minutesLeft) {
   return `Recordatorio TACAM: vas a tener una cita en ${minutesLeft} minutos. Fecha/Hora: ${booking.date} ${booking.time}. Materia: ${booking.matter || 'General'}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
 }
 
+function build24hReminderMessage(booking) {
+  return `Recordatorio TACAM: tu cita será en 24 horas. Fecha/Hora: ${booking.date} ${booking.time}. Materia: ${booking.matter || 'General'}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+}
+
 function buildVisitScheduledMessage(booking) {
   return `Calendario de visitas TACAM: enviamos correo automático a la persona. Tu cita quedó agendada para ${booking.date} ${booking.time}. Materia: ${booking.matter || 'General'}. Abogada: ${booking.assignedTo || 'Por confirmar'}. Luego recibirás un recordatorio de que vas a tener una cita.`;
 }
 
-function notifyVisitScheduled(booking) {
-  const message = buildVisitScheduledMessage(booking);
+function notifyBookingChannels(booking, message, emailSubject) {
   const encoded = encodeURIComponent(message);
+  const targets = [cleanPhone(booking.phone), getLawyerPhone(booking.assignedTo)].filter(Boolean);
 
-  const phone = cleanPhone(booking.phone);
-  if (phone) {
-    window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank', 'noopener');
-  }
+  [...new Set(targets)].forEach(target => {
+    window.open(`https://wa.me/${target}?text=${encoded}`, '_blank', 'noopener');
+  });
 
   const email = String(booking.email || '').trim();
   if (email) {
-    const subject = encodeURIComponent('Calendario de visitas TACAM: cita agendada');
+    const subject = encodeURIComponent(emailSubject);
     window.open(`mailto:${encodeURIComponent(email)}?subject=${subject}&body=${encoded}`, '_blank', 'noopener');
   }
+}
+
+function notifyVisitScheduled(booking) {
+  const message = buildVisitScheduledMessage(booking);
+  notifyBookingChannels(booking, message, 'Calendario de visitas TACAM: cita agendada');
 }
 
 function getLawyerPhone(lawyerName) {
@@ -133,26 +141,22 @@ function notifyUpcomingAppointments() {
 
   bookings.forEach(booking => {
     const appointment = getAppointmentDateTime(booking);
-    if (!appointment || booking.status === 'cancelada' || booking.status === 'atendida' || booking.reminderSentAt) return;
+    if (!appointment || booking.status === 'cancelada' || booking.status === 'atendida') return;
 
     const diffMinutes = Math.round((appointment.getTime() - now.getTime()) / 60000);
-    if (diffMinutes < 0 || diffMinutes > 60) return;
+    if (diffMinutes < 0) return;
 
-    const message = buildReminderMessage(booking, diffMinutes);
-    const encoded = encodeURIComponent(message);
-    const targets = [cleanPhone(booking.phone), getLawyerPhone(booking.assignedTo)].filter(Boolean);
-    [...new Set(targets)].forEach(target => {
-      window.open(`https://wa.me/${target}?text=${encoded}`, '_blank', 'noopener');
-    });
-
-    const email = String(booking.email || '').trim();
-    if (email) {
-      const subject = encodeURIComponent('Recordatorio TACAM: vas a tener una cita');
-      window.open(`mailto:${encodeURIComponent(email)}?subject=${subject}&body=${encoded}`, '_blank', 'noopener');
+    if (diffMinutes <= 1440 && !booking.reminder24hSentAt) {
+      notifyBookingChannels(booking, build24hReminderMessage(booking), 'Recordatorio TACAM: cita en 24 horas');
+      booking.reminder24hSentAt = now.toISOString();
+      hasUpdates = true;
     }
 
-    booking.reminderSentAt = now.toISOString();
-    hasUpdates = true;
+    if (diffMinutes <= 60 && !booking.reminder1hSentAt) {
+      notifyBookingChannels(booking, buildReminderMessage(booking, diffMinutes), 'Recordatorio TACAM: vas a tener una cita');
+      booking.reminder1hSentAt = now.toISOString();
+      hasUpdates = true;
+    }
   });
 
   if (hasUpdates) {
@@ -169,7 +173,8 @@ function moveBookingDate(bookingId, newDate) {
 
   const oldDate = booking.date;
   booking.date = newDate;
-  booking.reminderSentAt = '';
+  booking.reminder24hSentAt = '';
+  booking.reminder1hSentAt = '';
   saveBookings(bookings);
   renderAll();
   notifyReschedule(booking, oldDate, newDate);
@@ -789,7 +794,8 @@ bookingForm.addEventListener('submit', event => {
     notes: String(data.get('notes') || '').trim(),
     status: 'nueva',
     createdAt: new Date().toISOString(),
-    reminderSentAt: ''
+    reminder24hSentAt: '',
+    reminder1hSentAt: ''
   });
   saveBookings(bookings);
   notifyVisitScheduled(bookings[0]);
