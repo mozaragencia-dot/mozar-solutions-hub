@@ -49,6 +49,13 @@
           <label>Nombre de la persona <input name="customer" required /></label>
           <label>Teléfono <input name="phone" required placeholder="+569..." /></label>
           <label>Correo (opcional) <input name="email" type="email" placeholder="cliente@correo.com" /></label>
+          <label>Materia
+            <select name="matter" required>
+              <option value="">Seleccione materia</option>
+              <option value="Familiar">Familiar</option>
+              <option value="Penal">Penal</option>
+            </select>
+          </label>
           <label>Fecha de reserva <input name="date" type="date" required /></label>
           <label>Hora de reserva <input name="time" type="time" required /></label>
           <label>Abogado asignado
@@ -70,7 +77,7 @@
         <p class="muted">WhatsApp de notificación TACAM: <strong>+56987591312</strong></p>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Fecha creación</th><th>Persona</th><th>Teléfono</th><th>Cita</th><th>Abogado</th><th>Estado</th><th>Gestión</th><th>Notificar</th></tr></thead>
+            <thead><tr><th>Fecha creación</th><th>Persona</th><th>Materia</th><th>Teléfono</th><th>Cita</th><th>Abogado</th><th>Estado</th><th>Gestión</th><th>Notificar</th></tr></thead>
             <tbody id="bookings-body"></tbody>
           </table>
         </div>
@@ -97,7 +104,7 @@
         <div id="agenda-calendar" class="calendar"></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Persona</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Persona</th><th>Materia</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody id="agenda-body"></tbody>
           </table>
         </div>

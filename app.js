@@ -64,7 +64,17 @@ function notifyBooking(booking) {
 function buildRescheduleMessage(booking, fromDate, toDate) {
   const fromText = `${fromDate || '-'} ${booking.time || ''}`.trim();
   const toText = `${toDate || '-'} ${booking.time || ''}`.trim();
-  return `TACAM: su cita fue reagendada. Cliente: ${booking.customer || 'Cliente'}. Antes: ${fromText}. Nueva fecha: ${toText}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+  return `TACAM: su cita fue reagendada. Cliente: ${booking.customer || 'Cliente'}. Materia: ${booking.matter || 'General'}. Antes: ${fromText}. Nueva fecha: ${toText}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+}
+
+function getAppointmentDateTime(booking) {
+  if (!booking.date || !booking.time) return null;
+  const dateTime = new Date(`${booking.date}T${booking.time}:00`);
+  return Number.isNaN(dateTime.getTime()) ? null : dateTime;
+}
+
+function buildReminderMessage(booking, minutesLeft) {
+  return `Recordatorio TACAM: su cita de materia ${booking.matter || 'General'} es en ${minutesLeft} minutos (${booking.date} ${booking.time}). Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
 }
 
 function getLawyerPhone(lawyerName) {
@@ -91,6 +101,41 @@ function notifyReschedule(booking, fromDate, toDate) {
   }
 }
 
+function notifyUpcomingAppointments() {
+  const now = new Date();
+  const bookings = getBookings();
+  let hasUpdates = false;
+
+  bookings.forEach(booking => {
+    const appointment = getAppointmentDateTime(booking);
+    if (!appointment || booking.status === 'cancelada' || booking.status === 'atendida' || booking.reminderSentAt) return;
+
+    const diffMinutes = Math.round((appointment.getTime() - now.getTime()) / 60000);
+    if (diffMinutes < 0 || diffMinutes > 60) return;
+
+    const message = buildReminderMessage(booking, diffMinutes);
+    const encoded = encodeURIComponent(message);
+    const targets = [cleanPhone(booking.phone), getLawyerPhone(booking.assignedTo)].filter(Boolean);
+    [...new Set(targets)].forEach(target => {
+      window.open(`https://wa.me/${target}?text=${encoded}`, '_blank', 'noopener');
+    });
+
+    const email = String(booking.email || '').trim();
+    if (email) {
+      const subject = encodeURIComponent('Recordatorio de cita TACAM');
+      window.open(`mailto:${encodeURIComponent(email)}?subject=${subject}&body=${encoded}`, '_blank', 'noopener');
+    }
+
+    booking.reminderSentAt = now.toISOString();
+    hasUpdates = true;
+  });
+
+  if (hasUpdates) {
+    saveBookings(bookings);
+    renderAll();
+  }
+}
+
 function moveBookingDate(bookingId, newDate) {
   if (!newDate) return;
   const bookings = getBookings();
@@ -99,6 +144,7 @@ function moveBookingDate(bookingId, newDate) {
 
   const oldDate = booking.date;
   booking.date = newDate;
+  booking.reminderSentAt = '';
   saveBookings(bookings);
   renderAll();
   notifyReschedule(booking, oldDate, newDate);
@@ -316,7 +362,7 @@ function renderCalendar(container, bookings, selectedMonth) {
             dragEvent.dataTransfer?.setData('text/booking-id', booking.id);
           });
           event.style.setProperty('--event-color', getLawyerColor(booking.assignedTo));
-          event.textContent = `${booking.time || '--:--'} · ${booking.assignedTo || 'Sin abogada'} · ${booking.customer || 'Cliente'}`;
+          event.textContent = `${booking.time || '--:--'} · ${booking.assignedTo || 'Sin abogada'} · ${booking.customer || 'Cliente'} · ${booking.matter || 'General'}`;
           dayCell.appendChild(event);
         });
     }
@@ -351,7 +397,7 @@ function renderBookings() {
   if (!bookings.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 8;
+    cell.colSpan = 9;
     cell.textContent = 'Sin reservas registradas';
     row.appendChild(cell);
     bookingsBody.appendChild(row);
@@ -363,6 +409,7 @@ function renderBookings() {
 
     appendCell(row, fmtDate(booking.createdAt));
     appendCell(row, booking.customer || '');
+    appendCell(row, booking.matter || 'General');
     appendCell(row, booking.phone || '');
     appendCell(row, formatAppointment(booking));
 
@@ -444,7 +491,7 @@ function renderAgenda() {
   if (!bookings.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 5;
+    cell.colSpan = 6;
     cell.textContent = 'Sin citas para mostrar';
     row.appendChild(cell);
     agendaBody.appendChild(row);
@@ -452,6 +499,7 @@ function renderAgenda() {
     bookings.forEach(booking => {
       const row = document.createElement('tr');
       appendCell(row, booking.customer || '');
+      appendCell(row, booking.matter || 'General');
       appendCell(row, formatAppointment(booking));
       appendCell(row, booking.notes || '-');
 
@@ -608,12 +656,14 @@ bookingForm.addEventListener('submit', event => {
     customer: String(data.get('customer') || '').trim(),
     phone: String(data.get('phone') || '').trim(),
     email: String(data.get('email') || '').trim(),
+    matter: String(data.get('matter') || '').trim(),
     date: String(data.get('date') || '').trim(),
     time: String(data.get('time') || '').trim(),
     assignedTo: String(data.get('assignedTo') || '').trim(),
     notes: String(data.get('notes') || '').trim(),
     status: 'nueva',
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    reminderSentAt: ''
   });
   saveBookings(bookings);
   bookingForm.reset();
@@ -711,5 +761,8 @@ saveSession({ loggedIn: false });
 showLogin();
 
 setInterval(() => {
-  if (!appShell.hidden) renderAll();
+  if (!appShell.hidden) {
+    renderAll();
+    notifyUpcomingAppointments();
+  }
 }, 5000);

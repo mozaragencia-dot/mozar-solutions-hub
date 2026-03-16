@@ -26,6 +26,8 @@ function seedData() {
         id: crypto.randomUUID(),
         customer: 'Cliente Demo',
         phone: '+56911111111',
+        email: 'cliente.demo@tacam.cl',
+        matter: 'Familiar',
         date: new Date().toISOString().slice(0, 10),
         time: '10:30',
         assignedTo: 'Daniela Sierra',
@@ -114,7 +116,8 @@ function cleanPhone(phone) {
 
 function buildTacamMessage(booking) {
   const appointment = `${booking.date || ''} ${booking.time || ''}`.trim();
-  return `Desde TACAM, informamos toda la información de su reserva. Persona: ${booking.customer}. Fecha/Hora: ${appointment}. Abogado: ${booking.assignedTo || 'Por confirmar'}. Estado: ${statusLabel(booking.status)}.`;
+  const matter = booking.matter || 'General';
+  return `Desde TACAM, informamos toda la información de su reserva. Persona: ${booking.customer}. Materia: ${matter}. Fecha/Hora: ${appointment}. Abogado: ${booking.assignedTo || 'Por confirmar'}. Estado: ${statusLabel(booking.status)}.`;
 }
 
 function fileToDataUrl(file) {
