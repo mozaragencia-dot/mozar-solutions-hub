@@ -17,6 +17,11 @@ const lawyerCalendarMonth = document.getElementById('lawyer-calendar-month');
 const lawyerCalendar = document.getElementById('lawyer-calendar');
 const lawyerCalendarLegend = document.getElementById('lawyer-calendar-legend');
 const sharedOnlyInput = document.getElementById('shared-only');
+const generalStatsChart = document.getElementById('general-stats-chart');
+const lawyerStatsChart = document.getElementById('lawyer-stats-chart');
+const downloadGeneralReportBtn = document.getElementById('download-general-report');
+const downloadLawyerReportBtn = document.getElementById('download-lawyer-report');
+const downloadBookingsReportBtn = document.getElementById('download-bookings-report');
 const profileForm = document.getElementById('profile-form');
 const profileList = document.getElementById('profile-list');
 const assignedToSelect = bookingForm.elements.assignedTo;
@@ -390,6 +395,106 @@ function renderLawyerCalendar() {
   renderCalendar(lawyerCalendar, bookings, selectedMonth);
 }
 
+function getGeneralStatusStats() {
+  const stats = { nueva: 0, confirmada: 0, atendida: 0, cancelada: 0 };
+  getBookings().forEach(booking => {
+    if (Object.hasOwn(stats, booking.status)) stats[booking.status] += 1;
+  });
+  return stats;
+}
+
+function getLawyerAttentionStats() {
+  const map = new Map();
+  getBookings().forEach(booking => {
+    const name = (booking.assignedTo || 'Sin abogada').trim() || 'Sin abogada';
+    if (!map.has(name)) map.set(name, { total: 0, atendida: 0 });
+    const item = map.get(name);
+    item.total += 1;
+    if (booking.status === 'atendida') item.atendida += 1;
+  });
+
+  return [...map.entries()]
+    .map(([lawyer, values]) => ({ lawyer, ...values }))
+    .sort((a, b) => a.lawyer.localeCompare(b.lawyer, 'es'));
+}
+
+function drawBarChart(canvas, labels, values, colors, title) {
+  if (!(canvas instanceof HTMLCanvasElement)) return;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  const width = canvas.width;
+  const height = canvas.height;
+  ctx.clearRect(0, 0, width, height);
+
+  const padLeft = 52;
+  const padRight = 16;
+  const padTop = 36;
+  const padBottom = 46;
+  const chartWidth = width - padLeft - padRight;
+  const chartHeight = height - padTop - padBottom;
+  const maxValue = Math.max(1, ...values);
+
+  ctx.fillStyle = '#5a313d';
+  ctx.font = 'bold 14px Arial';
+  ctx.fillText(title, padLeft, 20);
+
+  ctx.strokeStyle = '#d9c8ce';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padLeft, padTop);
+  ctx.lineTo(padLeft, padTop + chartHeight);
+  ctx.lineTo(padLeft + chartWidth, padTop + chartHeight);
+  ctx.stroke();
+
+  const barSpace = chartWidth / Math.max(labels.length, 1);
+  const barWidth = Math.max(16, barSpace * 0.55);
+
+  values.forEach((value, index) => {
+    const barHeight = (value / maxValue) * (chartHeight - 8);
+    const x = padLeft + index * barSpace + (barSpace - barWidth) / 2;
+    const y = padTop + chartHeight - barHeight;
+
+    ctx.fillStyle = colors[index] || '#8f203a';
+    ctx.fillRect(x, y, barWidth, barHeight);
+
+    ctx.fillStyle = '#2f1a21';
+    ctx.font = '12px Arial';
+    ctx.fillText(String(value), x + barWidth / 2 - 5, y - 6);
+
+    ctx.fillStyle = '#5a313d';
+    const label = labels[index].length > 16 ? `${labels[index].slice(0, 16)}…` : labels[index];
+    ctx.fillText(label, x, padTop + chartHeight + 18);
+  });
+}
+
+function downloadCsv(filename, rows) {
+  const csv = rows.map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  URL.revokeObjectURL(link.href);
+  link.remove();
+}
+
+function renderReports() {
+  const general = getGeneralStatusStats();
+  const generalLabels = ['Nueva', 'Confirmada', 'Atendida', 'Cancelada'];
+  const generalValues = [general.nueva, general.confirmada, general.atendida, general.cancelada];
+  const generalColors = ['#f5d3dc', '#ead8fa', '#ceefd8', '#ffd1d1'];
+  drawBarChart(generalStatsChart, generalLabels, generalValues, generalColors, 'Atenciones generales por estado');
+
+  const lawyerStats = getLawyerAttentionStats();
+  const lawyerLabels = lawyerStats.map(item => item.lawyer);
+  const lawyerValues = lawyerStats.map(item => item.atendida);
+  const lawyerColors = lawyerLabels.map(getLawyerColor);
+  drawBarChart(lawyerStatsChart, lawyerLabels, lawyerValues, lawyerColors, 'Atenciones (estado atendida) por abogada');
+}
+
 function renderBookings() {
   const bookings = getBookings();
   bookingsBody.replaceChildren();
@@ -629,6 +734,7 @@ function renderAll() {
   renderLawyers();
   renderLawyerCalendar();
   renderProfiles();
+  renderReports();
 }
 
 loginForm.addEventListener('submit', event => {
@@ -678,6 +784,47 @@ agendaMonthInput.addEventListener('change', renderAgendaCalendar);
 lawyerCalendarFilter.addEventListener('change', renderLawyerCalendar);
 lawyerCalendarMonth.addEventListener('change', renderLawyerCalendar);
 sharedOnlyInput.addEventListener('change', renderLawyerCalendar);
+
+downloadGeneralReportBtn.addEventListener('click', () => {
+  const stats = getGeneralStatusStats();
+  downloadCsv('reporte-general-tacam.csv', [
+    ['Estado', 'Cantidad'],
+    ['Nueva', stats.nueva],
+    ['Confirmada', stats.confirmada],
+    ['Atendida', stats.atendida],
+    ['Cancelada', stats.cancelada]
+  ]);
+});
+
+downloadLawyerReportBtn.addEventListener('click', () => {
+  const rows = [['Abogada', 'Total citas', 'Atendidas']];
+  getLawyerAttentionStats().forEach(item => {
+    rows.push([item.lawyer, item.total, item.atendida]);
+  });
+  downloadCsv('reporte-abogadas-tacam.csv', rows);
+});
+
+downloadBookingsReportBtn.addEventListener('click', () => {
+  const rows = [[
+    'ID', 'Cliente', 'Materia', 'Telefono', 'Correo', 'Fecha', 'Hora', 'Abogada', 'Estado', 'Motivo', 'Creada en'
+  ]];
+  getBookings().forEach(booking => {
+    rows.push([
+      booking.id,
+      booking.customer,
+      booking.matter,
+      booking.phone,
+      booking.email,
+      booking.date,
+      booking.time,
+      booking.assignedTo,
+      booking.status,
+      booking.notes,
+      booking.createdAt
+    ]);
+  });
+  downloadCsv('reporte-detalle-citas-tacam.csv', rows);
+});
 
 moduleTabs.forEach(tab => {
   tab.addEventListener('click', () => switchModule(tab.dataset.moduleTab));

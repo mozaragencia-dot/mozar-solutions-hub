@@ -41,6 +41,7 @@
         <button type="button" class="module-tab" data-module-tab="bookings">No Contrataron / Contratados</button>
         <button type="button" class="module-tab" data-module-tab="agenda">Agendamiento y Visitas</button>
         <button type="button" class="module-tab" data-module-tab="lawyers">Perfiles de Abogados</button>
+        <button type="button" class="module-tab" data-module-tab="reports">Reportes y Gráficos</button>
       </nav>
 
       <section class="card module-panel active" data-module-panel="create">
@@ -161,6 +162,28 @@
           <button type="submit">Crear / Actualizar perfil</button>
         </form>
         <div id="profile-list" class="profile-grid"></div>
+      </section>
+
+      <section class="card module-panel" data-module-panel="reports">
+        <h2>Reportes de Atenciones</h2>
+        <p class="muted">Visualiza métricas generales y separadas por abogada. Puedes descargar los datos en formato Excel (CSV).</p>
+
+        <div class="report-grid">
+          <article class="report-card">
+            <h3>General por estado</h3>
+            <canvas id="general-stats-chart" width="800" height="320"></canvas>
+          </article>
+          <article class="report-card">
+            <h3>Atenciones por abogada</h3>
+            <canvas id="lawyer-stats-chart" width="800" height="320"></canvas>
+          </article>
+        </div>
+
+        <div class="report-actions">
+          <button type="button" id="download-general-report">Descargar reporte general (Excel/CSV)</button>
+          <button type="button" id="download-lawyer-report">Descargar reporte por abogada (Excel/CSV)</button>
+          <button type="button" id="download-bookings-report">Descargar detalle completo (Excel/CSV)</button>
+        </div>
       </section>
 
       <footer class="footer-sign">
