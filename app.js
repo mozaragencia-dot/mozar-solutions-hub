@@ -79,7 +79,27 @@ function getAppointmentDateTime(booking) {
 }
 
 function buildReminderMessage(booking, minutesLeft) {
-  return `Recordatorio TACAM: su cita de materia ${booking.matter || 'General'} es en ${minutesLeft} minutos (${booking.date} ${booking.time}). Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+  return `Recordatorio TACAM: vas a tener una cita en ${minutesLeft} minutos. Fecha/Hora: ${booking.date} ${booking.time}. Materia: ${booking.matter || 'General'}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+}
+
+function buildVisitScheduledMessage(booking) {
+  return `Calendario de visitas TACAM: enviamos correo automático a la persona. Tu cita quedó agendada para ${booking.date} ${booking.time}. Materia: ${booking.matter || 'General'}. Abogada: ${booking.assignedTo || 'Por confirmar'}. Luego recibirás un recordatorio de que vas a tener una cita.`;
+}
+
+function notifyVisitScheduled(booking) {
+  const message = buildVisitScheduledMessage(booking);
+  const encoded = encodeURIComponent(message);
+
+  const phone = cleanPhone(booking.phone);
+  if (phone) {
+    window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank', 'noopener');
+  }
+
+  const email = String(booking.email || '').trim();
+  if (email) {
+    const subject = encodeURIComponent('Calendario de visitas TACAM: cita agendada');
+    window.open(`mailto:${encodeURIComponent(email)}?subject=${subject}&body=${encoded}`, '_blank', 'noopener');
+  }
 }
 
 function getLawyerPhone(lawyerName) {
@@ -127,7 +147,7 @@ function notifyUpcomingAppointments() {
 
     const email = String(booking.email || '').trim();
     if (email) {
-      const subject = encodeURIComponent('Recordatorio de cita TACAM');
+      const subject = encodeURIComponent('Recordatorio TACAM: vas a tener una cita');
       window.open(`mailto:${encodeURIComponent(email)}?subject=${subject}&body=${encoded}`, '_blank', 'noopener');
     }
 
@@ -772,6 +792,7 @@ bookingForm.addEventListener('submit', event => {
     reminderSentAt: ''
   });
   saveBookings(bookings);
+  notifyVisitScheduled(bookings[0]);
   bookingForm.reset();
   renderAll();
 });
