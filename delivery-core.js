@@ -1,9 +1,35 @@
 const STORAGE_KEYS = {
   bookings: 'tacam_bookings',
   lawyers: 'tacam_lawyers',
-  profiles: 'tacam_profiles',
   session: 'tacam_session'
 };
+
+const DEFAULT_LAWYERS = [
+  {
+    name: 'Daniela Sierra',
+    specialty: 'Derecho de Familia',
+    phone: '+56987591312',
+    photo: 'assets/logo-color.svg'
+  },
+  {
+    name: 'Natalie Gómez',
+    specialty: 'Derecho Penal',
+    phone: '+56987591313',
+    photo: 'assets/logo-color.svg'
+  },
+  {
+    name: 'Camila Vásquez',
+    specialty: 'Derecho Civil',
+    phone: '+56987591314',
+    photo: 'assets/logo-color.svg'
+  },
+  {
+    name: 'Carolina Contreras',
+    specialty: 'Derecho Laboral',
+    phone: '+56987591315',
+    photo: 'assets/logo-color.svg'
+  }
+];
 
 function loadJson(key, fallback) {
   try {
@@ -25,7 +51,6 @@ function seedData() {
       {
         id: crypto.randomUUID(),
         customer: 'Cliente Demo',
-        rut: '12.345.678-9',
         phone: '+56911111111',
         email: 'cliente.demo@tacam.cl',
         matter: 'Familiar',
@@ -41,28 +66,10 @@ function seedData() {
 
   const lawyers = loadJson(STORAGE_KEYS.lawyers, []);
   if (!lawyers.length) {
-    saveJson(STORAGE_KEYS.lawyers, [
-      {
-        id: crypto.randomUUID(),
-        name: 'Daniela Sierra',
-        specialty: 'Derecho de Familia',
-        phone: '+56987591312',
-        photo: 'assets/logo-color.svg'
-      }
-    ]);
-  }
-
-  const profiles = loadJson(STORAGE_KEYS.profiles, []);
-  if (!profiles.length) {
-    saveJson(STORAGE_KEYS.profiles, [
-      {
-        id: crypto.randomUUID(),
-        name: 'Administrador TACAM',
-        username: 'admin',
-        role: 'Admin',
-        permissions: ['Reservas', 'Agenda', 'Abogadas', 'Estadísticas']
-      }
-    ]);
+    saveJson(STORAGE_KEYS.lawyers, DEFAULT_LAWYERS.map(lawyer => ({
+      id: crypto.randomUUID(),
+      ...lawyer
+    })));
   }
 }
 
@@ -82,20 +89,27 @@ function saveLawyers(lawyers) {
   saveJson(STORAGE_KEYS.lawyers, lawyers);
 }
 
-function getProfiles() {
-  return loadJson(STORAGE_KEYS.profiles, []);
-}
-
-function saveProfiles(profiles) {
-  saveJson(STORAGE_KEYS.profiles, profiles);
-}
-
 function getSession() {
   return loadJson(STORAGE_KEYS.session, { loggedIn: false });
 }
 
 function saveSession(session) {
   saveJson(STORAGE_KEYS.session, session);
+}
+
+function ensureDefaultLawyers() {
+  const current = loadJson(STORAGE_KEYS.lawyers, []);
+  const byName = new Map(current.map(lawyer => [String(lawyer.name || '').trim().toLowerCase(), lawyer]));
+  const normalized = DEFAULT_LAWYERS.map(lawyer => {
+    const existing = byName.get(lawyer.name.trim().toLowerCase());
+    return {
+      id: existing?.id || crypto.randomUUID(),
+      ...lawyer,
+      photo: existing?.photo || lawyer.photo
+    };
+  });
+
+  saveJson(STORAGE_KEYS.lawyers, normalized);
 }
 
 function statusLabel(status) {

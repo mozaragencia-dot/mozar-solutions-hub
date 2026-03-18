@@ -22,11 +22,6 @@ const lawyerStatsChart = document.getElementById('lawyer-stats-chart');
 const downloadGeneralReportBtn = document.getElementById('download-general-report');
 const downloadLawyerReportBtn = document.getElementById('download-lawyer-report');
 const downloadBookingsReportBtn = document.getElementById('download-bookings-report');
-const profileForm = document.getElementById('profile-form');
-const profileList = document.getElementById('profile-list');
-const rutInput = bookingForm.elements.rut;
-const phoneInput = bookingForm.elements.phone;
-const chileClock = document.getElementById('chile-clock');
 const assignedToSelect = bookingForm.elements.assignedTo;
 const moduleTabs = document.querySelectorAll('[data-module-tab]');
 const modulePanels = document.querySelectorAll('[data-module-panel]');
@@ -201,44 +196,6 @@ function appendCell(row, text) {
   cell.textContent = text;
   row.appendChild(cell);
   return cell;
-}
-
-function formatRut(value) {
-  const clean = String(value || '').replace(/[^0-9kK]/g, '').toUpperCase();
-  if (!clean) return '';
-  if (clean.length === 1) return clean;
-
-  const verifier = clean.slice(-1);
-  const body = clean.slice(0, -1).slice(0, 8);
-  const grouped = body.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return `${grouped}-${verifier}`;
-}
-
-function formatPhone(value) {
-  let digits = String(value || '').replace(/\D/g, '');
-  if (digits.startsWith('56')) digits = digits.slice(2);
-  if (digits.startsWith('0')) digits = digits.slice(1);
-  if (!digits.startsWith('9')) digits = `9${digits}`;
-  digits = digits.slice(0, 9);
-  return `+56${digits}`;
-}
-
-function isValidRut(value) {
-  return /^\d{1,2}(\.\d{3}){1,2}-[\dK]$/.test(String(value || '').toUpperCase());
-}
-
-function isValidPhone(value) {
-  return /^\+569\d{8}$/.test(String(value || ''));
-}
-
-function updateChileClock() {
-  if (!chileClock) return;
-  chileClock.textContent = new Date().toLocaleTimeString('es-CL', {
-    timeZone: 'America/Santiago',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  });
 }
 
 function getLawyerNames() {
@@ -754,44 +711,6 @@ function renderLawyers() {
   });
 }
 
-function renderProfiles() {
-  const profiles = getProfiles();
-  profileList.replaceChildren();
-
-  if (!profiles.length) {
-    const empty = document.createElement('p');
-    empty.textContent = 'No hay perfiles creados.';
-    profileList.appendChild(empty);
-    return;
-  }
-
-  profiles.forEach(profile => {
-    const card = document.createElement('article');
-    card.className = 'profile-card';
-
-    const content = document.createElement('div');
-    const title = document.createElement('h4');
-    title.textContent = `${profile.name} (${profile.role})`;
-    content.appendChild(title);
-
-    const user = document.createElement('small');
-    user.textContent = `Usuario: ${profile.username}`;
-    content.appendChild(user);
-
-    const perms = document.createElement('ul');
-    perms.className = 'profile-perms';
-    (profile.permissions || []).forEach(permission => {
-      const item = document.createElement('li');
-      item.textContent = permission;
-      perms.appendChild(item);
-    });
-
-    content.appendChild(perms);
-    card.appendChild(content);
-    profileList.appendChild(card);
-  });
-}
-
 function renderAll() {
   renderLawyerOptions();
   renderBookings();
@@ -799,7 +718,6 @@ function renderAll() {
   renderAgendaCalendar();
   renderLawyers();
   renderLawyerCalendar();
-  renderProfiles();
   renderReports();
 }
 
@@ -822,38 +740,12 @@ loginForm.addEventListener('submit', event => {
 bookingForm.addEventListener('submit', event => {
   event.preventDefault();
   const data = new FormData(bookingForm);
-  const rut = formatRut(data.get('rut'));
-  const phone = formatPhone(data.get('phone'));
-  const email = String(data.get('email') || '').trim();
-
-  if (!isValidRut(rut)) {
-    rutInput.setCustomValidity('El RUT debe tener formato xx.xxx.xxx-x');
-    rutInput.reportValidity();
-    return;
-  }
-  rutInput.setCustomValidity('');
-
-  if (!isValidPhone(phone)) {
-    phoneInput.setCustomValidity('El teléfono debe tener formato +5691111111');
-    phoneInput.reportValidity();
-    return;
-  }
-  phoneInput.setCustomValidity('');
-
-  if (!email) {
-    bookingForm.elements.email.setCustomValidity('El correo es obligatorio');
-    bookingForm.elements.email.reportValidity();
-    return;
-  }
-  bookingForm.elements.email.setCustomValidity('');
-
   const bookings = getBookings();
   bookings.unshift({
     id: crypto.randomUUID(),
     customer: String(data.get('customer') || '').trim(),
-    rut,
-    phone,
-    email,
+    phone: String(data.get('phone') || '').trim(),
+    email: String(data.get('email') || '').trim(),
     matter: String(data.get('matter') || '').trim(),
     date: String(data.get('date') || '').trim(),
     time: String(data.get('time') || '').trim(),
@@ -867,18 +759,7 @@ bookingForm.addEventListener('submit', event => {
   saveBookings(bookings);
   notifyVisitScheduled(bookings[0]);
   bookingForm.reset();
-  phoneInput.value = '+569';
   renderAll();
-});
-
-rutInput.addEventListener('input', () => {
-  const cursorAtEnd = rutInput.selectionStart === rutInput.value.length;
-  rutInput.value = formatRut(rutInput.value);
-  if (cursorAtEnd) rutInput.setSelectionRange(rutInput.value.length, rutInput.value.length);
-});
-
-phoneInput.addEventListener('input', () => {
-  phoneInput.value = formatPhone(phoneInput.value);
 });
 
 lawyerFilter.addEventListener('change', () => {
@@ -911,13 +792,12 @@ downloadLawyerReportBtn.addEventListener('click', () => {
 
 downloadBookingsReportBtn.addEventListener('click', () => {
   const rows = [[
-    'ID', 'Cliente', 'RUT', 'Materia', 'Telefono', 'Correo', 'Fecha', 'Hora', 'Abogada', 'Estado', 'Motivo', 'Creada en'
+    'ID', 'Cliente', 'Materia', 'Telefono', 'Correo', 'Fecha', 'Hora', 'Abogada', 'Estado', 'Motivo', 'Creada en'
   ]];
   getBookings().forEach(booking => {
     rows.push([
       booking.id,
       booking.customer,
-      booking.rut,
       booking.matter,
       booking.phone,
       booking.email,
@@ -967,56 +847,18 @@ lawyerForm.addEventListener('submit', async event => {
   renderAll();
 });
 
-profileForm.addEventListener('submit', event => {
-  event.preventDefault();
-  const data = new FormData(profileForm);
-  const name = String(data.get('name') || '').trim();
-  const username = String(data.get('username') || '').trim();
-  const role = String(data.get('role') || '').trim();
-
-  if (!name || !username || !role) return;
-
-  const permissions = [];
-  if (data.get('permBookings')) permissions.push('Reservas');
-  if (data.get('permAgenda')) permissions.push('Agenda');
-  if (data.get('permLawyers')) permissions.push('Abogadas');
-  if (data.get('permReports')) permissions.push('Estadísticas');
-
-  const profiles = getProfiles();
-  const existing = profiles.find(profile => (profile.username || '').trim().toLowerCase() === username.toLowerCase());
-
-  if (existing) {
-    existing.name = name;
-    existing.role = role;
-    existing.permissions = permissions;
-  } else {
-    profiles.unshift({
-      id: crypto.randomUUID(),
-      name,
-      username,
-      role,
-      permissions
-    });
-  }
-
-  saveProfiles(profiles);
-  profileForm.reset();
-  renderProfiles();
-});
-
 switchModule('create');
 
 const currentMonth = monthValueFromDate(new Date());
 agendaMonthInput.value = currentMonth;
 lawyerCalendarMonth.value = currentMonth;
-phoneInput.value = '+569';
-updateChileClock();
+
+ensureDefaultLawyers();
 
 saveSession({ loggedIn: false });
 showLogin();
 
 setInterval(() => {
-  updateChileClock();
   if (!appShell.hidden) {
     renderAll();
     notifyUpcomingAppointments();
