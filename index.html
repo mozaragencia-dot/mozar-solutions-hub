@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pulse 50/50</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="split-screen" aria-label="Estado de la votación">
+        <article class="result-panel result-panel--yes" id="panel-yes">
+          <div>
+            <p class="result-panel__label">A favor</p>
+            <strong class="result-panel__percent" id="percent-yes">50%</strong>
+          </div>
+        </article>
+        <article class="result-panel result-panel--no" id="panel-no">
+          <div>
+            <p class="result-panel__label">En contra</p>
+            <strong class="result-panel__percent" id="percent-no">50%</strong>
+          </div>
+        </article>
+      </section>
+
+      <section class="card">
+        <p class="eyebrow">Demo visual para Android y iPhone</p>
+        <h1>¿Estás de acuerdo con cómo va el gobierno de Kast?</h1>
+        <p class="lead">
+          Ingresa tu RUT para participar. Esta demo procesa el dato solo en el navegador y lo
+          limpia al enviar: no se guarda en almacenamiento local ni se manda a un servidor.
+        </p>
+
+        <form id="vote-form" class="vote-form">
+          <label class="field">
+            <span>Ingresa tu RUT</span>
+            <input
+              id="rut"
+              name="rut"
+              type="text"
+              inputmode="text"
+              autocomplete="off"
+              placeholder="12.345.678-9"
+              maxlength="12"
+              required
+            />
+          </label>
+
+          <div class="choices" role="group" aria-label="Opciones de voto">
+            <button type="submit" name="vote" value="yes" class="choice choice--yes">Sí</button>
+            <button type="submit" name="vote" value="no" class="choice choice--no">No</button>
+          </div>
+        </form>
+
+        <div class="meta">
+          <p id="status">Pantalla inicial equilibrada en 50% / 50%.</p>
+          <p>Los colores se intensifican según quién va ganando o perdiendo.</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>

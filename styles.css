@@ -1,0 +1,162 @@
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --text: #0f172a;
+  --muted: #475569;
+  --card: rgba(255, 255, 255, 0.92);
+  --border: rgba(15, 23, 42, 0.12);
+  --yes-base: 91 192 190;
+  --no-base: 245 158 11;
+  --yes-strength: 0.5;
+  --no-strength: 0.5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--text);
+  background: linear-gradient(160deg, #f8fafc, #e2e8f0);
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: minmax(42vh, 1fr) auto;
+}
+
+.split-screen {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.result-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem 1rem;
+  transition: background-color 300ms ease, flex-basis 300ms ease;
+}
+
+.result-panel--yes {
+  background: rgb(var(--yes-base) / calc(0.25 + var(--yes-strength) * 0.7));
+}
+
+.result-panel--no {
+  background: rgb(var(--no-base) / calc(0.22 + var(--no-strength) * 0.7));
+}
+
+.result-panel__label {
+  margin: 0 0 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+}
+
+.result-panel__percent {
+  font-size: clamp(2.5rem, 9vw, 5rem);
+}
+
+.card {
+  width: min(720px, calc(100% - 2rem));
+  margin: -3rem auto 1.5rem;
+  padding: 1.5rem;
+  border-radius: 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(16px);
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #0f766e;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+}
+
+.lead,
+.meta {
+  color: var(--muted);
+}
+
+.vote-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.field span {
+  font-weight: 600;
+}
+
+.field input {
+  width: 100%;
+  padding: 0.95rem 1rem;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  font-size: 1rem;
+}
+
+.choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.choice {
+  min-height: 56px;
+  border: 0;
+  border-radius: 18px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: white;
+}
+
+.choice--yes {
+  background: rgb(13 148 136);
+}
+
+.choice--no {
+  background: rgb(217 119 6);
+}
+
+.meta {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 1rem;
+  font-size: 0.95rem;
+}
+
+.meta p {
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .app-shell {
+    grid-template-rows: minmax(36vh, 0.8fr) auto;
+  }
+
+  .card {
+    margin-top: -2rem;
+    padding: 1.25rem;
+  }
+}
