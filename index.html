@@ -25,6 +25,12 @@
         <label>Teléfono <input name="phone" required placeholder="+569..." /></label>
         <label>Fecha de reserva <input name="date" type="date" required /></label>
         <label>Hora de reserva <input name="time" type="time" required /></label>
+        <label>Tipo de gestión
+          <select name="serviceType" required>
+            <option value="Consulta general">Consulta general</option>
+            <option value="Visita cartel">Visita cartel</option>
+          </select>
+        </label>
         <label>Abogado asignado
           <select name="assignedTo" required>
             <option value="">Seleccione</option>
@@ -33,6 +39,18 @@
             <option value="Camila Vásquez">Camila Vásquez</option>
             <option value="Carolina Contreras">Carolina Contreras</option>
           </select>
+        </label>
+        <label>Recordatorio
+          <select name="reminderTiming">
+            <option value="Sin recordatorio">Sin recordatorio</option>
+            <option value="24 horas antes">24 horas antes</option>
+            <option value="2 horas antes">2 horas antes</option>
+            <option value="Al momento de crear">Al momento de crear</option>
+          </select>
+        </label>
+        <label class="inline-check">
+          <input name="internalReminder" type="checkbox" checked />
+          Crear recordatorio interno
         </label>
         <label class="full">Motivo de consulta <textarea name="notes" rows="3" placeholder="Detalle del caso..."></textarea></label>
         <button type="submit">Guardar reserva</button>
@@ -44,7 +62,7 @@
       <p class="muted">WhatsApp de notificación TACAM: <strong>+56987591312</strong></p>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Fecha creación</th><th>Persona</th><th>Teléfono</th><th>Cita</th><th>Abogado</th><th>Estado</th><th>Gestión</th><th>Notificar</th></tr></thead>
+          <thead><tr><th>Fecha creación</th><th>Persona</th><th>Teléfono</th><th>Cita</th><th>Tipo</th><th>Abogado</th><th>Estado</th><th>Gestión</th><th>Notificar</th></tr></thead>
           <tbody id="bookings-body"></tbody>
         </table>
       </div>
@@ -63,8 +81,19 @@
       </label>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Persona</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <thead><tr><th>Persona</th><th>Cita</th><th>Tipo</th><th>Motivo</th><th>Estado</th><th>Acciones</th></tr></thead>
           <tbody id="agenda-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Recordatorios y tareas internas</h2>
+      <p class="muted">Las reservas marcadas como <strong>Visita cartel</strong> crean automáticamente una tarea interna de seguimiento.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Persona</th><th>Cita</th><th>Recordatorio</th><th>Tarea interna</th><th>Estado</th></tr></thead>
+          <tbody id="reminders-body"></tbody>
         </table>
       </div>
     </section>
@@ -83,7 +112,10 @@
 
     <footer class="footer-sign">
       <img src="assets/logo-color.svg" alt="Logo TACAM" />
-      <span>Desarrollo por <strong>Agencia Digital</strong></span>
+      <div>
+        <span>Desarrollo por <strong>Agencia Digital</strong></span>
+        <small id="app-version" class="app-version"></small>
+      </div>
     </footer>
   </main>
 
