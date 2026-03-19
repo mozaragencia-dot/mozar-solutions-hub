@@ -10,6 +10,7 @@ const lawyerFilter = document.getElementById('lawyer-filter');
 const agendaMonthInput = document.getElementById('agenda-month');
 const agendaCalendar = document.getElementById('agenda-calendar');
 const agendaLegend = document.getElementById('agenda-color-legend');
+const cartelCalendar = document.getElementById('cartel-calendar');
 const lawyerForm = document.getElementById('lawyer-form');
 const lawyerList = document.getElementById('lawyer-list');
 const lawyerCalendarFilter = document.getElementById('lawyer-calendar-filter');
@@ -28,6 +29,7 @@ const rutInput = bookingForm.elements.rut;
 const phoneInput = bookingForm.elements.phone;
 const chileClock = document.getElementById('chile-clock');
 const assignedToSelect = bookingForm.elements.assignedTo;
+const notesInput = bookingForm.elements.notes;
 const moduleTabs = document.querySelectorAll('[data-module-tab]');
 const modulePanels = document.querySelectorAll('[data-module-panel]');
 
@@ -111,6 +113,26 @@ function notifyBookingChannels(booking, message, emailSubject) {
 function notifyVisitScheduled(booking) {
   const message = buildVisitScheduledMessage(booking);
   notifyBookingChannels(booking, message, 'Calendario de visitas TACAM: cita agendada');
+}
+
+function isCartelVisit(booking) {
+  return String(booking.visitType || '').trim() === 'cartel' || /visita a cartel/i.test(String(booking.notes || ''));
+}
+
+function syncVisitTypeComment() {
+  const selected = bookingForm.querySelector('input[name="visitType"]:checked')?.value || 'oficina';
+  const currentNotes = String(notesInput.value || '').trim();
+
+  if (selected === 'cartel') {
+    if (!/visita a cartel/i.test(currentNotes)) {
+      notesInput.value = currentNotes ? `Visita a cartel. ${currentNotes}` : 'Visita a cartel.';
+    }
+    return;
+  }
+
+  notesInput.value = currentNotes
+    .replace(/^Visita a cartel\.\s*/i, '')
+    .replace(/^Visita a cartel\s*/i, '');
 }
 
 function getLawyerPhone(lawyerName) {
@@ -449,6 +471,14 @@ function renderAgendaCalendar() {
   const names = [...new Set(bookings.map(booking => booking.assignedTo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
   renderCalendarLegend(agendaLegend, names);
   renderCalendar(agendaCalendar, bookings, selectedMonth);
+}
+
+function renderCartelCalendar() {
+  if (!cartelCalendar) return;
+  const selectedLawyer = lawyerFilter.value.trim();
+  const selectedMonth = agendaMonthInput.value;
+  const bookings = getCalendarBookings(selectedLawyer, selectedMonth, false).filter(isCartelVisit);
+  renderCalendar(cartelCalendar, bookings, selectedMonth);
 }
 
 function renderLawyerCalendar() {
@@ -797,6 +827,7 @@ function renderAll() {
   renderBookings();
   renderAgenda();
   renderAgendaCalendar();
+  renderCartelCalendar();
   renderLawyers();
   renderLawyerCalendar();
   renderProfiles();
@@ -847,6 +878,12 @@ bookingForm.addEventListener('submit', event => {
   }
   bookingForm.elements.email.setCustomValidity('');
 
+  const visitType = String(data.get('visitType') || 'oficina').trim();
+  const notes = String(data.get('notes') || '').trim();
+  const normalizedNotes = visitType === 'cartel' && !/visita a cartel/i.test(notes)
+    ? `Visita a cartel. ${notes}`.trim()
+    : notes;
+
   const bookings = getBookings();
   bookings.unshift({
     id: crypto.randomUUID(),
@@ -858,7 +895,8 @@ bookingForm.addEventListener('submit', event => {
     date: String(data.get('date') || '').trim(),
     time: String(data.get('time') || '').trim(),
     assignedTo: String(data.get('assignedTo') || '').trim(),
-    notes: String(data.get('notes') || '').trim(),
+    visitType,
+    notes: normalizedNotes,
     status: 'nueva',
     createdAt: new Date().toISOString(),
     reminder24hSentAt: '',
@@ -868,6 +906,8 @@ bookingForm.addEventListener('submit', event => {
   notifyVisitScheduled(bookings[0]);
   bookingForm.reset();
   phoneInput.value = '+569';
+  bookingForm.querySelector('input[name="visitType"][value="oficina"]').checked = true;
+  syncVisitTypeComment();
   renderAll();
 });
 
@@ -881,11 +921,19 @@ phoneInput.addEventListener('input', () => {
   phoneInput.value = formatPhone(phoneInput.value);
 });
 
+bookingForm.querySelectorAll('input[name="visitType"]').forEach(input => {
+  input.addEventListener('change', syncVisitTypeComment);
+});
+
 lawyerFilter.addEventListener('change', () => {
   renderAgenda();
   renderAgendaCalendar();
+  renderCartelCalendar();
 });
-agendaMonthInput.addEventListener('change', renderAgendaCalendar);
+agendaMonthInput.addEventListener('change', () => {
+  renderAgendaCalendar();
+  renderCartelCalendar();
+});
 lawyerCalendarFilter.addEventListener('change', renderLawyerCalendar);
 lawyerCalendarMonth.addEventListener('change', renderLawyerCalendar);
 sharedOnlyInput.addEventListener('change', renderLawyerCalendar);
@@ -1010,6 +1058,7 @@ const currentMonth = monthValueFromDate(new Date());
 agendaMonthInput.value = currentMonth;
 lawyerCalendarMonth.value = currentMonth;
 phoneInput.value = '+569';
+syncVisitTypeComment();
 updateChileClock();
 
 saveSession({ loggedIn: false });

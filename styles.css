@@ -37,6 +37,7 @@ button{background:var(--wine);color:#fff;border-color:var(--wine-dark);cursor:po
 .permissions-box label{flex-direction:row;align-items:center;gap:6px}
 .calendar-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;align-items:end;margin-bottom:10px}
 .checkbox-inline{flex-direction:row;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#5a313d}
+.visit-type-box{border:1px solid #eadce2;border-radius:10px;padding:12px;background:#fff7fa;display:flex;flex-wrap:wrap;gap:14px}.visit-type-box legend{padding:0 6px;font-weight:700;color:#6f1329}.visit-type-box label{flex-direction:row;align-items:center;gap:8px;font-weight:700;color:#5a313d}
 .calendar-legend{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
 .legend-item{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid #eadce2;border-radius:999px;background:#fff8fb;font-size:12px}
 .legend-dot{width:10px;height:10px;border-radius:50%}
