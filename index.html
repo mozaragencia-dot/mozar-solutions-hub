@@ -74,6 +74,11 @@
               <option value="Carolina Contreras">Carolina Contreras</option>
             </select>
           </label>
+          <fieldset class="full visit-type-box">
+            <legend>Tipo de atención</legend>
+            <label><input type="radio" name="visitType" value="oficina" checked /> Atención en oficina</label>
+            <label><input type="radio" name="visitType" value="cartel" /> Visitas a cartel</label>
+          </fieldset>
           <label class="full">Motivo de consulta <textarea name="notes" rows="3" placeholder="Detalle del caso..."></textarea></label>
           <button type="submit">Guardar reserva</button>
         </form>
@@ -109,6 +114,10 @@
         <div id="agenda-color-legend" class="calendar-legend"></div>
         <p class="muted">Tip: puedes arrastrar y soltar una cita a otro día para reagendar.</p>
         <div id="agenda-calendar" class="calendar"></div>
+
+        <h3>Visitas a cartel</h3>
+        <p class="muted">Este calendario muestra las reservas marcadas como visita a cartel desde el comentario de la cita.</p>
+        <div id="cartel-calendar" class="calendar"></div>
         <div class="table-wrap">
           <table>
             <thead><tr><th>Persona</th><th>Materia</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Acciones</th></tr></thead>
