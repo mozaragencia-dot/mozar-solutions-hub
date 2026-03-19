@@ -6,14 +6,15 @@ main{max-width:1100px;margin:16px auto;padding:0 12px 24px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
 h2{margin:0 0 10px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
-label{display:flex;flex-direction:column;gap:4px;font-size:14px}.full{grid-column:1/-1}
+label{display:flex;flex-direction:column;gap:4px;font-size:14px}.full{grid-column:1/-1}.inline-check{flex-direction:row;align-items:center;gap:8px;align-self:end;padding-bottom:8px}
 input,textarea,select,button{font:inherit;padding:9px;border-radius:8px;border:1px solid #c9bdc1}
 button{background:var(--wine);color:#fff;border-color:var(--wine-dark);cursor:pointer;font-weight:700}
 .table-wrap{overflow:auto} table{width:100%;border-collapse:collapse} th,td{padding:8px;border-bottom:1px solid #eee;text-align:left;font-size:14px;vertical-align:top}
-.badge{font-size:12px;font-weight:700;padding:3px 8px;border-radius:999px;display:inline-block;background:#eee}
+.badge{font-size:12px;font-weight:700;padding:3px 8px;border-radius:999px;display:inline-block;background:#eee}.badge.neutral{background:#ebe5e8;color:#5a3941}.badge.task{background:#ffe9bf;color:#6a4300}
 .badge.nueva{background:#f5d3dc}.badge.confirmada{background:#ead8fa}.badge.atendida{background:#ceefd8}.badge.cancelada{background:#ffd1d1}
+.stack-sm{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
 .lawyer-grid{margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
 .lawyer-card{border:1px solid #eadce2;border-radius:10px;background:#fff8fb;padding:10px;display:flex;gap:10px;align-items:center}
 .lawyer-card img{width:74px;height:74px;border-radius:10px;object-fit:cover;border:1px solid #d8c7ce}
-.muted{color:#6f1329}.footer-sign{margin-top:10px;color:#6f1329;font-size:14px;display:flex;align-items:center;gap:8px}.footer-sign img{width:120px}
+.muted{color:#6f1329}.footer-sign{margin-top:10px;color:#6f1329;font-size:14px;display:flex;align-items:center;gap:8px}.footer-sign img{width:120px}.footer-sign div{display:flex;flex-direction:column;gap:4px}.app-version{font-size:12px;color:#8f203a;font-weight:700}
 @media (max-width:768px){.topbar{flex-direction:column;align-items:flex-start}.topbar img{width:140px}.grid{grid-template-columns:1fr}.footer-sign{flex-direction:column;align-items:flex-start}}
