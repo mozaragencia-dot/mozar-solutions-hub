@@ -44,7 +44,8 @@
       <nav class="module-tabs" aria-label="Módulos TACAM">
         <button type="button" class="module-tab active" data-module-tab="create">Ingreso de Cliente</button>
         <button type="button" class="module-tab" data-module-tab="bookings">No Contrataron / Contratados</button>
-        <button type="button" class="module-tab" data-module-tab="agenda">Agendamiento y Visitas</button>
+        <button type="button" class="module-tab" data-module-tab="agenda">Agendamiento</button>
+        <button type="button" class="module-tab" data-module-tab="prison-visits">Visitas a la Cárcel</button>
         <button type="button" class="module-tab" data-module-tab="lawyers">Perfiles de Abogados</button>
         <button type="button" class="module-tab" data-module-tab="reports">Reportes y Gráficos</button>
       </nav>
@@ -136,30 +137,30 @@
         <p class="muted">Tip: puedes arrastrar y soltar una cita a otro día para reagendar.</p>
         <div id="agenda-calendar" class="calendar"></div>
 
-        <div class="subsection-card">
-          <div class="section-heading">
-            <div>
-              <h3>Visitas a la Cárcel</h3>
-              <p class="muted">Calendario exclusivo para la materia Visita a la Cárcel, con recordatorios por WhatsApp y correo.</p>
-            </div>
-            <label>Mes
-              <input id="prison-month" type="month" />
-            </label>
-          </div>
-          <div id="prison-calendar-legend" class="calendar-legend"></div>
-          <div id="prison-calendar" class="calendar"></div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Abogada</th><th>Persona</th><th>Fecha</th><th>Hora</th><th>Estado</th><th>Check-in secretaria</th><th>Recordatorios</th></tr></thead>
-              <tbody id="prison-visits-body"></tbody>
-            </table>
-          </div>
-        </div>
-
         <div class="table-wrap">
           <table>
             <thead><tr><th>Persona</th><th>Materia</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody id="agenda-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card module-panel" data-module-panel="prison-visits">
+        <div class="section-heading">
+          <div>
+            <h2>Visitas a la Cárcel</h2>
+            <p class="muted">Calendario exclusivo para la materia Visita a la Cárcel, con recordatorios por WhatsApp y correo.</p>
+          </div>
+          <label>Mes
+            <input id="prison-month" type="month" />
+          </label>
+        </div>
+        <div id="prison-calendar-legend" class="calendar-legend"></div>
+        <div id="prison-calendar" class="calendar"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Abogada</th><th>Persona</th><th>Fecha</th><th>Hora</th><th>Estado</th><th>Check-in secretaria</th><th>Recordatorios</th></tr></thead>
+            <tbody id="prison-visits-body"></tbody>
           </table>
         </div>
       </section>
@@ -229,6 +230,10 @@
           <article class="report-card">
             <h3>Atenciones por abogada</h3>
             <canvas id="lawyer-stats-chart" width="800" height="320"></canvas>
+          </article>
+          <article class="report-card">
+            <h3>Visitas a la Cárcel por abogada</h3>
+            <canvas id="prison-stats-chart" width="800" height="320"></canvas>
           </article>
         </div>
 

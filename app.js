@@ -23,6 +23,7 @@ const lawyerCalendarLegend = document.getElementById('lawyer-calendar-legend');
 const sharedOnlyInput = document.getElementById('shared-only');
 const generalStatsChart = document.getElementById('general-stats-chart');
 const lawyerStatsChart = document.getElementById('lawyer-stats-chart');
+const prisonStatsChart = document.getElementById('prison-stats-chart');
 const downloadGeneralReportBtn = document.getElementById('download-general-report');
 const downloadLawyerReportBtn = document.getElementById('download-lawyer-report');
 const downloadBookingsReportBtn = document.getElementById('download-bookings-report');
@@ -514,6 +515,21 @@ function getLawyerAttentionStats() {
     .sort((a, b) => a.lawyer.localeCompare(b.lawyer, 'es'));
 }
 
+function getPrisonVisitStats() {
+  const map = new Map();
+  getBookings()
+    .filter(booking => isPrisonVisit(booking))
+    .forEach(booking => {
+      const lawyer = (booking.assignedTo || 'Sin abogada').trim() || 'Sin abogada';
+      if (!map.has(lawyer)) map.set(lawyer, 0);
+      map.set(lawyer, map.get(lawyer) + 1);
+    });
+
+  return [...map.entries()]
+    .map(([lawyer, total]) => ({ lawyer, total }))
+    .sort((a, b) => a.lawyer.localeCompare(b.lawyer, 'es'));
+}
+
 function drawBarChart(canvas, labels, values, colors, title) {
   if (!(canvas instanceof HTMLCanvasElement)) return;
 
@@ -589,6 +605,12 @@ function renderReports() {
   const lawyerValues = lawyerStats.map(item => item.atendida);
   const lawyerColors = lawyerLabels.map(getLawyerColor);
   drawBarChart(lawyerStatsChart, lawyerLabels, lawyerValues, lawyerColors, 'Atenciones (estado atendida) por abogada');
+
+  const prisonStats = getPrisonVisitStats();
+  const prisonLabels = prisonStats.map(item => item.lawyer);
+  const prisonValues = prisonStats.map(item => item.total);
+  const prisonColors = prisonLabels.map(getLawyerColor);
+  drawBarChart(prisonStatsChart, prisonLabels, prisonValues, prisonColors, 'Visitas a la cárcel por abogada');
 }
 
 function renderBookings() {
