@@ -80,11 +80,17 @@ function tryLogin(username, password) {
   return ALLOWED_CREDENTIALS.some(cred => cred.username === username && cred.password === password);
 }
 
+function hasNotificationConsent(booking) {
+  return Boolean(booking?.notificationsConsent);
+}
+
 function notifyBooking(booking) {
+  if (!hasNotificationConsent(booking)) return false;
   const destination = cleanPhone(booking.phone);
-  if (!destination) return;
+  if (!destination) return false;
   const msg = encodeURIComponent(buildTacamMessage(booking));
   window.open(`https://wa.me/${destination}?text=${msg}`, '_blank', 'noopener');
+  return true;
 }
 
 function buildRescheduleMessage(booking, fromDate, toDate) {
@@ -124,18 +130,25 @@ function buildVisitScheduledMessage(booking) {
 }
 
 function notifyBookingChannels(booking, message, emailSubject) {
+  if (!hasNotificationConsent(booking)) return false;
+
   const encoded = encodeURIComponent(message);
   const targets = [cleanPhone(booking.phone), getLawyerPhone(booking.assignedTo)].filter(Boolean);
+  let sent = false;
 
   [...new Set(targets)].forEach(target => {
     window.open(`https://wa.me/${target}?text=${encoded}`, '_blank', 'noopener');
+    sent = true;
   });
 
   const email = String(booking.email || '').trim();
   if (email) {
     const subject = encodeURIComponent(emailSubject);
     window.open(`mailto:${encodeURIComponent(email)}?subject=${subject}&body=${encoded}`, '_blank', 'noopener');
+    sent = true;
   }
+
+  return sent;
 }
 
 function notifyVisitScheduled(booking) {
@@ -150,21 +163,7 @@ function getLawyerPhone(lawyerName) {
 
 function notifyReschedule(booking, fromDate, toDate) {
   const message = buildRescheduleMessage(booking, fromDate, toDate);
-  const encoded = encodeURIComponent(message);
-  const targets = [cleanPhone(booking.phone), getLawyerPhone(booking.assignedTo)].filter(Boolean);
-  const uniqueTargets = [...new Set(targets)];
-
-  if (uniqueTargets.length) {
-    uniqueTargets.forEach(target => {
-      window.open(`https://wa.me/${target}?text=${encoded}`, '_blank', 'noopener');
-    });
-  }
-
-  const email = String(booking.email || '').trim();
-  if (email) {
-    const subject = encodeURIComponent('Reagendamiento de cita TACAM');
-    window.open(`mailto:${encodeURIComponent(email)}?subject=${subject}&body=${encoded}`, '_blank', 'noopener');
-  }
+  notifyBookingChannels(booking, message, 'Reagendamiento de cita TACAM');
 }
 
 function notifyUpcomingAppointments() {
@@ -180,15 +179,19 @@ function notifyUpcomingAppointments() {
     if (diffMinutes < 0) return;
 
     if (diffMinutes <= 1440 && !booking.reminder24hSentAt) {
-      notifyBookingChannels(booking, build24hReminderMessage(booking), 'Recordatorio TACAM: cita en 24 horas');
-      booking.reminder24hSentAt = now.toISOString();
-      hasUpdates = true;
+      const sent24h = notifyBookingChannels(booking, build24hReminderMessage(booking), 'Recordatorio TACAM: cita en 24 horas');
+      if (sent24h) {
+        booking.reminder24hSentAt = now.toISOString();
+        hasUpdates = true;
+      }
     }
 
     if (diffMinutes <= 60 && !booking.reminder1hSentAt) {
-      notifyBookingChannels(booking, buildReminderMessage(booking, diffMinutes), 'Recordatorio TACAM: vas a tener una cita');
-      booking.reminder1hSentAt = now.toISOString();
-      hasUpdates = true;
+      const sent1h = notifyBookingChannels(booking, buildReminderMessage(booking, diffMinutes), 'Recordatorio TACAM: vas a tener una cita');
+      if (sent1h) {
+        booking.reminder1hSentAt = now.toISOString();
+        hasUpdates = true;
+      }
     }
   });
 
@@ -985,6 +988,8 @@ bookingForm.addEventListener('submit', event => {
     time: String(data.get('time') || '').trim(),
     assignedTo: String(data.get('assignedTo') || '').trim(),
     notes: String(data.get('notes') || '').trim(),
+    notificationsConsent: Boolean(data.get('notificationsConsent')),
+    consentAt: data.get('notificationsConsent') ? new Date().toISOString() : '',
     status: 'nueva',
     createdAt: new Date().toISOString(),
     reminder24hSentAt: '',
@@ -1042,7 +1047,7 @@ downloadLawyerReportBtn.addEventListener('click', () => {
 
 downloadBookingsReportBtn.addEventListener('click', () => {
   const rows = [[
-    'ID', 'Cliente', 'RUT', 'Materia', 'Telefono', 'Correo', 'Fecha', 'Hora', 'Abogada', 'Estado', 'Motivo', 'Creada en'
+    'ID', 'Cliente', 'RUT', 'Materia', 'Telefono', 'Correo', 'Fecha', 'Hora', 'Abogada', 'Estado', 'Consentimiento', 'Motivo', 'Creada en'
   ]];
   getBookings().forEach(booking => {
     rows.push([
@@ -1056,6 +1061,7 @@ downloadBookingsReportBtn.addEventListener('click', () => {
       booking.time,
       booking.assignedTo,
       booking.status,
+      booking.notificationsConsent ? 'Sí' : 'No',
       booking.notes,
       booking.createdAt
     ]);
