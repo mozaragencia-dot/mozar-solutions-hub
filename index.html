@@ -61,10 +61,36 @@
               <option value="">Seleccione materia</option>
               <option value="Familiar">Familiar</option>
               <option value="Penal">Penal</option>
+              <option value="Visita a la Cárcel">Visita a la Cárcel</option>
             </select>
           </label>
           <label>Fecha de reserva <input name="date" type="date" required /></label>
-          <label>Hora de reserva <input name="time" type="time" required /></label>
+          <label>Hora de reserva
+            <select name="time" required>
+              <option value="">Seleccione un horario</option>
+              <option value="08:00">08:00</option>
+              <option value="08:30">08:30</option>
+              <option value="09:00">09:00</option>
+              <option value="09:30">09:30</option>
+              <option value="10:00">10:00</option>
+              <option value="10:30">10:30</option>
+              <option value="11:00">11:00</option>
+              <option value="11:30">11:30</option>
+              <option value="12:00">12:00</option>
+              <option value="12:30">12:30</option>
+              <option value="13:00">13:00</option>
+              <option value="13:30">13:30</option>
+              <option value="14:00">14:00</option>
+              <option value="14:30">14:30</option>
+              <option value="15:00">15:00</option>
+              <option value="15:30">15:30</option>
+              <option value="16:00">16:00</option>
+              <option value="16:30">16:30</option>
+              <option value="17:00">17:00</option>
+              <option value="17:30">17:30</option>
+              <option value="18:00">18:00</option>
+            </select>
+          </label>
           <label>Abogado asignado
             <select name="assignedTo" required>
               <option value="">Seleccione</option>
@@ -109,6 +135,27 @@
         <div id="agenda-color-legend" class="calendar-legend"></div>
         <p class="muted">Tip: puedes arrastrar y soltar una cita a otro día para reagendar.</p>
         <div id="agenda-calendar" class="calendar"></div>
+
+        <div class="subsection-card">
+          <div class="section-heading">
+            <div>
+              <h3>Visitas a la Cárcel</h3>
+              <p class="muted">Calendario exclusivo para la materia Visita a la Cárcel, con recordatorios por WhatsApp y correo.</p>
+            </div>
+            <label>Mes
+              <input id="prison-month" type="month" />
+            </label>
+          </div>
+          <div id="prison-calendar-legend" class="calendar-legend"></div>
+          <div id="prison-calendar" class="calendar"></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Abogada</th><th>Persona</th><th>Fecha</th><th>Hora</th><th>Estado</th><th>Check-in secretaria</th><th>Recordatorios</th></tr></thead>
+              <tbody id="prison-visits-body"></tbody>
+            </table>
+          </div>
+        </div>
+
         <div class="table-wrap">
           <table>
             <thead><tr><th>Persona</th><th>Materia</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Acciones</th></tr></thead>

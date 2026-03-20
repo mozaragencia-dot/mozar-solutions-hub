@@ -10,6 +10,10 @@ const lawyerFilter = document.getElementById('lawyer-filter');
 const agendaMonthInput = document.getElementById('agenda-month');
 const agendaCalendar = document.getElementById('agenda-calendar');
 const agendaLegend = document.getElementById('agenda-color-legend');
+const prisonMonthInput = document.getElementById('prison-month');
+const prisonCalendar = document.getElementById('prison-calendar');
+const prisonCalendarLegend = document.getElementById('prison-calendar-legend');
+const prisonVisitsBody = document.getElementById('prison-visits-body');
 const lawyerForm = document.getElementById('lawyer-form');
 const lawyerList = document.getElementById('lawyer-list');
 const lawyerCalendarFilter = document.getElementById('lawyer-calendar-filter');
@@ -57,6 +61,19 @@ const ALLOWED_CREDENTIALS = [
 ];
 
 const LAWYER_COLORS = ['#8f203a', '#2166a5', '#2a9d8f', '#e76f51', '#6a4c93', '#e9c46a', '#4f772d'];
+const PRISON_VISIT_MATTER = 'Visita a la Cárcel';
+
+function normalizeMatterLabel(value) {
+  const clean = String(value || '').trim();
+  if (!clean) return '';
+  const normalized = clean.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  if (normalized.includes('cartel') || normalized.includes('carcel')) return PRISON_VISIT_MATTER;
+  return clean;
+}
+
+function isPrisonVisit(booking) {
+  return normalizeMatterLabel(booking?.matter) === PRISON_VISIT_MATTER;
+}
 
 function tryLogin(username, password) {
   return ALLOWED_CREDENTIALS.some(cred => cred.username === username && cred.password === password);
@@ -72,7 +89,7 @@ function notifyBooking(booking) {
 function buildRescheduleMessage(booking, fromDate, toDate) {
   const fromText = `${fromDate || '-'} ${booking.time || ''}`.trim();
   const toText = `${toDate || '-'} ${booking.time || ''}`.trim();
-  return `TACAM: su cita fue reagendada. Cliente: ${booking.customer || 'Cliente'}. Materia: ${booking.matter || 'General'}. Antes: ${fromText}. Nueva fecha: ${toText}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+  return `TACAM: su cita fue reagendada. Cliente: ${booking.customer || 'Cliente'}. Materia: ${normalizeMatterLabel(booking.matter) || 'General'}. Antes: ${fromText}. Nueva fecha: ${toText}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
 }
 
 function getAppointmentDateTime(booking) {
@@ -82,15 +99,27 @@ function getAppointmentDateTime(booking) {
 }
 
 function buildReminderMessage(booking, minutesLeft) {
-  return `Recordatorio TACAM: vas a tener una cita en ${minutesLeft} minutos. Fecha/Hora: ${booking.date} ${booking.time}. Materia: ${booking.matter || 'General'}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+  const matter = normalizeMatterLabel(booking.matter) || 'General';
+  if (isPrisonVisit(booking)) {
+    return `Recordatorio TACAM: tienes una ${PRISON_VISIT_MATTER.toLowerCase()} en ${minutesLeft} minutos. Fecha/Hora: ${booking.date} ${booking.time}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+  }
+  return `Recordatorio TACAM: vas a tener una cita en ${minutesLeft} minutos. Fecha/Hora: ${booking.date} ${booking.time}. Materia: ${matter}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
 }
 
 function build24hReminderMessage(booking) {
-  return `Recordatorio TACAM: tu cita será en 24 horas. Fecha/Hora: ${booking.date} ${booking.time}. Materia: ${booking.matter || 'General'}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+  const matter = normalizeMatterLabel(booking.matter) || 'General';
+  if (isPrisonVisit(booking)) {
+    return `Recordatorio TACAM: mañana tienes una ${PRISON_VISIT_MATTER.toLowerCase()}. Fecha/Hora: ${booking.date} ${booking.time}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+  }
+  return `Recordatorio TACAM: tu cita será en 24 horas. Fecha/Hora: ${booking.date} ${booking.time}. Materia: ${matter}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
 }
 
 function buildVisitScheduledMessage(booking) {
-  return `Calendario de visitas TACAM: enviamos correo automático a la persona. Tu cita quedó agendada para ${booking.date} ${booking.time}. Materia: ${booking.matter || 'General'}. Abogada: ${booking.assignedTo || 'Por confirmar'}. Luego recibirás un recordatorio de que vas a tener una cita.`;
+  const matter = normalizeMatterLabel(booking.matter) || 'General';
+  if (isPrisonVisit(booking)) {
+    return `TACAM: se agendó una ${PRISON_VISIT_MATTER.toLowerCase()} para ${booking.date} ${booking.time}. Abogada: ${booking.assignedTo || 'Por confirmar'}. Se enviarán recordatorios por WhatsApp y correo.`;
+  }
+  return `Calendario de visitas TACAM: enviamos correo automático a la persona. Tu cita quedó agendada para ${booking.date} ${booking.time}. Materia: ${matter}. Abogada: ${booking.assignedTo || 'Por confirmar'}. Luego recibirás un recordatorio de que vas a tener una cita.`;
 }
 
 function notifyBookingChannels(booking, message, emailSubject) {
@@ -110,7 +139,7 @@ function notifyBookingChannels(booking, message, emailSubject) {
 
 function notifyVisitScheduled(booking) {
   const message = buildVisitScheduledMessage(booking);
-  notifyBookingChannels(booking, message, 'Calendario de visitas TACAM: cita agendada');
+  notifyBookingChannels(booking, message, isPrisonVisit(booking) ? 'TACAM: visita a la cárcel agendada' : 'Calendario de visitas TACAM: cita agendada');
 }
 
 function getLawyerPhone(lawyerName) {
@@ -317,9 +346,10 @@ function getLawyerColor(name) {
   return LAWYER_COLORS[index];
 }
 
-function getCalendarBookings(selectedLawyer, selectedMonth, onlyShared = false) {
+function getCalendarBookings(selectedLawyer, selectedMonth, onlyShared = false, predicate = null) {
   const allBookings = getBookings().filter(booking => booking.status !== 'cancelada' && booking.date);
-  const byMonth = allBookings.filter(booking => !selectedMonth || booking.date.slice(0, 7) === selectedMonth);
+  const filteredBookings = typeof predicate === 'function' ? allBookings.filter(predicate) : allBookings;
+  const byMonth = filteredBookings.filter(booking => !selectedMonth || booking.date.slice(0, 7) === selectedMonth);
   const byLawyer = byMonth.filter(booking => !selectedLawyer || booking.assignedTo === selectedLawyer);
 
   if (!onlyShared) return byLawyer;
@@ -433,7 +463,7 @@ function renderCalendar(container, bookings, selectedMonth) {
             dragEvent.dataTransfer?.setData('text/booking-id', booking.id);
           });
           event.style.setProperty('--event-color', getLawyerColor(booking.assignedTo));
-          event.textContent = `${booking.time || '--:--'} · ${booking.assignedTo || 'Sin abogada'} · ${booking.customer || 'Cliente'} · ${booking.matter || 'General'}`;
+          event.textContent = `${booking.time || '--:--'} · ${booking.assignedTo || 'Sin abogada'} · ${booking.customer || 'Cliente'} · ${normalizeMatterLabel(booking.matter) || 'General'}`;
           dayCell.appendChild(event);
         });
     }
@@ -445,7 +475,7 @@ function renderCalendar(container, bookings, selectedMonth) {
 function renderAgendaCalendar() {
   const selectedLawyer = lawyerFilter.value.trim();
   const selectedMonth = agendaMonthInput.value;
-  const bookings = getCalendarBookings(selectedLawyer, selectedMonth, false);
+  const bookings = getCalendarBookings(selectedLawyer, selectedMonth, false, booking => !isPrisonVisit(booking));
   const names = [...new Set(bookings.map(booking => booking.assignedTo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
   renderCalendarLegend(agendaLegend, names);
   renderCalendar(agendaCalendar, bookings, selectedMonth);
@@ -580,7 +610,7 @@ function renderBookings() {
 
     appendCell(row, fmtDate(booking.createdAt));
     appendCell(row, booking.customer || '');
-    appendCell(row, booking.matter || 'General');
+    appendCell(row, normalizeMatterLabel(booking.matter) || 'General');
     appendCell(row, booking.phone || '');
     appendCell(row, formatAppointment(booking));
 
@@ -654,7 +684,7 @@ function renderBookings() {
 function renderAgenda() {
   const selectedLawyer = lawyerFilter.value.trim();
   const bookings = getBookings().filter(booking =>
-    booking.status !== 'cancelada' && (!selectedLawyer || booking.assignedTo === selectedLawyer)
+    booking.status !== 'cancelada' && !isPrisonVisit(booking) && (!selectedLawyer || booking.assignedTo === selectedLawyer)
   );
 
   agendaBody.replaceChildren();
@@ -670,7 +700,7 @@ function renderAgenda() {
     bookings.forEach(booking => {
       const row = document.createElement('tr');
       appendCell(row, booking.customer || '');
-      appendCell(row, booking.matter || 'General');
+      appendCell(row, normalizeMatterLabel(booking.matter) || 'General');
       appendCell(row, formatAppointment(booking));
       appendCell(row, booking.notes || '-');
 
@@ -694,6 +724,80 @@ function renderAgenda() {
 
   agendaBody.querySelectorAll('[data-attend]').forEach(btn => {
     btn.onclick = () => updateBooking(btn.dataset.attend, booking => { booking.status = 'atendida'; });
+  });
+}
+
+function renderPrisonCalendar() {
+  const selectedMonth = prisonMonthInput.value;
+  const bookings = getCalendarBookings('', selectedMonth, false, booking => isPrisonVisit(booking));
+  const names = [...new Set(bookings.map(booking => booking.assignedTo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+  renderCalendarLegend(prisonCalendarLegend, names);
+  renderCalendar(prisonCalendar, bookings, selectedMonth);
+}
+
+function renderPrisonVisitsList() {
+  const selectedMonth = prisonMonthInput.value;
+  const visits = getBookings()
+    .filter(booking => booking.status !== 'cancelada' && isPrisonVisit(booking))
+    .filter(booking => !selectedMonth || booking.date.slice(0, 7) === selectedMonth)
+    .sort((a, b) => `${a.date || ''} ${a.time || ''}`.localeCompare(`${b.date || ''} ${b.time || ''}`));
+
+  prisonVisitsBody.replaceChildren();
+
+  if (!visits.length) {
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 7;
+    cell.textContent = 'Sin visitas a la cárcel registradas en este mes.';
+    row.appendChild(cell);
+    prisonVisitsBody.appendChild(row);
+    return;
+  }
+
+  visits.forEach(booking => {
+    const row = document.createElement('tr');
+    appendCell(row, booking.assignedTo || 'Sin abogada');
+    appendCell(row, booking.customer || '');
+    appendCell(row, booking.date || '-');
+    appendCell(row, booking.time || '--:--');
+
+    const statusCell = document.createElement('td');
+    const statusBadge = document.createElement('span');
+    statusBadge.className = `badge ${booking.status}`;
+    statusBadge.textContent = statusLabel(booking.status);
+    statusCell.appendChild(statusBadge);
+    row.appendChild(statusCell);
+
+    const checkInCell = document.createElement('td');
+    const checkInBtn = document.createElement('button');
+    checkInBtn.dataset.prisonCheckin = booking.id;
+    checkInBtn.textContent = booking.checkedInAt ? `Check-in ${fmtDate(booking.checkedInAt)}` : 'Registrar check-in';
+    checkInBtn.disabled = Boolean(booking.checkedInAt);
+    checkInCell.appendChild(checkInBtn);
+    row.appendChild(checkInCell);
+
+    const reminderCell = document.createElement('td');
+    const reminderBtn = document.createElement('button');
+    reminderBtn.dataset.prisonNotify = booking.id;
+    reminderBtn.textContent = 'WhatsApp y email';
+    reminderCell.appendChild(reminderBtn);
+    row.appendChild(reminderCell);
+
+    prisonVisitsBody.appendChild(row);
+  });
+
+  prisonVisitsBody.querySelectorAll('[data-prison-checkin]').forEach(btn => {
+    btn.onclick = () => updateBooking(btn.dataset.prisonCheckin, booking => {
+      booking.checkedInAt = new Date().toISOString();
+      booking.status = booking.status === 'nueva' ? 'confirmada' : booking.status;
+    });
+  });
+
+  prisonVisitsBody.querySelectorAll('[data-prison-notify]').forEach(btn => {
+    btn.onclick = () => {
+      const booking = getBookings().find(item => item.id === btn.dataset.prisonNotify);
+      if (booking) notifyBookingChannels(booking, buildVisitScheduledMessage(booking), 'TACAM: recordatorio de visita a la cárcel');
+    };
   });
 }
 
@@ -797,6 +901,8 @@ function renderAll() {
   renderBookings();
   renderAgenda();
   renderAgendaCalendar();
+  renderPrisonCalendar();
+  renderPrisonVisitsList();
   renderLawyers();
   renderLawyerCalendar();
   renderProfiles();
@@ -854,7 +960,7 @@ bookingForm.addEventListener('submit', event => {
     rut,
     phone,
     email,
-    matter: String(data.get('matter') || '').trim(),
+    matter: normalizeMatterLabel(data.get('matter')),
     date: String(data.get('date') || '').trim(),
     time: String(data.get('time') || '').trim(),
     assignedTo: String(data.get('assignedTo') || '').trim(),
@@ -862,7 +968,8 @@ bookingForm.addEventListener('submit', event => {
     status: 'nueva',
     createdAt: new Date().toISOString(),
     reminder24hSentAt: '',
-    reminder1hSentAt: ''
+    reminder1hSentAt: '',
+    checkedInAt: ''
   });
   saveBookings(bookings);
   notifyVisitScheduled(bookings[0]);
@@ -886,6 +993,10 @@ lawyerFilter.addEventListener('change', () => {
   renderAgendaCalendar();
 });
 agendaMonthInput.addEventListener('change', renderAgendaCalendar);
+prisonMonthInput.addEventListener('change', () => {
+  renderPrisonCalendar();
+  renderPrisonVisitsList();
+});
 lawyerCalendarFilter.addEventListener('change', renderLawyerCalendar);
 lawyerCalendarMonth.addEventListener('change', renderLawyerCalendar);
 sharedOnlyInput.addEventListener('change', renderLawyerCalendar);
@@ -918,7 +1029,7 @@ downloadBookingsReportBtn.addEventListener('click', () => {
       booking.id,
       booking.customer,
       booking.rut,
-      booking.matter,
+      normalizeMatterLabel(booking.matter),
       booking.phone,
       booking.email,
       booking.date,
@@ -1008,6 +1119,7 @@ switchModule('create');
 
 const currentMonth = monthValueFromDate(new Date());
 agendaMonthInput.value = currentMonth;
+prisonMonthInput.value = currentMonth;
 lawyerCalendarMonth.value = currentMonth;
 phoneInput.value = '+569';
 updateChileClock();

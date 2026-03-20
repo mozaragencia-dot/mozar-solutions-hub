@@ -115,9 +115,17 @@ function cleanPhone(phone) {
   return String(phone || '').replace(/\D/g, '');
 }
 
+function normalizeMatterLabel(value) {
+  const clean = String(value || '').trim();
+  if (!clean) return '';
+  const normalized = clean.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  if (normalized.includes('cartel') || normalized.includes('carcel')) return 'Visita a la Cárcel';
+  return clean;
+}
+
 function buildTacamMessage(booking) {
   const appointment = `${booking.date || ''} ${booking.time || ''}`.trim();
-  const matter = booking.matter || 'General';
+  const matter = normalizeMatterLabel(booking.matter) || 'General';
   return `Desde TACAM, informamos toda la información de su reserva. Persona: ${booking.customer}. Materia: ${matter}. Fecha/Hora: ${appointment}. Abogado: ${booking.assignedTo || 'Por confirmar'}. Estado: ${statusLabel(booking.status)}.`;
 }
 
