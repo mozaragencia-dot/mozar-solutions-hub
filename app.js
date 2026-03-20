@@ -274,18 +274,8 @@ function updateChileClock() {
 function getLawyerNames() {
   const names = new Set();
 
-  Array.from(assignedToSelect.options).forEach(option => {
-    const name = option.value.trim();
-    if (name) names.add(name);
-  });
-
   getLawyers().forEach(lawyer => {
     const name = String(lawyer.name || '').trim();
-    if (name) names.add(name);
-  });
-
-  getBookings().forEach(booking => {
-    const name = String(booking.assignedTo || '').trim();
     if (name) names.add(name);
   });
 
@@ -851,6 +841,14 @@ function renderLawyers() {
     const specialty = document.createElement('p');
     specialty.textContent = lawyer.specialty || 'Sin especialidad';
     content.appendChild(specialty);
+
+    const rut = document.createElement('small');
+    rut.textContent = lawyer.rut ? `Cédula: ${lawyer.rut}` : 'Cédula no registrada';
+    content.appendChild(rut);
+
+    const email = document.createElement('small');
+    email.textContent = lawyer.email || 'Sin correo';
+    content.appendChild(email);
 
     const phone = document.createElement('small');
     phone.textContent = lawyer.phone || 'Sin WhatsApp';
