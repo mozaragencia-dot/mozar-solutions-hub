@@ -84,7 +84,35 @@ function hasNotificationConsent(booking) {
   return Boolean(booking?.notificationsConsent);
 }
 
-function notifyBooking(booking) {
+async function sendEmailViaBrevo(booking, subject, message) {
+  const email = String(booking?.email || '').trim();
+  if (!email) return false;
+
+  try {
+    const response = await fetch('brevo-email.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        toEmail: email,
+        toName: booking.customer || 'Cliente',
+        subject,
+        textContent: message
+      })
+    });
+
+    if (!response.ok) {
+      console.warn('Brevo email error', await response.text());
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.warn('Brevo email request failed', error);
+    return false;
+  }
+}
+
+async function notifyBooking(booking) {
   if (!hasNotificationConsent(booking)) return false;
   const destination = cleanPhone(booking.phone);
   if (!destination) return false;
@@ -129,7 +157,7 @@ function buildVisitScheduledMessage(booking) {
   return `Calendario de visitas TACAM: enviamos correo automático a la persona. Tu cita quedó agendada para ${booking.date} ${booking.time}. Materia: ${matter}. Abogada: ${booking.assignedTo || 'Por confirmar'}. Luego recibirás un recordatorio de que vas a tener una cita.`;
 }
 
-function notifyBookingChannels(booking, message, emailSubject) {
+async function notifyBookingChannels(booking, message, emailSubject) {
   if (!hasNotificationConsent(booking)) return false;
 
   const encoded = encodeURIComponent(message);
@@ -141,19 +169,13 @@ function notifyBookingChannels(booking, message, emailSubject) {
     sent = true;
   });
 
-  const email = String(booking.email || '').trim();
-  if (email) {
-    const subject = encodeURIComponent(emailSubject);
-    window.open(`mailto:${encodeURIComponent(email)}?subject=${subject}&body=${encoded}`, '_blank', 'noopener');
-    sent = true;
-  }
-
-  return sent;
+  const emailSent = await sendEmailViaBrevo(booking, emailSubject, message);
+  return sent || emailSent;
 }
 
-function notifyVisitScheduled(booking) {
+async function notifyVisitScheduled(booking) {
   const message = buildVisitScheduledMessage(booking);
-  notifyBookingChannels(booking, message, isPrisonVisit(booking) ? 'TACAM: visita a la cárcel agendada' : 'Calendario de visitas TACAM: cita agendada');
+  return notifyBookingChannels(booking, message, isPrisonVisit(booking) ? 'TACAM: visita a la cárcel agendada' : 'Calendario de visitas TACAM: cita agendada');
 }
 
 function getLawyerPhone(lawyerName) {
@@ -161,25 +183,25 @@ function getLawyerPhone(lawyerName) {
   return lawyer ? cleanPhone(lawyer.phone) : '';
 }
 
-function notifyReschedule(booking, fromDate, toDate) {
+async function notifyReschedule(booking, fromDate, toDate) {
   const message = buildRescheduleMessage(booking, fromDate, toDate);
-  notifyBookingChannels(booking, message, 'Reagendamiento de cita TACAM');
+  return notifyBookingChannels(booking, message, 'Reagendamiento de cita TACAM');
 }
 
-function notifyUpcomingAppointments() {
+async function notifyUpcomingAppointments() {
   const now = new Date();
   const bookings = getBookings();
   let hasUpdates = false;
 
-  bookings.forEach(booking => {
+  for (const booking of bookings) {
     const appointment = getAppointmentDateTime(booking);
-    if (!appointment || booking.status === 'cancelada' || booking.status === 'atendida') return;
+    if (!appointment || booking.status === 'cancelada' || booking.status === 'atendida') continue;
 
     const diffMinutes = Math.round((appointment.getTime() - now.getTime()) / 60000);
-    if (diffMinutes < 0) return;
+    if (diffMinutes < 0) continue;
 
     if (diffMinutes <= 1440 && !booking.reminder24hSentAt) {
-      const sent24h = notifyBookingChannels(booking, build24hReminderMessage(booking), 'Recordatorio TACAM: cita en 24 horas');
+      const sent24h = await notifyBookingChannels(booking, build24hReminderMessage(booking), 'Recordatorio TACAM: cita en 24 horas');
       if (sent24h) {
         booking.reminder24hSentAt = now.toISOString();
         hasUpdates = true;
@@ -187,13 +209,13 @@ function notifyUpcomingAppointments() {
     }
 
     if (diffMinutes <= 60 && !booking.reminder1hSentAt) {
-      const sent1h = notifyBookingChannels(booking, buildReminderMessage(booking, diffMinutes), 'Recordatorio TACAM: vas a tener una cita');
+      const sent1h = await notifyBookingChannels(booking, buildReminderMessage(booking, diffMinutes), 'Recordatorio TACAM: vas a tener una cita');
       if (sent1h) {
         booking.reminder1hSentAt = now.toISOString();
         hasUpdates = true;
       }
     }
-  });
+  }
 
   if (hasUpdates) {
     saveBookings(bookings);
@@ -213,7 +235,7 @@ function moveBookingDate(bookingId, newDate) {
   booking.reminder1hSentAt = '';
   saveBookings(bookings);
   renderAll();
-  notifyReschedule(booking, oldDate, newDate);
+  void notifyReschedule(booking, oldDate, newDate);
 }
 
 function updateBooking(bookingId, updater) {
@@ -689,9 +711,9 @@ function renderBookings() {
   });
 
   bookingsBody.querySelectorAll('[data-notify-btn]').forEach(btn => {
-    btn.onclick = () => {
+    btn.onclick = async () => {
       const booking = getBookings().find(item => item.id === btn.dataset.notifyBtn);
-      if (booking) notifyBooking(booking);
+      if (booking) await notifyBooking(booking);
     };
   });
 }
@@ -809,9 +831,9 @@ function renderPrisonVisitsList() {
   });
 
   prisonVisitsBody.querySelectorAll('[data-prison-notify]').forEach(btn => {
-    btn.onclick = () => {
+    btn.onclick = async () => {
       const booking = getBookings().find(item => item.id === btn.dataset.prisonNotify);
-      if (booking) notifyBookingChannels(booking, buildVisitScheduledMessage(booking), 'TACAM: recordatorio de visita a la cárcel');
+      if (booking) await notifyBookingChannels(booking, buildVisitScheduledMessage(booking), 'TACAM: recordatorio de visita a la cárcel');
     };
   });
 }
@@ -948,7 +970,7 @@ loginForm.addEventListener('submit', event => {
   }
 });
 
-bookingForm.addEventListener('submit', event => {
+bookingForm.addEventListener('submit', async event => {
   event.preventDefault();
   const data = new FormData(bookingForm);
   const rut = formatRut(data.get('rut'));
@@ -997,7 +1019,7 @@ bookingForm.addEventListener('submit', event => {
     checkedInAt: ''
   });
   saveBookings(bookings);
-  notifyVisitScheduled(bookings[0]);
+  await notifyVisitScheduled(bookings[0]);
   bookingForm.reset();
   phoneInput.value = '+569';
   renderAll();
@@ -1157,6 +1179,6 @@ setInterval(() => {
   updateChileClock();
   if (!appShell.hidden) {
     renderAll();
-    notifyUpcomingAppointments();
+    void notifyUpcomingAppointments();
   }
 }, 5000);
