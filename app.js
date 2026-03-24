@@ -784,6 +784,11 @@ function renderAgenda() {
   });
 }
 
+
+function buildPrisonCheckInMessage(booking) {
+  return `TACAM: check-in registrado para la visita a la cárcel de ${booking.customer || 'Cliente'}. Fecha/Hora: ${booking.date || '-'} ${booking.time || ''}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+}
+
 function renderPrisonCalendar() {
   const selectedMonth = prisonMonthInput.value;
   const bookings = getCalendarBookings('', selectedMonth, false, booking => isPrisonVisit(booking));
@@ -844,10 +849,18 @@ function renderPrisonVisitsList() {
   });
 
   prisonVisitsBody.querySelectorAll('[data-prison-checkin]').forEach(btn => {
-    btn.onclick = () => updateBooking(btn.dataset.prisonCheckin, booking => {
-      booking.checkedInAt = new Date().toISOString();
-      booking.status = booking.status === 'nueva' ? 'confirmada' : booking.status;
-    });
+    btn.onclick = async () => {
+      const bookingId = btn.dataset.prisonCheckin;
+      updateBooking(bookingId, booking => {
+        booking.checkedInAt = new Date().toISOString();
+        booking.status = booking.status === 'nueva' ? 'confirmada' : booking.status;
+      });
+
+      const updatedBooking = getBookings().find(item => item.id === bookingId);
+      if (updatedBooking) {
+        await notifyBookingChannels(updatedBooking, buildPrisonCheckInMessage(updatedBooking), 'TACAM: check-in visita a la cárcel');
+      }
+    };
   });
 
   prisonVisitsBody.querySelectorAll('[data-prison-notify]').forEach(btn => {
