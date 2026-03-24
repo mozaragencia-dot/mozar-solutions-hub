@@ -10,6 +10,10 @@ const lawyerFilter = document.getElementById('lawyer-filter');
 const agendaMonthInput = document.getElementById('agenda-month');
 const agendaCalendar = document.getElementById('agenda-calendar');
 const agendaLegend = document.getElementById('agenda-color-legend');
+const prisonMonthInput = document.getElementById('prison-month');
+const prisonCalendar = document.getElementById('prison-calendar');
+const prisonCalendarLegend = document.getElementById('prison-calendar-legend');
+const prisonVisitsBody = document.getElementById('prison-visits-body');
 const lawyerForm = document.getElementById('lawyer-form');
 const lawyerList = document.getElementById('lawyer-list');
 const lawyerCalendarFilter = document.getElementById('lawyer-calendar-filter');
@@ -19,6 +23,7 @@ const lawyerCalendarLegend = document.getElementById('lawyer-calendar-legend');
 const sharedOnlyInput = document.getElementById('shared-only');
 const generalStatsChart = document.getElementById('general-stats-chart');
 const lawyerStatsChart = document.getElementById('lawyer-stats-chart');
+const prisonStatsChart = document.getElementById('prison-stats-chart');
 const downloadGeneralReportBtn = document.getElementById('download-general-report');
 const downloadLawyerReportBtn = document.getElementById('download-lawyer-report');
 const downloadBookingsReportBtn = document.getElementById('download-bookings-report');
@@ -57,22 +62,69 @@ const ALLOWED_CREDENTIALS = [
 ];
 
 const LAWYER_COLORS = ['#8f203a', '#2166a5', '#2a9d8f', '#e76f51', '#6a4c93', '#e9c46a', '#4f772d'];
+const PRISON_VISIT_MATTER = 'Visita a la Cárcel';
+
+function normalizeMatterLabel(value) {
+  const clean = String(value || '').trim();
+  if (!clean) return '';
+  const normalized = clean.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  if (normalized.includes('cartel') || normalized.includes('carcel')) return PRISON_VISIT_MATTER;
+  return clean;
+}
+
+function isPrisonVisit(booking) {
+  return normalizeMatterLabel(booking?.matter) === PRISON_VISIT_MATTER;
+}
 
 function tryLogin(username, password) {
   return ALLOWED_CREDENTIALS.some(cred => cred.username === username && cred.password === password);
 }
 
-function notifyBooking(booking) {
+function hasNotificationConsent(booking) {
+  return Boolean(booking?.notificationsConsent);
+}
+
+async function sendEmailViaBrevo(booking, subject, message) {
+  const email = String(booking?.email || '').trim();
+  if (!email) return false;
+
+  try {
+    const response = await fetch('brevo-email.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        toEmail: email,
+        toName: booking.customer || 'Cliente',
+        subject,
+        textContent: message
+      })
+    });
+
+    if (!response.ok) {
+      console.warn('Brevo email error', await response.text());
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.warn('Brevo email request failed', error);
+    return false;
+  }
+}
+
+async function notifyBooking(booking) {
+  if (!hasNotificationConsent(booking)) return false;
   const destination = cleanPhone(booking.phone);
-  if (!destination) return;
+  if (!destination) return false;
   const msg = encodeURIComponent(buildTacamMessage(booking));
   window.open(`https://wa.me/${destination}?text=${msg}`, '_blank', 'noopener');
+  return true;
 }
 
 function buildRescheduleMessage(booking, fromDate, toDate) {
   const fromText = `${fromDate || '-'} ${booking.time || ''}`.trim();
   const toText = `${toDate || '-'} ${booking.time || ''}`.trim();
-  return `TACAM: su cita fue reagendada. Cliente: ${booking.customer || 'Cliente'}. Materia: ${booking.matter || 'General'}. Antes: ${fromText}. Nueva fecha: ${toText}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+  return `TACAM: su cita fue reagendada. Cliente: ${booking.customer || 'Cliente'}. Materia: ${normalizeMatterLabel(booking.matter) || 'General'}. Antes: ${fromText}. Nueva fecha: ${toText}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
 }
 
 function getAppointmentDateTime(booking) {
@@ -82,35 +134,48 @@ function getAppointmentDateTime(booking) {
 }
 
 function buildReminderMessage(booking, minutesLeft) {
-  return `Recordatorio TACAM: vas a tener una cita en ${minutesLeft} minutos. Fecha/Hora: ${booking.date} ${booking.time}. Materia: ${booking.matter || 'General'}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+  const matter = normalizeMatterLabel(booking.matter) || 'General';
+  if (isPrisonVisit(booking)) {
+    return `Recordatorio TACAM: tienes una ${PRISON_VISIT_MATTER.toLowerCase()} en ${minutesLeft} minutos. Fecha/Hora: ${booking.date} ${booking.time}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+  }
+  return `Recordatorio TACAM: vas a tener una cita en ${minutesLeft} minutos. Fecha/Hora: ${booking.date} ${booking.time}. Materia: ${matter}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
 }
 
 function build24hReminderMessage(booking) {
-  return `Recordatorio TACAM: tu cita será en 24 horas. Fecha/Hora: ${booking.date} ${booking.time}. Materia: ${booking.matter || 'General'}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+  const matter = normalizeMatterLabel(booking.matter) || 'General';
+  if (isPrisonVisit(booking)) {
+    return `Recordatorio TACAM: mañana tienes una ${PRISON_VISIT_MATTER.toLowerCase()}. Fecha/Hora: ${booking.date} ${booking.time}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+  }
+  return `Recordatorio TACAM: tu cita será en 24 horas. Fecha/Hora: ${booking.date} ${booking.time}. Materia: ${matter}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
 }
 
 function buildVisitScheduledMessage(booking) {
-  return `Calendario de visitas TACAM: enviamos correo automático a la persona. Tu cita quedó agendada para ${booking.date} ${booking.time}. Materia: ${booking.matter || 'General'}. Abogada: ${booking.assignedTo || 'Por confirmar'}. Luego recibirás un recordatorio de que vas a tener una cita.`;
+  const matter = normalizeMatterLabel(booking.matter) || 'General';
+  if (isPrisonVisit(booking)) {
+    return `TACAM: se agendó una ${PRISON_VISIT_MATTER.toLowerCase()} para ${booking.date} ${booking.time}. Abogada: ${booking.assignedTo || 'Por confirmar'}. Se enviarán recordatorios por WhatsApp y correo.`;
+  }
+  return `Calendario de visitas TACAM: enviamos correo automático a la persona. Tu cita quedó agendada para ${booking.date} ${booking.time}. Materia: ${matter}. Abogada: ${booking.assignedTo || 'Por confirmar'}. Luego recibirás un recordatorio de que vas a tener una cita.`;
 }
 
-function notifyBookingChannels(booking, message, emailSubject) {
+async function notifyBookingChannels(booking, message, emailSubject) {
+  if (!hasNotificationConsent(booking)) return false;
+
   const encoded = encodeURIComponent(message);
   const targets = [cleanPhone(booking.phone), getLawyerPhone(booking.assignedTo)].filter(Boolean);
+  let sent = false;
 
   [...new Set(targets)].forEach(target => {
     window.open(`https://wa.me/${target}?text=${encoded}`, '_blank', 'noopener');
+    sent = true;
   });
 
-  const email = String(booking.email || '').trim();
-  if (email) {
-    const subject = encodeURIComponent(emailSubject);
-    window.open(`mailto:${encodeURIComponent(email)}?subject=${subject}&body=${encoded}`, '_blank', 'noopener');
-  }
+  const emailSent = await sendEmailViaBrevo(booking, emailSubject, message);
+  return sent || emailSent;
 }
 
-function notifyVisitScheduled(booking) {
+async function notifyVisitScheduled(booking) {
   const message = buildVisitScheduledMessage(booking);
-  notifyBookingChannels(booking, message, 'Calendario de visitas TACAM: cita agendada');
+  return notifyBookingChannels(booking, message, isPrisonVisit(booking) ? 'TACAM: visita a la cárcel agendada' : 'Calendario de visitas TACAM: cita agendada');
 }
 
 function getLawyerPhone(lawyerName) {
@@ -118,49 +183,39 @@ function getLawyerPhone(lawyerName) {
   return lawyer ? cleanPhone(lawyer.phone) : '';
 }
 
-function notifyReschedule(booking, fromDate, toDate) {
+async function notifyReschedule(booking, fromDate, toDate) {
   const message = buildRescheduleMessage(booking, fromDate, toDate);
-  const encoded = encodeURIComponent(message);
-  const targets = [cleanPhone(booking.phone), getLawyerPhone(booking.assignedTo)].filter(Boolean);
-  const uniqueTargets = [...new Set(targets)];
-
-  if (uniqueTargets.length) {
-    uniqueTargets.forEach(target => {
-      window.open(`https://wa.me/${target}?text=${encoded}`, '_blank', 'noopener');
-    });
-  }
-
-  const email = String(booking.email || '').trim();
-  if (email) {
-    const subject = encodeURIComponent('Reagendamiento de cita TACAM');
-    window.open(`mailto:${encodeURIComponent(email)}?subject=${subject}&body=${encoded}`, '_blank', 'noopener');
-  }
+  return notifyBookingChannels(booking, message, 'Reagendamiento de cita TACAM');
 }
 
-function notifyUpcomingAppointments() {
+async function notifyUpcomingAppointments() {
   const now = new Date();
   const bookings = getBookings();
   let hasUpdates = false;
 
-  bookings.forEach(booking => {
+  for (const booking of bookings) {
     const appointment = getAppointmentDateTime(booking);
-    if (!appointment || booking.status === 'cancelada' || booking.status === 'atendida') return;
+    if (!appointment || booking.status === 'cancelada' || booking.status === 'atendida') continue;
 
     const diffMinutes = Math.round((appointment.getTime() - now.getTime()) / 60000);
-    if (diffMinutes < 0) return;
+    if (diffMinutes < 0) continue;
 
     if (diffMinutes <= 1440 && !booking.reminder24hSentAt) {
-      notifyBookingChannels(booking, build24hReminderMessage(booking), 'Recordatorio TACAM: cita en 24 horas');
-      booking.reminder24hSentAt = now.toISOString();
-      hasUpdates = true;
+      const sent24h = await notifyBookingChannels(booking, build24hReminderMessage(booking), 'Recordatorio TACAM: cita en 24 horas');
+      if (sent24h) {
+        booking.reminder24hSentAt = now.toISOString();
+        hasUpdates = true;
+      }
     }
 
     if (diffMinutes <= 60 && !booking.reminder1hSentAt) {
-      notifyBookingChannels(booking, buildReminderMessage(booking, diffMinutes), 'Recordatorio TACAM: vas a tener una cita');
-      booking.reminder1hSentAt = now.toISOString();
-      hasUpdates = true;
+      const sent1h = await notifyBookingChannels(booking, buildReminderMessage(booking, diffMinutes), 'Recordatorio TACAM: vas a tener una cita');
+      if (sent1h) {
+        booking.reminder1hSentAt = now.toISOString();
+        hasUpdates = true;
+      }
     }
-  });
+  }
 
   if (hasUpdates) {
     saveBookings(bookings);
@@ -180,7 +235,7 @@ function moveBookingDate(bookingId, newDate) {
   booking.reminder1hSentAt = '';
   saveBookings(bookings);
   renderAll();
-  notifyReschedule(booking, oldDate, newDate);
+  void notifyReschedule(booking, oldDate, newDate);
 }
 
 function updateBooking(bookingId, updater) {
@@ -190,6 +245,40 @@ function updateBooking(bookingId, updater) {
   updater(booking);
   saveBookings(bookings);
   renderAll();
+}
+
+
+function buildStatusChangeMessage(booking, status) {
+  const appointment = `${booking.date || '-'} ${booking.time || ''}`.trim();
+  const matter = normalizeMatterLabel(booking.matter) || 'General';
+
+  if (status === 'confirmada') {
+    return `TACAM: tu reserva fue confirmada. Fecha/Hora: ${appointment}. Materia: ${matter}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+  }
+
+  if (status === 'cancelada') {
+    return `TACAM: tu reserva fue cancelada. Fecha/Hora: ${appointment}. Materia: ${matter}. Si necesitas reprogramar, contáctanos.`;
+  }
+
+  return `TACAM: el estado de tu reserva cambió a ${statusLabel(status)}. Fecha/Hora: ${appointment}. Materia: ${matter}.`;
+}
+
+async function updateBookingStatusWithNotification(bookingId, status) {
+  const bookings = getBookings();
+  const booking = bookings.find(item => item.id === bookingId);
+  if (!booking) return;
+
+  booking.status = status;
+  saveBookings(bookings);
+  renderAll();
+
+  const subject = status === 'confirmada'
+    ? 'TACAM: reserva confirmada'
+    : status === 'cancelada'
+      ? 'TACAM: reserva cancelada'
+      : `TACAM: estado actualizado (${statusLabel(status)})`;
+
+  await notifyBookingChannels(booking, buildStatusChangeMessage(booking, status), subject);
 }
 
 function formatAppointment(booking) {
@@ -244,18 +333,8 @@ function updateChileClock() {
 function getLawyerNames() {
   const names = new Set();
 
-  Array.from(assignedToSelect.options).forEach(option => {
-    const name = option.value.trim();
-    if (name) names.add(name);
-  });
-
   getLawyers().forEach(lawyer => {
     const name = String(lawyer.name || '').trim();
-    if (name) names.add(name);
-  });
-
-  getBookings().forEach(booking => {
-    const name = String(booking.assignedTo || '').trim();
     if (name) names.add(name);
   });
 
@@ -317,9 +396,10 @@ function getLawyerColor(name) {
   return LAWYER_COLORS[index];
 }
 
-function getCalendarBookings(selectedLawyer, selectedMonth, onlyShared = false) {
+function getCalendarBookings(selectedLawyer, selectedMonth, onlyShared = false, predicate = null) {
   const allBookings = getBookings().filter(booking => booking.status !== 'cancelada' && booking.date);
-  const byMonth = allBookings.filter(booking => !selectedMonth || booking.date.slice(0, 7) === selectedMonth);
+  const filteredBookings = typeof predicate === 'function' ? allBookings.filter(predicate) : allBookings;
+  const byMonth = filteredBookings.filter(booking => !selectedMonth || booking.date.slice(0, 7) === selectedMonth);
   const byLawyer = byMonth.filter(booking => !selectedLawyer || booking.assignedTo === selectedLawyer);
 
   if (!onlyShared) return byLawyer;
@@ -433,7 +513,7 @@ function renderCalendar(container, bookings, selectedMonth) {
             dragEvent.dataTransfer?.setData('text/booking-id', booking.id);
           });
           event.style.setProperty('--event-color', getLawyerColor(booking.assignedTo));
-          event.textContent = `${booking.time || '--:--'} · ${booking.assignedTo || 'Sin abogada'} · ${booking.customer || 'Cliente'} · ${booking.matter || 'General'}`;
+          event.textContent = `${booking.time || '--:--'} · ${booking.assignedTo || 'Sin abogada'} · ${booking.customer || 'Cliente'} · ${normalizeMatterLabel(booking.matter) || 'General'}`;
           dayCell.appendChild(event);
         });
     }
@@ -445,7 +525,7 @@ function renderCalendar(container, bookings, selectedMonth) {
 function renderAgendaCalendar() {
   const selectedLawyer = lawyerFilter.value.trim();
   const selectedMonth = agendaMonthInput.value;
-  const bookings = getCalendarBookings(selectedLawyer, selectedMonth, false);
+  const bookings = getCalendarBookings(selectedLawyer, selectedMonth, false, booking => !isPrisonVisit(booking));
   const names = [...new Set(bookings.map(booking => booking.assignedTo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
   renderCalendarLegend(agendaLegend, names);
   renderCalendar(agendaCalendar, bookings, selectedMonth);
@@ -481,6 +561,21 @@ function getLawyerAttentionStats() {
 
   return [...map.entries()]
     .map(([lawyer, values]) => ({ lawyer, ...values }))
+    .sort((a, b) => a.lawyer.localeCompare(b.lawyer, 'es'));
+}
+
+function getPrisonVisitStats() {
+  const map = new Map();
+  getBookings()
+    .filter(booking => isPrisonVisit(booking))
+    .forEach(booking => {
+      const lawyer = (booking.assignedTo || 'Sin abogada').trim() || 'Sin abogada';
+      if (!map.has(lawyer)) map.set(lawyer, 0);
+      map.set(lawyer, map.get(lawyer) + 1);
+    });
+
+  return [...map.entries()]
+    .map(([lawyer, total]) => ({ lawyer, total }))
     .sort((a, b) => a.lawyer.localeCompare(b.lawyer, 'es'));
 }
 
@@ -559,6 +654,12 @@ function renderReports() {
   const lawyerValues = lawyerStats.map(item => item.atendida);
   const lawyerColors = lawyerLabels.map(getLawyerColor);
   drawBarChart(lawyerStatsChart, lawyerLabels, lawyerValues, lawyerColors, 'Atenciones (estado atendida) por abogada');
+
+  const prisonStats = getPrisonVisitStats();
+  const prisonLabels = prisonStats.map(item => item.lawyer);
+  const prisonValues = prisonStats.map(item => item.total);
+  const prisonColors = prisonLabels.map(getLawyerColor);
+  drawBarChart(prisonStatsChart, prisonLabels, prisonValues, prisonColors, 'Visitas a la cárcel por abogada');
 }
 
 function renderBookings() {
@@ -580,17 +681,11 @@ function renderBookings() {
 
     appendCell(row, fmtDate(booking.createdAt));
     appendCell(row, booking.customer || '');
-    appendCell(row, booking.matter || 'General');
+    appendCell(row, normalizeMatterLabel(booking.matter) || 'General');
     appendCell(row, booking.phone || '');
     appendCell(row, formatAppointment(booking));
 
-    const assignCell = document.createElement('td');
-    const assignInput = document.createElement('input');
-    assignInput.dataset.assignInput = booking.id;
-    assignInput.value = booking.assignedTo || '';
-    assignInput.placeholder = 'Nombre abogado';
-    assignCell.appendChild(assignInput);
-    row.appendChild(assignCell);
+    appendCell(row, booking.assignedTo || 'Sin abogada');
 
     const statusCell = document.createElement('td');
     const statusBadge = document.createElement('span');
@@ -611,11 +706,6 @@ function renderBookings() {
     cancelBtn.textContent = 'Cancelar';
     actionsCell.appendChild(cancelBtn);
 
-    const saveBtn = document.createElement('button');
-    saveBtn.dataset.saveBtn = booking.id;
-    saveBtn.textContent = 'Guardar';
-    actionsCell.appendChild(saveBtn);
-
     row.appendChild(actionsCell);
 
     const notifyCell = document.createElement('td');
@@ -628,25 +718,22 @@ function renderBookings() {
     bookingsBody.appendChild(row);
   });
 
-  bookingsBody.querySelectorAll('[data-save-btn]').forEach(btn => {
-    btn.onclick = () => updateBooking(btn.dataset.saveBtn, booking => {
-      const input = bookingsBody.querySelector(`[data-assign-input="${booking.id}"]`);
-      booking.assignedTo = input.value.trim();
-    });
-  });
-
   bookingsBody.querySelectorAll('[data-confirm-btn]').forEach(btn => {
-    btn.onclick = () => updateBooking(btn.dataset.confirmBtn, booking => { booking.status = 'confirmada'; });
+    btn.onclick = async () => {
+      await updateBookingStatusWithNotification(btn.dataset.confirmBtn, 'confirmada');
+    };
   });
 
   bookingsBody.querySelectorAll('[data-cancel-btn]').forEach(btn => {
-    btn.onclick = () => updateBooking(btn.dataset.cancelBtn, booking => { booking.status = 'cancelada'; });
+    btn.onclick = async () => {
+      await updateBookingStatusWithNotification(btn.dataset.cancelBtn, 'cancelada');
+    };
   });
 
   bookingsBody.querySelectorAll('[data-notify-btn]').forEach(btn => {
-    btn.onclick = () => {
+    btn.onclick = async () => {
       const booking = getBookings().find(item => item.id === btn.dataset.notifyBtn);
-      if (booking) notifyBooking(booking);
+      if (booking) await notifyBooking(booking);
     };
   });
 }
@@ -654,7 +741,7 @@ function renderBookings() {
 function renderAgenda() {
   const selectedLawyer = lawyerFilter.value.trim();
   const bookings = getBookings().filter(booking =>
-    booking.status !== 'cancelada' && (!selectedLawyer || booking.assignedTo === selectedLawyer)
+    booking.status !== 'cancelada' && !isPrisonVisit(booking) && (!selectedLawyer || booking.assignedTo === selectedLawyer)
   );
 
   agendaBody.replaceChildren();
@@ -670,7 +757,7 @@ function renderAgenda() {
     bookings.forEach(booking => {
       const row = document.createElement('tr');
       appendCell(row, booking.customer || '');
-      appendCell(row, booking.matter || 'General');
+      appendCell(row, normalizeMatterLabel(booking.matter) || 'General');
       appendCell(row, formatAppointment(booking));
       appendCell(row, booking.notes || '-');
 
@@ -694,6 +781,93 @@ function renderAgenda() {
 
   agendaBody.querySelectorAll('[data-attend]').forEach(btn => {
     btn.onclick = () => updateBooking(btn.dataset.attend, booking => { booking.status = 'atendida'; });
+  });
+}
+
+
+function buildPrisonCheckInMessage(booking) {
+  return `TACAM: check-in registrado para la visita a la cárcel de ${booking.customer || 'Cliente'}. Fecha/Hora: ${booking.date || '-'} ${booking.time || ''}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+}
+
+function renderPrisonCalendar() {
+  const selectedMonth = prisonMonthInput.value;
+  const bookings = getCalendarBookings('', selectedMonth, false, booking => isPrisonVisit(booking));
+  const names = [...new Set(bookings.map(booking => booking.assignedTo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+  renderCalendarLegend(prisonCalendarLegend, names);
+  renderCalendar(prisonCalendar, bookings, selectedMonth);
+}
+
+function renderPrisonVisitsList() {
+  const selectedMonth = prisonMonthInput.value;
+  const visits = getBookings()
+    .filter(booking => booking.status !== 'cancelada' && isPrisonVisit(booking))
+    .filter(booking => !selectedMonth || booking.date.slice(0, 7) === selectedMonth)
+    .sort((a, b) => `${a.date || ''} ${a.time || ''}`.localeCompare(`${b.date || ''} ${b.time || ''}`));
+
+  prisonVisitsBody.replaceChildren();
+
+  if (!visits.length) {
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 7;
+    cell.textContent = 'Sin visitas a la cárcel registradas en este mes.';
+    row.appendChild(cell);
+    prisonVisitsBody.appendChild(row);
+    return;
+  }
+
+  visits.forEach(booking => {
+    const row = document.createElement('tr');
+    appendCell(row, booking.assignedTo || 'Sin abogada');
+    appendCell(row, booking.customer || '');
+    appendCell(row, booking.date || '-');
+    appendCell(row, booking.time || '--:--');
+
+    const statusCell = document.createElement('td');
+    const statusBadge = document.createElement('span');
+    statusBadge.className = `badge ${booking.status}`;
+    statusBadge.textContent = statusLabel(booking.status);
+    statusCell.appendChild(statusBadge);
+    row.appendChild(statusCell);
+
+    const checkInCell = document.createElement('td');
+    const checkInBtn = document.createElement('button');
+    checkInBtn.dataset.prisonCheckin = booking.id;
+    checkInBtn.textContent = booking.checkedInAt ? `Check-in ${fmtDate(booking.checkedInAt)}` : 'Registrar check-in';
+    checkInBtn.disabled = Boolean(booking.checkedInAt);
+    checkInCell.appendChild(checkInBtn);
+    row.appendChild(checkInCell);
+
+    const reminderCell = document.createElement('td');
+    const reminderBtn = document.createElement('button');
+    reminderBtn.dataset.prisonNotify = booking.id;
+    reminderBtn.textContent = 'WhatsApp y email';
+    reminderCell.appendChild(reminderBtn);
+    row.appendChild(reminderCell);
+
+    prisonVisitsBody.appendChild(row);
+  });
+
+  prisonVisitsBody.querySelectorAll('[data-prison-checkin]').forEach(btn => {
+    btn.onclick = async () => {
+      const bookingId = btn.dataset.prisonCheckin;
+      updateBooking(bookingId, booking => {
+        booking.checkedInAt = new Date().toISOString();
+        booking.status = booking.status === 'nueva' ? 'confirmada' : booking.status;
+      });
+
+      const updatedBooking = getBookings().find(item => item.id === bookingId);
+      if (updatedBooking) {
+        await notifyBookingChannels(updatedBooking, buildPrisonCheckInMessage(updatedBooking), 'TACAM: check-in visita a la cárcel');
+      }
+    };
+  });
+
+  prisonVisitsBody.querySelectorAll('[data-prison-notify]').forEach(btn => {
+    btn.onclick = async () => {
+      const booking = getBookings().find(item => item.id === btn.dataset.prisonNotify);
+      if (booking) await notifyBookingChannels(booking, buildVisitScheduledMessage(booking), 'TACAM: recordatorio de visita a la cárcel');
+    };
   });
 }
 
@@ -725,6 +899,14 @@ function renderLawyers() {
     const specialty = document.createElement('p');
     specialty.textContent = lawyer.specialty || 'Sin especialidad';
     content.appendChild(specialty);
+
+    const rut = document.createElement('small');
+    rut.textContent = lawyer.rut ? `Cédula: ${lawyer.rut}` : 'Cédula no registrada';
+    content.appendChild(rut);
+
+    const email = document.createElement('small');
+    email.textContent = lawyer.email || 'Sin correo';
+    content.appendChild(email);
 
     const phone = document.createElement('small');
     phone.textContent = lawyer.phone || 'Sin WhatsApp';
@@ -797,6 +979,8 @@ function renderAll() {
   renderBookings();
   renderAgenda();
   renderAgendaCalendar();
+  renderPrisonCalendar();
+  renderPrisonVisitsList();
   renderLawyers();
   renderLawyerCalendar();
   renderProfiles();
@@ -819,7 +1003,7 @@ loginForm.addEventListener('submit', event => {
   }
 });
 
-bookingForm.addEventListener('submit', event => {
+bookingForm.addEventListener('submit', async event => {
   event.preventDefault();
   const data = new FormData(bookingForm);
   const rut = formatRut(data.get('rut'));
@@ -854,18 +1038,21 @@ bookingForm.addEventListener('submit', event => {
     rut,
     phone,
     email,
-    matter: String(data.get('matter') || '').trim(),
+    matter: normalizeMatterLabel(data.get('matter')),
     date: String(data.get('date') || '').trim(),
     time: String(data.get('time') || '').trim(),
     assignedTo: String(data.get('assignedTo') || '').trim(),
     notes: String(data.get('notes') || '').trim(),
+    notificationsConsent: Boolean(data.get('notificationsConsent')),
+    consentAt: data.get('notificationsConsent') ? new Date().toISOString() : '',
     status: 'nueva',
     createdAt: new Date().toISOString(),
     reminder24hSentAt: '',
-    reminder1hSentAt: ''
+    reminder1hSentAt: '',
+    checkedInAt: ''
   });
   saveBookings(bookings);
-  notifyVisitScheduled(bookings[0]);
+  await notifyVisitScheduled(bookings[0]);
   bookingForm.reset();
   phoneInput.value = '+569';
   renderAll();
@@ -886,6 +1073,10 @@ lawyerFilter.addEventListener('change', () => {
   renderAgendaCalendar();
 });
 agendaMonthInput.addEventListener('change', renderAgendaCalendar);
+prisonMonthInput.addEventListener('change', () => {
+  renderPrisonCalendar();
+  renderPrisonVisitsList();
+});
 lawyerCalendarFilter.addEventListener('change', renderLawyerCalendar);
 lawyerCalendarMonth.addEventListener('change', renderLawyerCalendar);
 sharedOnlyInput.addEventListener('change', renderLawyerCalendar);
@@ -911,20 +1102,21 @@ downloadLawyerReportBtn.addEventListener('click', () => {
 
 downloadBookingsReportBtn.addEventListener('click', () => {
   const rows = [[
-    'ID', 'Cliente', 'RUT', 'Materia', 'Telefono', 'Correo', 'Fecha', 'Hora', 'Abogada', 'Estado', 'Motivo', 'Creada en'
+    'ID', 'Cliente', 'RUT', 'Materia', 'Telefono', 'Correo', 'Fecha', 'Hora', 'Abogada', 'Estado', 'Consentimiento', 'Motivo', 'Creada en'
   ]];
   getBookings().forEach(booking => {
     rows.push([
       booking.id,
       booking.customer,
       booking.rut,
-      booking.matter,
+      normalizeMatterLabel(booking.matter),
       booking.phone,
       booking.email,
       booking.date,
       booking.time,
       booking.assignedTo,
       booking.status,
+      booking.notificationsConsent ? 'Sí' : 'No',
       booking.notes,
       booking.createdAt
     ]);
@@ -1008,6 +1200,7 @@ switchModule('create');
 
 const currentMonth = monthValueFromDate(new Date());
 agendaMonthInput.value = currentMonth;
+prisonMonthInput.value = currentMonth;
 lawyerCalendarMonth.value = currentMonth;
 phoneInput.value = '+569';
 updateChileClock();
@@ -1019,6 +1212,6 @@ setInterval(() => {
   updateChileClock();
   if (!appShell.hidden) {
     renderAll();
-    notifyUpcomingAppointments();
+    void notifyUpcomingAppointments();
   }
 }, 5000);

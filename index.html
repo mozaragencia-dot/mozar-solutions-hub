@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#8f203a" />
+  <meta name="theme-color" content="#b21f3a" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" type="image/svg+xml" href="assets/logo-color.svg" />
   <link rel="shortcut icon" href="assets/logo-color.svg" />
@@ -15,7 +15,7 @@
   <section id="login-screen" class="login-screen">
     <div class="login-panel">
       <img src="assets/logo-color.svg" alt="Logo TACAM" />
-      <h2>Ingreso Administrador</h2>
+      <h2 class="brand-title"><img src="assets/logo-color.svg" alt="Logo TACAM" /> <span>Ingreso Administrador</span></h2>
       <p>Acceso restringido al sistema TACAM.</p>
       <form id="login-form" class="grid">
         <label>Usuario <input name="username" required placeholder="admin" /></label>
@@ -30,7 +30,7 @@
     <header class="topbar">
       <img src="assets/logo-color.svg" alt="Logo TACAM" />
       <div>
-        <h1>TACAM · Sistema de Reservas</h1>
+        <h1 class="brand-title white"><img src="assets/logo-white.svg" alt="Logo TACAM" /> <span>Sistema de Reservas</span></h1>
         <p>Reserva de personas para atención en oficina de abogados</p>
         <span class="version-badge">Versión 1</span>
       </div>
@@ -44,7 +44,8 @@
       <nav class="module-tabs" aria-label="Módulos TACAM">
         <button type="button" class="module-tab active" data-module-tab="create">Ingreso de Cliente</button>
         <button type="button" class="module-tab" data-module-tab="bookings">No Contrataron / Contratados</button>
-        <button type="button" class="module-tab" data-module-tab="agenda">Agendamiento y Visitas</button>
+        <button type="button" class="module-tab" data-module-tab="agenda">Agendamiento</button>
+        <button type="button" class="module-tab" data-module-tab="prison-visits">Visitas a la Cárcel</button>
         <button type="button" class="module-tab" data-module-tab="lawyers">Perfiles de Abogados</button>
         <button type="button" class="module-tab" data-module-tab="reports">Reportes y Gráficos</button>
       </nav>
@@ -61,20 +62,45 @@
               <option value="">Seleccione materia</option>
               <option value="Familiar">Familiar</option>
               <option value="Penal">Penal</option>
+              <option value="Visita a la Cárcel">Visita a la Cárcel</option>
             </select>
           </label>
           <label>Fecha de reserva <input name="date" type="date" required /></label>
-          <label>Hora de reserva <input name="time" type="time" required /></label>
+          <label>Hora de reserva
+            <select name="time" required>
+              <option value="">Seleccione un horario</option>
+              <option value="08:00">08:00</option>
+              <option value="08:30">08:30</option>
+              <option value="09:00">09:00</option>
+              <option value="09:30">09:30</option>
+              <option value="10:00">10:00</option>
+              <option value="10:30">10:30</option>
+              <option value="11:00">11:00</option>
+              <option value="11:30">11:30</option>
+              <option value="12:00">12:00</option>
+              <option value="12:30">12:30</option>
+              <option value="13:00">13:00</option>
+              <option value="13:30">13:30</option>
+              <option value="14:00">14:00</option>
+              <option value="14:30">14:30</option>
+              <option value="15:00">15:00</option>
+              <option value="15:30">15:30</option>
+              <option value="16:00">16:00</option>
+              <option value="16:30">16:30</option>
+              <option value="17:00">17:00</option>
+              <option value="17:30">17:30</option>
+              <option value="18:00">18:00</option>
+            </select>
+          </label>
           <label>Abogado asignado
             <select name="assignedTo" required>
               <option value="">Seleccione</option>
-              <option value="Daniela Sierra">Daniela Sierra</option>
-              <option value="Natalie Gómez">Natalie Gómez</option>
-              <option value="Camila Vásquez">Camila Vásquez</option>
-              <option value="Carolina Contreras">Carolina Contreras</option>
             </select>
           </label>
           <label class="full">Motivo de consulta <textarea name="notes" rows="3" placeholder="Detalle del caso..."></textarea></label>
+          <label class="full checkbox-inline consent-box">
+            <input name="notificationsConsent" type="checkbox" /> La secretaria recibió consentimiento verbal para enviar correo y WhatsApp
+          </label>
           <button type="submit">Guardar reserva</button>
         </form>
       </section>
@@ -109,10 +135,31 @@
         <div id="agenda-color-legend" class="calendar-legend"></div>
         <p class="muted">Tip: puedes arrastrar y soltar una cita a otro día para reagendar.</p>
         <div id="agenda-calendar" class="calendar"></div>
+
         <div class="table-wrap">
           <table>
             <thead><tr><th>Persona</th><th>Materia</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody id="agenda-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card module-panel" data-module-panel="prison-visits">
+        <div class="section-heading">
+          <div>
+            <h2>Visitas a la Cárcel</h2>
+            <p class="muted">Calendario exclusivo para la materia Visita a la Cárcel, con recordatorios por WhatsApp y correo.</p>
+          </div>
+          <label>Mes
+            <input id="prison-month" type="month" />
+          </label>
+        </div>
+        <div id="prison-calendar-legend" class="calendar-legend"></div>
+        <div id="prison-calendar" class="calendar"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Abogada</th><th>Persona</th><th>Fecha</th><th>Hora</th><th>Estado</th><th>Check-in secretaria</th><th>Recordatorios</th></tr></thead>
+            <tbody id="prison-visits-body"></tbody>
           </table>
         </div>
       </section>
@@ -183,6 +230,10 @@
             <h3>Atenciones por abogada</h3>
             <canvas id="lawyer-stats-chart" width="800" height="320"></canvas>
           </article>
+          <article class="report-card">
+            <h3>Visitas a la Cárcel por abogada</h3>
+            <canvas id="prison-stats-chart" width="800" height="320"></canvas>
+          </article>
         </div>
 
         <div class="report-actions">
@@ -194,7 +245,7 @@
 
       <footer class="footer-sign">
         <img src="assets/logo-color.svg" alt="Logo TACAM" />
-        <span>Desarrollo por <strong>Agencia Digital</strong></span>
+        <span><strong>TACAM</strong> · Desarrollo por <strong>Agencia Digital</strong></span>
       </footer>
     </main>
   </div>
