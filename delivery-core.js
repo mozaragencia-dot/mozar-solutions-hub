@@ -5,6 +5,15 @@ const STORAGE_KEYS = {
   session: 'tacam_session'
 };
 
+const LEGACY_LAWYER_NAMES = new Set(['Daniela Sierra', 'Natalie Gómez', 'Camila Vásquez', 'Carolina Contreras']);
+const OFFICIAL_LAWYERS = [
+  { name: 'KATHERINE SERRANO MARREY', rut: '16.592.789-3', specialty: 'Penal - policía local', email: 'kserrano@tacam.cl', phone: '', photo: 'assets/logo-color.svg' },
+  { name: 'CONSTANZA ROCÍO CLIMENT DEL RÍO', rut: '16.380.148-5', specialty: 'Familia', email: 'ccliment@tacam.cl', phone: '', photo: 'assets/logo-color.svg' },
+  { name: 'VALENTINA BELEN REICHERT GODOY', rut: '20.135.049-2', specialty: 'Penal - Policía local', email: 'vreichert@tacam.cl', phone: '', photo: 'assets/logo-color.svg' },
+  { name: 'SARA BERNARDA TAPIA GONZÁLEZ', rut: '12.836.725-K', specialty: 'Penal - Policía local - Familia', email: 'stapia@tacam.cl', phone: '', photo: 'assets/logo-color.svg' },
+  { name: 'DIANDRA ARACENA MORA', rut: '15.981.484-K', specialty: 'Penal', email: 'daracena@tacam.cl', phone: '', photo: 'assets/logo-color.svg' }
+];
+
 function loadJson(key, fallback) {
   try {
     const raw = localStorage.getItem(key);
@@ -31,7 +40,7 @@ function seedData() {
         matter: 'Familiar',
         date: new Date().toISOString().slice(0, 10),
         time: '10:30',
-        assignedTo: 'Daniela Sierra',
+        assignedTo: 'KATHERINE SERRANO MARREY',
         notes: 'Consulta por materia familiar.',
         status: 'nueva',
         createdAt: new Date().toISOString()
@@ -39,18 +48,7 @@ function seedData() {
     ]);
   }
 
-  const lawyers = loadJson(STORAGE_KEYS.lawyers, []);
-  if (!lawyers.length) {
-    saveJson(STORAGE_KEYS.lawyers, [
-      {
-        id: crypto.randomUUID(),
-        name: 'Daniela Sierra',
-        specialty: 'Derecho de Familia',
-        phone: '+56987591312',
-        photo: 'assets/logo-color.svg'
-      }
-    ]);
-  }
+  syncLawyersData();
 
   const profiles = loadJson(STORAGE_KEYS.profiles, []);
   if (!profiles.length) {
@@ -63,6 +61,48 @@ function seedData() {
         permissions: ['Reservas', 'Agenda', 'Abogadas', 'Estadísticas']
       }
     ]);
+  }
+}
+
+function normalizeLawyerKey(name) {
+  return String(name || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function syncLawyersData() {
+  const lawyers = loadJson(STORAGE_KEYS.lawyers, []);
+  const retainedLawyers = lawyers.filter(lawyer => !LEGACY_LAWYER_NAMES.has(String(lawyer.name || '').trim()));
+  const officialKeys = new Set(OFFICIAL_LAWYERS.map(lawyer => normalizeLawyerKey(lawyer.name)));
+  const map = new Map();
+
+  retainedLawyers.forEach(lawyer => {
+    const key = normalizeLawyerKey(lawyer.name);
+    if (!key) return;
+    map.set(key, { ...lawyer, id: lawyer.id || crypto.randomUUID(), photo: lawyer.photo || 'assets/logo-color.svg' });
+  });
+
+  OFFICIAL_LAWYERS.forEach(lawyer => {
+    const key = normalizeLawyerKey(lawyer.name);
+    const existing = map.get(key) || {};
+    map.set(key, {
+      id: existing.id || crypto.randomUUID(),
+      name: lawyer.name,
+      rut: lawyer.rut,
+      specialty: lawyer.specialty,
+      email: lawyer.email,
+      phone: existing.phone || lawyer.phone || '',
+      photo: existing.photo || lawyer.photo || 'assets/logo-color.svg'
+    });
+  });
+
+  const syncedLawyers = [
+    ...OFFICIAL_LAWYERS.map(lawyer => map.get(normalizeLawyerKey(lawyer.name))),
+    ...retainedLawyers.filter(lawyer => !officialKeys.has(normalizeLawyerKey(lawyer.name))).map(lawyer => map.get(normalizeLawyerKey(lawyer.name)))
+  ].filter(Boolean);
+
+  const currentSerialized = JSON.stringify(lawyers);
+  const syncedSerialized = JSON.stringify(syncedLawyers);
+  if (currentSerialized !== syncedSerialized) {
+    saveJson(STORAGE_KEYS.lawyers, syncedLawyers);
   }
 }
 
@@ -115,9 +155,17 @@ function cleanPhone(phone) {
   return String(phone || '').replace(/\D/g, '');
 }
 
+function normalizeMatterLabel(value) {
+  const clean = String(value || '').trim();
+  if (!clean) return '';
+  const normalized = clean.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  if (normalized.includes('cartel') || normalized.includes('carcel')) return 'Visita a la Cárcel';
+  return clean;
+}
+
 function buildTacamMessage(booking) {
   const appointment = `${booking.date || ''} ${booking.time || ''}`.trim();
-  const matter = booking.matter || 'General';
+  const matter = normalizeMatterLabel(booking.matter) || 'General';
   return `Desde TACAM, informamos toda la información de su reserva. Persona: ${booking.customer}. Materia: ${matter}. Fecha/Hora: ${appointment}. Abogado: ${booking.assignedTo || 'Por confirmar'}. Estado: ${statusLabel(booking.status)}.`;
 }
 
