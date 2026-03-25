@@ -4,8 +4,13 @@ const loginForm = document.getElementById('login-form');
 const loginError = document.getElementById('login-error');
 
 const bookingsBody = document.getElementById('bookings-body');
+const bookingStatusFilter = document.getElementById('booking-status-filter');
+const bookingMatterFilter = document.getElementById('booking-matter-filter');
 const agendaBody = document.getElementById('agenda-body');
+const clientsBody = document.getElementById('clients-body');
+const clientForm = document.getElementById('client-form');
 const bookingForm = document.getElementById('booking-form');
+const prisonVisitForm = document.getElementById('prison-visit-form');
 const lawyerFilter = document.getElementById('lawyer-filter');
 const agendaMonthInput = document.getElementById('agenda-month');
 const agendaCalendar = document.getElementById('agenda-calendar');
@@ -14,6 +19,9 @@ const prisonMonthInput = document.getElementById('prison-month');
 const prisonCalendar = document.getElementById('prison-calendar');
 const prisonCalendarLegend = document.getElementById('prison-calendar-legend');
 const prisonVisitsBody = document.getElementById('prison-visits-body');
+const contractedBody = document.getElementById('contracted-body');
+const nonContractedBody = document.getElementById('non-contracted-body');
+const remarketingForm = document.getElementById('remarketing-form');
 const lawyerForm = document.getElementById('lawyer-form');
 const lawyerList = document.getElementById('lawyer-list');
 const lawyerCalendarFilter = document.getElementById('lawyer-calendar-filter');
@@ -27,14 +35,25 @@ const prisonStatsChart = document.getElementById('prison-stats-chart');
 const downloadGeneralReportBtn = document.getElementById('download-general-report');
 const downloadLawyerReportBtn = document.getElementById('download-lawyer-report');
 const downloadBookingsReportBtn = document.getElementById('download-bookings-report');
+const downloadBackupJsonBtn = document.getElementById('download-backup-json');
+const restoreBackupJsonBtn = document.getElementById('restore-backup-json');
+const restoreBackupInput = document.getElementById('restore-backup-input');
 const profileForm = document.getElementById('profile-form');
 const profileList = document.getElementById('profile-list');
-const rutInput = bookingForm.elements.rut;
-const phoneInput = bookingForm.elements.phone;
+const clientRutInput = clientForm.elements.rut;
+const clientPhoneInput = clientForm.elements.phone;
 const chileClock = document.getElementById('chile-clock');
 const assignedToSelect = bookingForm.elements.assignedTo;
+const prisonAssignedToSelect = prisonVisitForm.elements.assignedTo;
+const clientSelect = bookingForm.elements.clientId;
+const prisonClientSelect = prisonVisitForm.elements.clientId;
+const bookingClientSearchInput = bookingForm.elements.clientSearch;
+const prisonClientSearchInput = prisonVisitForm.elements.clientSearch;
+const bookingClientOptions = document.getElementById('booking-client-options');
+const prisonClientOptions = document.getElementById('prison-client-options');
 const moduleTabs = document.querySelectorAll('[data-module-tab]');
 const modulePanels = document.querySelectorAll('[data-module-panel]');
+let clientOptionMap = new Map();
 
 function switchModule(moduleName) {
   moduleTabs.forEach(tab => {
@@ -62,7 +81,7 @@ const ALLOWED_CREDENTIALS = [
 ];
 
 const LAWYER_COLORS = ['#8f203a', '#2166a5', '#2a9d8f', '#e76f51', '#6a4c93', '#e9c46a', '#4f772d'];
-const PRISON_VISIT_MATTER = 'Visita a la Cárcel';
+const PRISON_VISIT_MATTER = 'Visita a la Carcel';
 
 function normalizeMatterLabel(value) {
   const clean = String(value || '').trim();
@@ -84,8 +103,8 @@ function hasNotificationConsent(booking) {
   return Boolean(booking?.notificationsConsent);
 }
 
-async function sendEmailViaBrevo(booking, subject, message) {
-  const email = String(booking?.email || '').trim();
+async function sendEmailViaBrevoToRecipient(toEmail, toName, subject, message) {
+  const email = String(toEmail || '').trim();
   if (!email) return false;
 
   try {
@@ -94,7 +113,7 @@ async function sendEmailViaBrevo(booking, subject, message) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         toEmail: email,
-        toName: booking.customer || 'Cliente',
+        toName: toName || 'Contacto',
         subject,
         textContent: message
       })
@@ -112,13 +131,45 @@ async function sendEmailViaBrevo(booking, subject, message) {
   }
 }
 
+async function sendEmailViaBrevo(booking, subject, message) {
+  return sendEmailViaBrevoToRecipient(booking?.email, booking?.customer || 'Cliente', subject, message);
+}
+
+async function sendWhatsAppViaBrevo(phone, textContent) {
+  const toPhone = cleanPhone(phone);
+  if (!toPhone || !textContent) return false;
+
+  try {
+    const response = await fetch('brevo-whatsapp.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ toPhone, textContent })
+    });
+    return response.ok;
+  } catch (error) {
+    console.warn('Brevo WhatsApp request failed', error);
+    return false;
+  }
+}
+
+async function openWhatsAppFallback(phone, textContent) {
+  const toPhone = cleanPhone(phone);
+  if (!toPhone || !textContent) return false;
+  window.open(`https://wa.me/${toPhone}?text=${encodeURIComponent(textContent)}`, '_blank', 'noopener');
+  return true;
+}
+
+async function sendWhatsAppMessage(phone, textContent) {
+  const sentViaBrevo = await sendWhatsAppViaBrevo(phone, textContent);
+  if (sentViaBrevo) return true;
+  return openWhatsAppFallback(phone, textContent);
+}
+
 async function notifyBooking(booking) {
   if (!hasNotificationConsent(booking)) return false;
   const destination = cleanPhone(booking.phone);
   if (!destination) return false;
-  const msg = encodeURIComponent(buildTacamMessage(booking));
-  window.open(`https://wa.me/${destination}?text=${msg}`, '_blank', 'noopener');
-  return true;
+  return sendWhatsAppMessage(destination, buildTacamMessage(booking));
 }
 
 function buildRescheduleMessage(booking, fromDate, toDate) {
@@ -160,14 +211,13 @@ function buildVisitScheduledMessage(booking) {
 async function notifyBookingChannels(booking, message, emailSubject) {
   if (!hasNotificationConsent(booking)) return false;
 
-  const encoded = encodeURIComponent(message);
-  const targets = [cleanPhone(booking.phone), getLawyerPhone(booking.assignedTo)].filter(Boolean);
+  const targets = [cleanPhone(booking.phone)].filter(Boolean);
   let sent = false;
 
-  [...new Set(targets)].forEach(target => {
-    window.open(`https://wa.me/${target}?text=${encoded}`, '_blank', 'noopener');
-    sent = true;
-  });
+  for (const target of [...new Set(targets)]) {
+    const targetSent = await sendWhatsAppMessage(target, message);
+    if (targetSent) sent = true;
+  }
 
   const emailSent = await sendEmailViaBrevo(booking, emailSubject, message);
   return sent || emailSent;
@@ -175,7 +225,10 @@ async function notifyBookingChannels(booking, message, emailSubject) {
 
 async function notifyVisitScheduled(booking) {
   const message = buildVisitScheduledMessage(booking);
-  return notifyBookingChannels(booking, message, isPrisonVisit(booking) ? 'TACAM: visita a la cárcel agendada' : 'Calendario de visitas TACAM: cita agendada');
+  if (isPrisonVisit(booking)) {
+    return notifyLawyerChannels(booking, message, 'TACAM: visita a la carcel agendada');
+  }
+  return notifyBookingChannels(booking, message, 'Calendario de visitas TACAM: cita agendada');
 }
 
 function getLawyerPhone(lawyerName) {
@@ -183,9 +236,27 @@ function getLawyerPhone(lawyerName) {
   return lawyer ? cleanPhone(lawyer.phone) : '';
 }
 
+function getLawyerEmail(lawyerName) {
+  const lawyer = getLawyers().find(item => (item.name || '').trim() === (lawyerName || '').trim());
+  return lawyer ? String(lawyer.email || '').trim() : '';
+}
+
 async function notifyReschedule(booking, fromDate, toDate) {
   const message = buildRescheduleMessage(booking, fromDate, toDate);
   return notifyBookingChannels(booking, message, 'Reagendamiento de cita TACAM');
+}
+
+async function notifyLawyerChannels(booking, message, emailSubject) {
+  const lawyerPhone = getLawyerPhone(booking.assignedTo);
+  const lawyerEmail = getLawyerEmail(booking.assignedTo);
+  let sent = false;
+
+  if (lawyerPhone) {
+    sent = await sendWhatsAppMessage(lawyerPhone, message);
+  }
+
+  const emailSent = await sendEmailViaBrevoToRecipient(lawyerEmail, booking.assignedTo || 'Abogada', emailSubject, message);
+  return sent || emailSent;
 }
 
 async function notifyUpcomingAppointments() {
@@ -201,7 +272,9 @@ async function notifyUpcomingAppointments() {
     if (diffMinutes < 0) continue;
 
     if (diffMinutes <= 1440 && !booking.reminder24hSentAt) {
-      const sent24h = await notifyBookingChannels(booking, build24hReminderMessage(booking), 'Recordatorio TACAM: cita en 24 horas');
+      const sent24h = isPrisonVisit(booking)
+        ? await notifyLawyerChannels(booking, build24hReminderMessage(booking), 'Recordatorio TACAM: visita en 24 horas')
+        : await notifyBookingChannels(booking, build24hReminderMessage(booking), 'Recordatorio TACAM: cita en 24 horas');
       if (sent24h) {
         booking.reminder24hSentAt = now.toISOString();
         hasUpdates = true;
@@ -209,7 +282,9 @@ async function notifyUpcomingAppointments() {
     }
 
     if (diffMinutes <= 60 && !booking.reminder1hSentAt) {
-      const sent1h = await notifyBookingChannels(booking, buildReminderMessage(booking, diffMinutes), 'Recordatorio TACAM: vas a tener una cita');
+      const sent1h = isPrisonVisit(booking)
+        ? await notifyLawyerChannels(booking, buildReminderMessage(booking, diffMinutes), 'Recordatorio TACAM: visita en 60 minutos')
+        : await notifyBookingChannels(booking, buildReminderMessage(booking, diffMinutes), 'Recordatorio TACAM: vas a tener una cita');
       if (sent1h) {
         booking.reminder1hSentAt = now.toISOString();
         hasUpdates = true;
@@ -261,6 +336,12 @@ function buildStatusChangeMessage(booking, status) {
   }
 
   return `TACAM: el estado de tu reserva cambió a ${statusLabel(status)}. Fecha/Hora: ${appointment}. Materia: ${matter}.`;
+}
+
+function buildDispatchConfirmationMessage(booking) {
+  const appointment = `${booking.date || '-'} ${booking.time || ''}`.trim();
+  const matter = normalizeMatterLabel(booking.matter) || 'General';
+  return `TACAM: confirmamos tu agendamiento. Fecha/Hora: ${appointment}. Materia: ${matter}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
 }
 
 async function updateBookingStatusWithNotification(bookingId, status) {
@@ -341,6 +422,17 @@ function getLawyerNames() {
   return [...names].sort((a, b) => a.localeCompare(b, 'es'));
 }
 
+function getClientLabel(client) {
+  const name = String(client?.customer || '').trim();
+  const rut = String(client?.rut || '').trim();
+  if (!name) return rut || 'Cliente sin nombre';
+  return rut ? `${name} · ${rut}` : name;
+}
+
+function getClientById(clientId) {
+  return getClients().find(client => client.id === clientId);
+}
+
 function fillSelectWithNames(select, names, firstLabel) {
   const currentValue = select.value;
   select.replaceChildren();
@@ -364,9 +456,45 @@ function fillSelectWithNames(select, names, firstLabel) {
 
 function renderLawyerOptions() {
   const names = getLawyerNames();
-  fillSelectWithNames(assignedToSelect, names, 'Seleccione');
+  fillSelectWithNames(assignedToSelect, names, 'No asignar ahora');
+  fillSelectWithNames(prisonAssignedToSelect, names, 'No asignar ahora');
   fillSelectWithNames(lawyerFilter, names, 'Todos');
   fillSelectWithNames(lawyerCalendarFilter, names, 'Todas');
+}
+
+function renderClientOptions() {
+  const clients = getClients().sort((a, b) => getClientLabel(a).localeCompare(getClientLabel(b), 'es'));
+  const currentBookingClient = clientSelect.value;
+  const currentPrisonClient = prisonClientSelect.value;
+  const map = new Map();
+  bookingClientOptions.replaceChildren();
+  prisonClientOptions.replaceChildren();
+
+  clients.forEach(client => {
+    const label = getClientLabel(client);
+    map.set(label, client.id);
+
+    const bookingOption = document.createElement('option');
+    bookingOption.value = label;
+    bookingClientOptions.appendChild(bookingOption);
+
+    const prisonOption = document.createElement('option');
+    prisonOption.value = label;
+    prisonClientOptions.appendChild(prisonOption);
+  });
+
+  clientOptionMap = map;
+
+  const currentBooking = clients.find(client => client.id === currentBookingClient);
+  if (currentBooking) bookingClientSearchInput.value = getClientLabel(currentBooking);
+
+  const currentPrison = clients.find(client => client.id === currentPrisonClient);
+  if (currentPrison) prisonClientSearchInput.value = getClientLabel(currentPrison);
+}
+
+function syncClientIdFromSearch(searchInput, hiddenInput) {
+  const typed = String(searchInput.value || '').trim();
+  hiddenInput.value = clientOptionMap.get(typed) || '';
 }
 
 function getLawyerStats(lawyerName) {
@@ -551,6 +679,10 @@ function getGeneralStatusStats() {
 
 function getLawyerAttentionStats() {
   const map = new Map();
+  getLawyerNames().forEach(name => {
+    map.set(name, { total: 0, atendida: 0 });
+  });
+
   getBookings().forEach(booking => {
     const name = (booking.assignedTo || 'Sin abogada').trim() || 'Sin abogada';
     if (!map.has(name)) map.set(name, { total: 0, atendida: 0 });
@@ -566,6 +698,8 @@ function getLawyerAttentionStats() {
 
 function getPrisonVisitStats() {
   const map = new Map();
+  getLawyerNames().forEach(name => map.set(name, 0));
+
   getBookings()
     .filter(booking => isPrisonVisit(booking))
     .forEach(booking => {
@@ -577,6 +711,64 @@ function getPrisonVisitStats() {
   return [...map.entries()]
     .map(([lawyer, total]) => ({ lawyer, total }))
     .sort((a, b) => a.lawyer.localeCompare(b.lawyer, 'es'));
+}
+
+function getPrisonVisitLoadColor(total) {
+  if (total <= 1) return '#d90429'; // rojo
+  if (total <= 3) return '#ffbe0b'; // amarillo
+  return '#2a9d8f'; // verde
+}
+
+function drawPrisonLoadChart(canvas, stats) {
+  if (!(canvas instanceof HTMLCanvasElement)) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  const width = canvas.width;
+  const height = canvas.height;
+  ctx.clearRect(0, 0, width, height);
+
+  ctx.fillStyle = '#5a313d';
+  ctx.font = 'bold 16px Arial';
+  ctx.fillText('Visitas a la carcel por abogada', 24, 28);
+
+  const legend = [
+    { label: '0-1', color: '#d90429' },
+    { label: '2-3', color: '#ffbe0b' },
+    { label: '4+', color: '#2a9d8f' }
+  ];
+  legend.forEach((item, index) => {
+    const x = 24 + (index * 120);
+    ctx.fillStyle = item.color;
+    ctx.fillRect(x, 40, 20, 12);
+    ctx.fillStyle = '#4a2a34';
+    ctx.font = '12px Arial';
+    ctx.fillText(item.label, x + 28, 50);
+  });
+
+  const sorted = [...stats].sort((a, b) => b.total - a.total || a.lawyer.localeCompare(b.lawyer, 'es'));
+  const maxValue = Math.max(4, ...sorted.map(item => item.total));
+  const labelX = 24;
+  const barX = 330;
+  const barMaxWidth = width - barX - 60;
+  const startY = 80;
+  const rowHeight = 28;
+
+  sorted.forEach((item, index) => {
+    const y = startY + index * rowHeight;
+    ctx.fillStyle = '#4a2a34';
+    ctx.font = '12px Arial';
+    const label = item.lawyer.length > 38 ? `${item.lawyer.slice(0, 38)}…` : item.lawyer;
+    ctx.fillText(label, labelX, y + 12);
+
+    const barWidth = Math.max(2, (item.total / maxValue) * barMaxWidth);
+    ctx.fillStyle = getPrisonVisitLoadColor(item.total);
+    ctx.fillRect(barX, y, barWidth, 14);
+
+    ctx.fillStyle = '#2f1a21';
+    ctx.font = 'bold 12px Arial';
+    ctx.fillText(String(item.total), barX + barWidth + 8, y + 12);
+  });
 }
 
 function drawBarChart(canvas, labels, values, colors, title) {
@@ -642,6 +834,85 @@ function downloadCsv(filename, rows) {
   link.remove();
 }
 
+function buildFullExportRows() {
+  const rows = [
+    ['SECCIÓN', 'ID', 'Nombre', 'RUT', 'Correo', 'Teléfono', 'Dirección', 'Materia', 'Fecha', 'Hora', 'Abogada', 'Estado', 'Post-visita', 'Consentimiento', 'Creado en']
+  ];
+
+  getBookings().forEach(booking => {
+    rows.push([
+      'Reservas',
+      booking.id,
+      booking.customer || '',
+      booking.rut || '',
+      booking.email || '',
+      booking.phone || '',
+      booking.address || '',
+      normalizeMatterLabel(booking.matter),
+      booking.date || '',
+      booking.time || '',
+      booking.assignedTo || '',
+      statusLabel(booking.status),
+      booking.postVisitOutcome || '',
+      booking.notificationsConsent ? 'Sí' : 'No',
+      booking.createdAt || ''
+    ]);
+  });
+
+  rows.push([]);
+  rows.push(['SECCIÓN', 'ID', 'Nombre', 'RUT', 'Correo', 'Teléfono', 'Dirección', 'Consentimiento', 'Creado en']);
+  getClients().forEach(client => {
+    rows.push([
+      'Clientes',
+      client.id || '',
+      client.customer || '',
+      client.rut || '',
+      client.email || '',
+      client.phone || '',
+      client.address || '',
+      client.notificationsConsent ? 'Sí' : 'No',
+      client.createdAt || ''
+    ]);
+  });
+
+  rows.push([]);
+  rows.push(['SECCIÓN', 'ID', 'Nombre', 'Especialidad', 'Correo', 'WhatsApp']);
+  getLawyers().forEach(lawyer => {
+    rows.push([
+      'Abogadas',
+      lawyer.id || '',
+      lawyer.name || '',
+      lawyer.specialty || '',
+      lawyer.email || '',
+      lawyer.phone || ''
+    ]);
+  });
+
+  return rows;
+}
+
+function downloadJson(filename, payload) {
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  URL.revokeObjectURL(link.href);
+  link.remove();
+}
+
+function buildBackupPayload() {
+  return {
+    exportedAt: new Date().toISOString(),
+    bookings: getBookings(),
+    clients: getClients(),
+    lawyers: getLawyers(),
+    profiles: getProfiles()
+  };
+}
+
 function renderReports() {
   const general = getGeneralStatusStats();
   const generalLabels = ['Nueva', 'Confirmada', 'Atendida', 'Cancelada'];
@@ -656,20 +927,23 @@ function renderReports() {
   drawBarChart(lawyerStatsChart, lawyerLabels, lawyerValues, lawyerColors, 'Atenciones (estado atendida) por abogada');
 
   const prisonStats = getPrisonVisitStats();
-  const prisonLabels = prisonStats.map(item => item.lawyer);
-  const prisonValues = prisonStats.map(item => item.total);
-  const prisonColors = prisonLabels.map(getLawyerColor);
-  drawBarChart(prisonStatsChart, prisonLabels, prisonValues, prisonColors, 'Visitas a la cárcel por abogada');
+  drawPrisonLoadChart(prisonStatsChart, prisonStats);
 }
 
 function renderBookings() {
-  const bookings = getBookings();
+  const selectedStatus = bookingStatusFilter.value.trim();
+  const selectedMatter = normalizeMatterLabel(bookingMatterFilter.value);
+  const bookings = getBookings().filter(booking => {
+    if (selectedStatus && booking.status !== selectedStatus) return false;
+    if (selectedMatter && normalizeMatterLabel(booking.matter) !== selectedMatter) return false;
+    return true;
+  });
   bookingsBody.replaceChildren();
 
   if (!bookings.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 9;
+    cell.colSpan = 11;
     cell.textContent = 'Sin reservas registradas';
     row.appendChild(cell);
     bookingsBody.appendChild(row);
@@ -678,14 +952,28 @@ function renderBookings() {
 
   bookings.forEach(booking => {
     const row = document.createElement('tr');
-
-    appendCell(row, fmtDate(booking.createdAt));
     appendCell(row, booking.customer || '');
     appendCell(row, normalizeMatterLabel(booking.matter) || 'General');
-    appendCell(row, booking.phone || '');
-    appendCell(row, formatAppointment(booking));
+    appendCell(row, booking.date || '-');
+    appendCell(row, booking.time || '--:--');
+    const lawyerCell = document.createElement('td');
+    const lawyerSelect = document.createElement('select');
+    lawyerSelect.dataset.assignLawyer = booking.id;
 
-    appendCell(row, booking.assignedTo || 'Sin abogada');
+    const noneOption = document.createElement('option');
+    noneOption.value = '';
+    noneOption.textContent = 'No asignar';
+    lawyerSelect.appendChild(noneOption);
+
+    getLawyerNames().forEach(name => {
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      lawyerSelect.appendChild(option);
+    });
+    lawyerSelect.value = booking.assignedTo || '';
+    lawyerCell.appendChild(lawyerSelect);
+    row.appendChild(lawyerCell);
 
     const statusCell = document.createElement('td');
     const statusBadge = document.createElement('span');
@@ -694,19 +982,81 @@ function renderBookings() {
     statusCell.appendChild(statusBadge);
     row.appendChild(statusCell);
 
-    const actionsCell = document.createElement('td');
+    appendCell(row, booking.confirmationSentAt ? `Enviado ${fmtDate(booking.confirmationSentAt)}` : 'Pendiente');
 
-    const confirmBtn = document.createElement('button');
-    confirmBtn.dataset.confirmBtn = booking.id;
-    confirmBtn.textContent = 'Confirmar';
-    actionsCell.appendChild(confirmBtn);
+    const sendConfirmBtn = document.createElement('button');
+    sendConfirmBtn.dataset.sendConfirmBtn = booking.id;
+    sendConfirmBtn.textContent = 'Enviar confirmación';
+    const statusActionCell = document.createElement('td');
+    statusActionCell.appendChild(sendConfirmBtn);
+    row.appendChild(statusActionCell);
 
-    const cancelBtn = document.createElement('button');
-    cancelBtn.dataset.cancelBtn = booking.id;
-    cancelBtn.textContent = 'Cancelar';
-    actionsCell.appendChild(cancelBtn);
+    const confirmSelect = document.createElement('select');
+    confirmSelect.dataset.confirmState = booking.id;
+    [
+      { value: '', label: 'Confirmar / Cancelar' },
+      { value: 'confirmada', label: 'Confirmar' },
+      { value: 'cancelada', label: 'Cancelar' }
+    ].forEach(optionData => {
+      const option = document.createElement('option');
+      option.value = optionData.value;
+      option.textContent = optionData.label;
+      confirmSelect.appendChild(option);
+    });
+    confirmSelect.value = booking.status === 'confirmada' || booking.status === 'cancelada' ? booking.status : '';
+    statusActionCell.appendChild(confirmSelect);
 
-    row.appendChild(actionsCell);
+    const attendanceCell = document.createElement('td');
+    const attendanceSelect = document.createElement('select');
+    attendanceSelect.dataset.attendanceState = booking.id;
+    [
+      { value: '', label: 'Asistió / No asistió' },
+      { value: 'asistio', label: 'Asistió' },
+      { value: 'no_asistio', label: 'No asistió' }
+    ].forEach(optionData => {
+      const option = document.createElement('option');
+      option.value = optionData.value;
+      option.textContent = optionData.label;
+      attendanceSelect.appendChild(option);
+    });
+    attendanceSelect.value = booking.status === 'asistio' || booking.status === 'no_asistio' ? booking.status : '';
+    attendanceCell.appendChild(attendanceSelect);
+    row.appendChild(attendanceCell);
+
+    const postVisitCell = document.createElement('td');
+    const postVisitSelect = document.createElement('select');
+    postVisitSelect.dataset.postVisit = booking.id;
+    [
+      { value: '', label: 'Sin definir' },
+      { value: 'Contrató', label: 'Contrató' },
+      { value: 'No contrató', label: 'No contrató' }
+    ].forEach(optionData => {
+      const option = document.createElement('option');
+      option.value = optionData.value;
+      option.textContent = optionData.label;
+      postVisitSelect.appendChild(option);
+    });
+    postVisitSelect.value = booking.postVisitOutcome || '';
+    postVisitCell.appendChild(postVisitSelect);
+    row.appendChild(postVisitCell);
+
+    const rescheduleCell = document.createElement('td');
+    const dateInput = document.createElement('input');
+    dateInput.type = 'date';
+    dateInput.value = booking.date || '';
+    dateInput.dataset.rescheduleDate = booking.id;
+    rescheduleCell.appendChild(dateInput);
+    const timeInput = document.createElement('input');
+    timeInput.type = 'time';
+    timeInput.value = booking.time || '';
+    timeInput.step = '1800';
+    timeInput.dataset.rescheduleTime = booking.id;
+    rescheduleCell.appendChild(timeInput);
+    const saveRescheduleBtn = document.createElement('button');
+    saveRescheduleBtn.dataset.rescheduleBtn = booking.id;
+    saveRescheduleBtn.textContent = 'Guardar';
+    rescheduleCell.appendChild(saveRescheduleBtn);
+    row.appendChild(rescheduleCell);
 
     const notifyCell = document.createElement('td');
     const notifyBtn = document.createElement('button');
@@ -718,15 +1068,88 @@ function renderBookings() {
     bookingsBody.appendChild(row);
   });
 
-  bookingsBody.querySelectorAll('[data-confirm-btn]').forEach(btn => {
-    btn.onclick = async () => {
-      await updateBookingStatusWithNotification(btn.dataset.confirmBtn, 'confirmada');
+  bookingsBody.querySelectorAll('[data-assign-lawyer]').forEach(select => {
+    select.onchange = () => {
+      updateBooking(select.dataset.assignLawyer, booking => {
+        booking.assignedTo = select.value.trim();
+      });
     };
   });
 
-  bookingsBody.querySelectorAll('[data-cancel-btn]').forEach(btn => {
+  bookingsBody.querySelectorAll('[data-send-confirm-btn]').forEach(btn => {
     btn.onclick = async () => {
-      await updateBookingStatusWithNotification(btn.dataset.cancelBtn, 'cancelada');
+      const bookingsData = getBookings();
+      const booking = bookingsData.find(item => item.id === btn.dataset.sendConfirmBtn);
+      if (!booking) return;
+
+      const sent = await notifyBookingChannels(booking, buildDispatchConfirmationMessage(booking), 'TACAM: confirmación de agendamiento');
+      if (!sent) return;
+
+      booking.confirmationSentAt = new Date().toISOString();
+      if (booking.status === 'nueva') {
+        booking.status = 'confirmada';
+      }
+      saveBookings(bookingsData);
+      renderAll();
+    };
+  });
+
+  bookingsBody.querySelectorAll('[data-reschedule-btn]').forEach(btn => {
+    btn.onclick = () => {
+      const booking = getBookings().find(item => item.id === btn.dataset.rescheduleBtn);
+      if (!booking) return;
+      const newDate = bookingsBody.querySelector(`[data-reschedule-date="${booking.id}"]`)?.value || '';
+      const newTime = bookingsBody.querySelector(`[data-reschedule-time="${booking.id}"]`)?.value || '';
+      if (!newDate || !newTime) return;
+
+      updateBooking(booking.id, item => {
+        item.date = newDate.trim();
+        item.time = newTime.trim();
+        item.reminder24hSentAt = '';
+        item.reminder1hSentAt = '';
+      });
+      void notifyReschedule(booking, booking.date, newDate.trim());
+    };
+  });
+
+  bookingsBody.querySelectorAll('[data-confirm-state]').forEach(select => {
+    select.onchange = async () => {
+      if (!select.value) return;
+      await updateBookingStatusWithNotification(select.dataset.confirmState, select.value);
+    };
+  });
+
+  bookingsBody.querySelectorAll('[data-attendance-state]').forEach(select => {
+    select.onchange = () => {
+      if (!select.value) return;
+      const bookingId = select.dataset.attendanceState;
+      if (select.value === 'asistio') {
+        const outcome = window.prompt('Post-visita: escribe "Contrató" o "No contrató"', 'Contrató');
+        if (!outcome) return;
+        const normalized = outcome.trim().toLowerCase();
+        const finalOutcome = normalized === 'no contrató' || normalized === 'no contrato'
+          ? 'No contrató'
+          : 'Contrató';
+
+        updateBooking(bookingId, booking => {
+          booking.status = 'asistio';
+          booking.postVisitOutcome = finalOutcome;
+        });
+        return;
+      }
+
+      updateBooking(bookingId, booking => {
+        booking.status = 'no_asistio';
+        booking.postVisitOutcome = '';
+      });
+    };
+  });
+
+  bookingsBody.querySelectorAll('[data-post-visit]').forEach(select => {
+    select.onchange = () => {
+      updateBooking(select.dataset.postVisit, booking => {
+        booking.postVisitOutcome = select.value;
+      });
     };
   });
 
@@ -786,7 +1209,7 @@ function renderAgenda() {
 
 
 function buildPrisonCheckInMessage(booking) {
-  return `TACAM: check-in registrado para la visita a la cárcel de ${booking.customer || 'Cliente'}. Fecha/Hora: ${booking.date || '-'} ${booking.time || ''}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+  return `TACAM: check-in registrado para la visita a la carcel de ${booking.customer || 'Cliente'}. Fecha/Hora: ${booking.date || '-'} ${booking.time || ''}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
 }
 
 function renderPrisonCalendar() {
@@ -810,7 +1233,7 @@ function renderPrisonVisitsList() {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
     cell.colSpan = 7;
-    cell.textContent = 'Sin visitas a la cárcel registradas en este mes.';
+    cell.textContent = 'Sin visitas a la carcel registradas en este mes.';
     row.appendChild(cell);
     prisonVisitsBody.appendChild(row);
     return;
@@ -858,7 +1281,7 @@ function renderPrisonVisitsList() {
 
       const updatedBooking = getBookings().find(item => item.id === bookingId);
       if (updatedBooking) {
-        await notifyBookingChannels(updatedBooking, buildPrisonCheckInMessage(updatedBooking), 'TACAM: check-in visita a la cárcel');
+        await notifyLawyerChannels(updatedBooking, buildPrisonCheckInMessage(updatedBooking), 'TACAM: check-in visita a la carcel');
       }
     };
   });
@@ -866,9 +1289,130 @@ function renderPrisonVisitsList() {
   prisonVisitsBody.querySelectorAll('[data-prison-notify]').forEach(btn => {
     btn.onclick = async () => {
       const booking = getBookings().find(item => item.id === btn.dataset.prisonNotify);
-      if (booking) await notifyBookingChannels(booking, buildVisitScheduledMessage(booking), 'TACAM: recordatorio de visita a la cárcel');
+      if (booking) await notifyLawyerChannels(booking, buildVisitScheduledMessage(booking), 'TACAM: recordatorio de visita a la carcel');
     };
   });
+}
+
+function renderOutcomes() {
+  const bookings = getBookings().filter(booking => booking.status === 'asistio');
+  const contracted = bookings.filter(booking => (booking.postVisitOutcome || '').trim().toLowerCase() === 'contrató');
+  const nonContracted = bookings.filter(booking => (booking.postVisitOutcome || '').trim().toLowerCase() === 'no contrató');
+
+  contractedBody.replaceChildren();
+  nonContractedBody.replaceChildren();
+
+  if (!contracted.length) {
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 5;
+    cell.textContent = 'Sin personas contratadas registradas.';
+    row.appendChild(cell);
+    contractedBody.appendChild(row);
+  } else {
+    contracted.forEach(booking => {
+      const row = document.createElement('tr');
+      appendCell(row, booking.customer || '');
+      appendCell(row, booking.email || '');
+      appendCell(row, booking.phone || '');
+      appendCell(row, formatAppointment(booking));
+      appendCell(row, booking.assignedTo || 'Sin abogada');
+      contractedBody.appendChild(row);
+    });
+  }
+
+  if (!nonContracted.length) {
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 5;
+    cell.textContent = 'Sin personas en no contratados.';
+    row.appendChild(cell);
+    nonContractedBody.appendChild(row);
+  } else {
+    nonContracted.forEach(booking => {
+      const row = document.createElement('tr');
+      appendCell(row, booking.customer || '');
+      appendCell(row, booking.email || '');
+      appendCell(row, booking.phone || '');
+      appendCell(row, formatAppointment(booking));
+
+      const actionCell = document.createElement('td');
+      const mailBtn = document.createElement('button');
+      mailBtn.dataset.nonContractedMail = booking.id;
+      mailBtn.textContent = 'Escribir y enviar';
+      actionCell.appendChild(mailBtn);
+      row.appendChild(actionCell);
+      nonContractedBody.appendChild(row);
+    });
+  }
+
+  nonContractedBody.querySelectorAll('[data-non-contracted-mail]').forEach(btn => {
+    btn.onclick = async () => {
+      const booking = getBookings().find(item => item.id === btn.dataset.nonContractedMail);
+      if (!booking) return;
+      const subject = window.prompt('Asunto del correo', 'Seguimiento TACAM');
+      if (!subject) return;
+      const message = window.prompt('Escribe el correo a enviar', `Hola ${booking.customer || 'cliente'}, te contactamos para darte seguimiento a tu caso.`);
+      if (!message) return;
+      await sendEmailViaBrevo(booking, subject.trim(), message.trim());
+    };
+  });
+}
+
+function loadClientInForm(clientId) {
+  const client = getClients().find(item => item.id === clientId);
+  if (!client) return;
+  clientForm.elements.clientId.value = client.id;
+  clientForm.elements.customer.value = client.customer || '';
+  clientForm.elements.rut.value = client.rut || '';
+  clientForm.elements.address.value = client.address || '';
+  clientForm.elements.phone.value = client.phone || '+569';
+  clientForm.elements.email.value = client.email || '';
+  clientForm.elements.notificationsConsent.checked = Boolean(client.notificationsConsent);
+}
+
+function renderClients() {
+  const clients = getClients().sort((a, b) => (a.customer || '').localeCompare(b.customer || '', 'es'));
+  clientsBody.replaceChildren();
+
+  if (!clients.length) {
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 5;
+    cell.textContent = 'Sin clientes registrados.';
+    row.appendChild(cell);
+    clientsBody.appendChild(row);
+    return;
+  }
+
+  clients.forEach(client => {
+    const row = document.createElement('tr');
+    appendCell(row, client.customer || '');
+    appendCell(row, client.rut || '');
+    appendCell(row, client.phone || '');
+    appendCell(row, client.email || '');
+
+    const actionCell = document.createElement('td');
+    const editBtn = document.createElement('button');
+    editBtn.dataset.editClient = client.id;
+    editBtn.textContent = 'Editar';
+    actionCell.appendChild(editBtn);
+    row.appendChild(actionCell);
+    clientsBody.appendChild(row);
+  });
+
+  clientsBody.querySelectorAll('[data-edit-client]').forEach(btn => {
+    btn.onclick = () => loadClientInForm(btn.dataset.editClient);
+  });
+}
+
+function loadLawyerInForm(lawyerId) {
+  const lawyer = getLawyers().find(item => item.id === lawyerId);
+  if (!lawyer) return;
+  lawyerForm.elements.lawyerId.value = lawyer.id;
+  lawyerForm.elements.name.value = lawyer.name || '';
+  lawyerForm.elements.specialty.value = lawyer.specialty || '';
+  lawyerForm.elements.phone.value = lawyer.phone || '';
 }
 
 function renderLawyers() {
@@ -912,6 +1456,12 @@ function renderLawyers() {
     phone.textContent = lawyer.phone || 'Sin WhatsApp';
     content.appendChild(phone);
 
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.dataset.editLawyer = lawyer.id;
+    editBtn.textContent = 'Editar perfil';
+    content.appendChild(editBtn);
+
     const stats = getLawyerStats(lawyer.name || '');
     const statsList = document.createElement('ul');
     statsList.className = 'lawyer-stats';
@@ -933,6 +1483,10 @@ function renderLawyers() {
     content.appendChild(statsList);
     card.appendChild(content);
     lawyerList.appendChild(card);
+  });
+
+  lawyerList.querySelectorAll('[data-edit-lawyer]').forEach(btn => {
+    btn.onclick = () => loadLawyerInForm(btn.dataset.editLawyer);
   });
 }
 
@@ -975,12 +1529,15 @@ function renderProfiles() {
 }
 
 function renderAll() {
+  renderClientOptions();
+  renderClients();
   renderLawyerOptions();
   renderBookings();
   renderAgenda();
   renderAgendaCalendar();
   renderPrisonCalendar();
   renderPrisonVisitsList();
+  renderOutcomes();
   renderLawyers();
   renderLawyerCalendar();
   renderProfiles();
@@ -1003,48 +1560,97 @@ loginForm.addEventListener('submit', event => {
   }
 });
 
-bookingForm.addEventListener('submit', async event => {
+clientForm.addEventListener('submit', event => {
   event.preventDefault();
-  const data = new FormData(bookingForm);
+  const data = new FormData(clientForm);
+  const clientId = String(data.get('clientId') || '').trim();
   const rut = formatRut(data.get('rut'));
   const phone = formatPhone(data.get('phone'));
   const email = String(data.get('email') || '').trim();
 
   if (!isValidRut(rut)) {
-    rutInput.setCustomValidity('El RUT debe tener formato xx.xxx.xxx-x');
-    rutInput.reportValidity();
+    clientRutInput.setCustomValidity('El RUT debe tener formato xx.xxx.xxx-x');
+    clientRutInput.reportValidity();
     return;
   }
-  rutInput.setCustomValidity('');
+  clientRutInput.setCustomValidity('');
 
   if (!isValidPhone(phone)) {
-    phoneInput.setCustomValidity('El teléfono debe tener formato +5691111111');
-    phoneInput.reportValidity();
+    clientPhoneInput.setCustomValidity('El teléfono debe tener formato +56911111111');
+    clientPhoneInput.reportValidity();
     return;
   }
-  phoneInput.setCustomValidity('');
+  clientPhoneInput.setCustomValidity('');
 
   if (!email) {
-    bookingForm.elements.email.setCustomValidity('El correo es obligatorio');
-    bookingForm.elements.email.reportValidity();
+    clientForm.elements.email.setCustomValidity('El correo es obligatorio');
+    clientForm.elements.email.reportValidity();
     return;
   }
-  bookingForm.elements.email.setCustomValidity('');
+  clientForm.elements.email.setCustomValidity('');
+
+  const clients = getClients();
+  const normalizedRut = rut.toUpperCase();
+  const existing = clientId
+    ? clients.find(client => client.id === clientId)
+    : clients.find(client => String(client.rut || '').toUpperCase() === normalizedRut);
+  const clientPayload = {
+    customer: String(data.get('customer') || '').trim(),
+    rut,
+    address: String(data.get('address') || '').trim(),
+    phone,
+    email,
+    notificationsConsent: true,
+    consentAt: new Date().toISOString()
+  };
+
+  if (existing) {
+    Object.assign(existing, clientPayload);
+  } else {
+    clients.unshift({
+      id: crypto.randomUUID(),
+      ...clientPayload,
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  saveClients(clients);
+  clientForm.reset();
+  clientForm.elements.clientId.value = '';
+  clientForm.elements.notificationsConsent.checked = false;
+  clientPhoneInput.value = '+569';
+  renderAll();
+});
+
+bookingForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  syncClientIdFromSearch(bookingClientSearchInput, clientSelect);
+  const data = new FormData(bookingForm);
+  const clientId = String(data.get('clientId') || '').trim();
+  const client = getClientById(clientId);
+  if (!client) {
+    bookingClientSearchInput.setCustomValidity('Debes seleccionar un cliente ya agregado');
+    bookingClientSearchInput.reportValidity();
+    return;
+  }
+  bookingClientSearchInput.setCustomValidity('');
 
   const bookings = getBookings();
   bookings.unshift({
     id: crypto.randomUUID(),
-    customer: String(data.get('customer') || '').trim(),
-    rut,
-    phone,
-    email,
+    clientId: client.id,
+    customer: client.customer,
+    rut: client.rut,
+    phone: client.phone,
+    email: client.email,
+    address: client.address || '',
     matter: normalizeMatterLabel(data.get('matter')),
     date: String(data.get('date') || '').trim(),
     time: String(data.get('time') || '').trim(),
     assignedTo: String(data.get('assignedTo') || '').trim(),
     notes: String(data.get('notes') || '').trim(),
-    notificationsConsent: Boolean(data.get('notificationsConsent')),
-    consentAt: data.get('notificationsConsent') ? new Date().toISOString() : '',
+    notificationsConsent: Boolean(client.notificationsConsent),
+    consentAt: client.consentAt || '',
     status: 'nueva',
     createdAt: new Date().toISOString(),
     reminder24hSentAt: '',
@@ -1054,24 +1660,72 @@ bookingForm.addEventListener('submit', async event => {
   saveBookings(bookings);
   await notifyVisitScheduled(bookings[0]);
   bookingForm.reset();
-  phoneInput.value = '+569';
   renderAll();
 });
 
-rutInput.addEventListener('input', () => {
-  const cursorAtEnd = rutInput.selectionStart === rutInput.value.length;
-  rutInput.value = formatRut(rutInput.value);
-  if (cursorAtEnd) rutInput.setSelectionRange(rutInput.value.length, rutInput.value.length);
+prisonVisitForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  syncClientIdFromSearch(prisonClientSearchInput, prisonClientSelect);
+  const data = new FormData(prisonVisitForm);
+  const clientId = String(data.get('clientId') || '').trim();
+  const client = getClientById(clientId);
+  if (!client) {
+    prisonClientSearchInput.setCustomValidity('Debes seleccionar un cliente ya agregado');
+    prisonClientSearchInput.reportValidity();
+    return;
+  }
+  prisonClientSearchInput.setCustomValidity('');
+
+  const bookings = getBookings();
+  bookings.unshift({
+    id: crypto.randomUUID(),
+    clientId: client.id,
+    customer: client.customer,
+    rut: client.rut,
+    phone: client.phone,
+    email: client.email,
+    address: client.address || '',
+    matter: PRISON_VISIT_MATTER,
+    date: String(data.get('date') || '').trim(),
+    time: String(data.get('time') || '').trim(),
+    assignedTo: String(data.get('assignedTo') || '').trim(),
+    notes: String(data.get('notes') || '').trim(),
+    notificationsConsent: Boolean(client.notificationsConsent),
+    consentAt: client.consentAt || '',
+    status: 'nueva',
+    createdAt: new Date().toISOString(),
+    reminder24hSentAt: '',
+    reminder1hSentAt: '',
+    checkedInAt: ''
+  });
+  saveBookings(bookings);
+  await notifyVisitScheduled(bookings[0]);
+  prisonVisitForm.reset();
+  renderAll();
 });
 
-phoneInput.addEventListener('input', () => {
-  phoneInput.value = formatPhone(phoneInput.value);
+clientRutInput.addEventListener('input', () => {
+  const cursorAtEnd = clientRutInput.selectionStart === clientRutInput.value.length;
+  clientRutInput.value = formatRut(clientRutInput.value);
+  if (cursorAtEnd) clientRutInput.setSelectionRange(clientRutInput.value.length, clientRutInput.value.length);
+});
+
+clientPhoneInput.addEventListener('input', () => {
+  clientPhoneInput.value = formatPhone(clientPhoneInput.value);
+});
+bookingClientSearchInput.addEventListener('input', () => {
+  syncClientIdFromSearch(bookingClientSearchInput, clientSelect);
+});
+prisonClientSearchInput.addEventListener('input', () => {
+  syncClientIdFromSearch(prisonClientSearchInput, prisonClientSelect);
 });
 
 lawyerFilter.addEventListener('change', () => {
   renderAgenda();
   renderAgendaCalendar();
 });
+bookingStatusFilter.addEventListener('change', renderBookings);
+bookingMatterFilter.addEventListener('change', renderBookings);
 agendaMonthInput.addEventListener('change', renderAgendaCalendar);
 prisonMonthInput.addEventListener('change', () => {
   renderPrisonCalendar();
@@ -1082,46 +1736,64 @@ lawyerCalendarMonth.addEventListener('change', renderLawyerCalendar);
 sharedOnlyInput.addEventListener('change', renderLawyerCalendar);
 
 downloadGeneralReportBtn.addEventListener('click', () => {
-  const stats = getGeneralStatusStats();
-  downloadCsv('reporte-general-tacam.csv', [
-    ['Estado', 'Cantidad'],
-    ['Nueva', stats.nueva],
-    ['Confirmada', stats.confirmada],
-    ['Atendida', stats.atendida],
-    ['Cancelada', stats.cancelada]
-  ]);
+  downloadCsv('reporte-completo-tacam.csv', buildFullExportRows());
 });
 
 downloadLawyerReportBtn.addEventListener('click', () => {
-  const rows = [['Abogada', 'Total citas', 'Atendidas']];
-  getLawyerAttentionStats().forEach(item => {
-    rows.push([item.lawyer, item.total, item.atendida]);
-  });
-  downloadCsv('reporte-abogadas-tacam.csv', rows);
+  downloadCsv('reporte-completo-tacam.csv', buildFullExportRows());
 });
 
 downloadBookingsReportBtn.addEventListener('click', () => {
-  const rows = [[
-    'ID', 'Cliente', 'RUT', 'Materia', 'Telefono', 'Correo', 'Fecha', 'Hora', 'Abogada', 'Estado', 'Consentimiento', 'Motivo', 'Creada en'
-  ]];
-  getBookings().forEach(booking => {
-    rows.push([
-      booking.id,
-      booking.customer,
-      booking.rut,
-      normalizeMatterLabel(booking.matter),
-      booking.phone,
-      booking.email,
-      booking.date,
-      booking.time,
-      booking.assignedTo,
-      booking.status,
-      booking.notificationsConsent ? 'Sí' : 'No',
-      booking.notes,
-      booking.createdAt
-    ]);
-  });
-  downloadCsv('reporte-detalle-citas-tacam.csv', rows);
+  downloadCsv('reporte-completo-tacam.csv', buildFullExportRows());
+});
+
+downloadBackupJsonBtn.addEventListener('click', () => {
+  const dateTag = new Date().toISOString().slice(0, 10);
+  downloadJson(`respaldo-tacam-${dateTag}.json`, buildBackupPayload());
+});
+
+restoreBackupJsonBtn.addEventListener('click', () => {
+  restoreBackupInput.click();
+});
+
+restoreBackupInput.addEventListener('change', async event => {
+  const file = event.target.files?.[0];
+  if (!(file instanceof File)) return;
+
+  try {
+    const content = await file.text();
+    const parsed = JSON.parse(content);
+    if (!parsed || typeof parsed !== 'object') return;
+
+    if (Array.isArray(parsed.bookings)) saveBookings(parsed.bookings);
+    if (Array.isArray(parsed.clients)) saveClients(parsed.clients);
+    if (Array.isArray(parsed.lawyers)) saveLawyers(parsed.lawyers);
+    if (Array.isArray(parsed.profiles)) saveProfiles(parsed.profiles);
+
+    renderAll();
+  } catch (error) {
+    console.warn('No se pudo restaurar el respaldo JSON', error);
+  } finally {
+    restoreBackupInput.value = '';
+  }
+});
+
+remarketingForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const data = new FormData(remarketingForm);
+  const subject = String(data.get('subject') || '').trim();
+  const message = String(data.get('message') || '').trim();
+  if (!subject || !message) return;
+
+  const nonContracted = getBookings().filter(booking =>
+    booking.status === 'asistio' && (booking.postVisitOutcome || '').trim().toLowerCase() === 'no contrató'
+  );
+
+  for (const booking of nonContracted) {
+    await sendEmailViaBrevo(booking, subject, message);
+  }
+
+  remarketingForm.reset();
 });
 
 moduleTabs.forEach(tab => {
@@ -1131,31 +1803,41 @@ moduleTabs.forEach(tab => {
 lawyerForm.addEventListener('submit', async event => {
   event.preventDefault();
   const data = new FormData(lawyerForm);
+  const lawyerId = String(data.get('lawyerId') || '').trim();
   const file = data.get('photo');
-  if (!(file instanceof File) || !file.size) return;
 
   const name = String(data.get('name') || '').trim();
   if (!name) return;
 
   const lawyers = getLawyers();
-  const existing = lawyers.find(lawyer => (lawyer.name || '').trim().toLowerCase() === name.toLowerCase());
+  const existing = lawyerId
+    ? lawyers.find(lawyer => lawyer.id === lawyerId)
+    : lawyers.find(lawyer => (lawyer.name || '').trim().toLowerCase() === name.toLowerCase());
 
   if (existing) {
+    existing.name = name;
     existing.specialty = String(data.get('specialty') || '').trim();
     existing.phone = String(data.get('phone') || '').trim();
-    existing.photo = await fileToDataUrl(file);
+    if (file instanceof File && file.size) {
+      existing.photo = await fileToDataUrl(file);
+    }
   } else {
+    let photo = 'assets/logo-color.svg';
+    if (file instanceof File && file.size) {
+      photo = await fileToDataUrl(file);
+    }
     lawyers.unshift({
       id: crypto.randomUUID(),
       name,
       specialty: String(data.get('specialty') || '').trim(),
       phone: String(data.get('phone') || '').trim(),
-      photo: await fileToDataUrl(file)
+      photo
     });
   }
 
   saveLawyers(lawyers);
   lawyerForm.reset();
+  lawyerForm.elements.lawyerId.value = '';
   renderAll();
 });
 
@@ -1202,11 +1884,14 @@ const currentMonth = monthValueFromDate(new Date());
 agendaMonthInput.value = currentMonth;
 prisonMonthInput.value = currentMonth;
 lawyerCalendarMonth.value = currentMonth;
-phoneInput.value = '+569';
+clientPhoneInput.value = '+569';
 updateChileClock();
 
 saveSession({ loggedIn: false });
 showLogin();
+void restoreServerState().then(() => {
+  renderAll();
+});
 
 setInterval(() => {
   updateChileClock();
