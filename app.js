@@ -715,6 +715,58 @@ function getPrisonVisitLoadColor(total) {
   return '#2a9d8f'; // verde
 }
 
+function drawPrisonLoadChart(canvas, stats) {
+  if (!(canvas instanceof HTMLCanvasElement)) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  const width = canvas.width;
+  const height = canvas.height;
+  ctx.clearRect(0, 0, width, height);
+
+  ctx.fillStyle = '#5a313d';
+  ctx.font = 'bold 16px Arial';
+  ctx.fillText('Visitas a la carcel por abogada', 24, 28);
+
+  const legend = [
+    { label: '0-1', color: '#d90429' },
+    { label: '2-3', color: '#ffbe0b' },
+    { label: '4+', color: '#2a9d8f' }
+  ];
+  legend.forEach((item, index) => {
+    const x = 24 + (index * 120);
+    ctx.fillStyle = item.color;
+    ctx.fillRect(x, 40, 20, 12);
+    ctx.fillStyle = '#4a2a34';
+    ctx.font = '12px Arial';
+    ctx.fillText(item.label, x + 28, 50);
+  });
+
+  const sorted = [...stats].sort((a, b) => b.total - a.total || a.lawyer.localeCompare(b.lawyer, 'es'));
+  const maxValue = Math.max(4, ...sorted.map(item => item.total));
+  const labelX = 24;
+  const barX = 330;
+  const barMaxWidth = width - barX - 60;
+  const startY = 80;
+  const rowHeight = 28;
+
+  sorted.forEach((item, index) => {
+    const y = startY + index * rowHeight;
+    ctx.fillStyle = '#4a2a34';
+    ctx.font = '12px Arial';
+    const label = item.lawyer.length > 38 ? `${item.lawyer.slice(0, 38)}…` : item.lawyer;
+    ctx.fillText(label, labelX, y + 12);
+
+    const barWidth = Math.max(2, (item.total / maxValue) * barMaxWidth);
+    ctx.fillStyle = getPrisonVisitLoadColor(item.total);
+    ctx.fillRect(barX, y, barWidth, 14);
+
+    ctx.fillStyle = '#2f1a21';
+    ctx.font = 'bold 12px Arial';
+    ctx.fillText(String(item.total), barX + barWidth + 8, y + 12);
+  });
+}
+
 function drawBarChart(canvas, labels, values, colors, title) {
   if (!(canvas instanceof HTMLCanvasElement)) return;
 
@@ -871,10 +923,7 @@ function renderReports() {
   drawBarChart(lawyerStatsChart, lawyerLabels, lawyerValues, lawyerColors, 'Atenciones (estado atendida) por abogada');
 
   const prisonStats = getPrisonVisitStats();
-  const prisonLabels = prisonStats.map(item => item.lawyer);
-  const prisonValues = prisonStats.map(item => item.total);
-  const prisonColors = prisonValues.map(getPrisonVisitLoadColor);
-  drawBarChart(prisonStatsChart, prisonLabels, prisonValues, prisonColors, 'Visitas a la carcel por abogada');
+  drawPrisonLoadChart(prisonStatsChart, prisonStats);
 }
 
 function renderBookings() {
