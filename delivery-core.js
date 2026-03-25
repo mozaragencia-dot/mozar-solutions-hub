@@ -5,6 +5,8 @@ const STORAGE_KEYS = {
   profiles: 'tacam_profiles',
   session: 'tacam_session'
 };
+const STORAGE_SYNC_URL = 'storage.php';
+let persistTimer = null;
 
 const LEGACY_LAWYER_NAMES = new Set(['Daniela Sierra', 'Natalie Gómez', 'Camila Vásquez', 'Carolina Contreras']);
 const OFFICIAL_LAWYERS = [
@@ -26,6 +28,52 @@ function loadJson(key, fallback) {
 
 function saveJson(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
+  scheduleServerPersist();
+}
+
+function buildStorageSnapshot() {
+  return Object.values(STORAGE_KEYS).reduce((acc, key) => {
+    acc[key] = loadJson(key, null);
+    return acc;
+  }, {});
+}
+
+function scheduleServerPersist() {
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    void persistServerState();
+  }, 250);
+}
+
+async function persistServerState() {
+  try {
+    await fetch(STORAGE_SYNC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildStorageSnapshot()),
+      keepalive: true
+    });
+  } catch (error) {
+    console.warn('No se pudo sincronizar storage.php', error);
+  }
+}
+
+async function restoreServerState() {
+  try {
+    const response = await fetch(STORAGE_SYNC_URL, { method: 'GET' });
+    if (!response.ok) return false;
+    const payload = await response.json();
+    if (!payload || typeof payload !== 'object') return false;
+
+    Object.values(STORAGE_KEYS).forEach(key => {
+      if (payload[key] === undefined || payload[key] === null) return;
+      localStorage.setItem(key, JSON.stringify(payload[key]));
+    });
+    return true;
+  } catch (error) {
+    console.warn('No se pudo restaurar desde storage.php', error);
+    return false;
+  }
 }
 
 function seedData() {

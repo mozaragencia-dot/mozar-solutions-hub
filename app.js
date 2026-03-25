@@ -1828,6 +1828,9 @@ updateChileClock();
 
 saveSession({ loggedIn: false });
 showLogin();
+void restoreServerState().then(() => {
+  renderAll();
+});
 
 setInterval(() => {
   updateChileClock();
