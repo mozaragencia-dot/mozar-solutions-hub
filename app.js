@@ -644,6 +644,10 @@ function getGeneralStatusStats() {
 
 function getLawyerAttentionStats() {
   const map = new Map();
+  getLawyerNames().forEach(name => {
+    map.set(name, { total: 0, atendida: 0 });
+  });
+
   getBookings().forEach(booking => {
     const name = (booking.assignedTo || 'Sin abogada').trim() || 'Sin abogada';
     if (!map.has(name)) map.set(name, { total: 0, atendida: 0 });
@@ -741,6 +745,63 @@ function downloadCsv(filename, rows) {
   link.click();
   URL.revokeObjectURL(link.href);
   link.remove();
+}
+
+function buildFullExportRows() {
+  const rows = [
+    ['SECCIÓN', 'ID', 'Nombre', 'RUT', 'Correo', 'Teléfono', 'Dirección', 'Materia', 'Fecha', 'Hora', 'Abogada', 'Estado', 'Post-visita', 'Consentimiento', 'Creado en']
+  ];
+
+  getBookings().forEach(booking => {
+    rows.push([
+      'Reservas',
+      booking.id,
+      booking.customer || '',
+      booking.rut || '',
+      booking.email || '',
+      booking.phone || '',
+      booking.address || '',
+      normalizeMatterLabel(booking.matter),
+      booking.date || '',
+      booking.time || '',
+      booking.assignedTo || '',
+      statusLabel(booking.status),
+      booking.postVisitOutcome || '',
+      booking.notificationsConsent ? 'Sí' : 'No',
+      booking.createdAt || ''
+    ]);
+  });
+
+  rows.push([]);
+  rows.push(['SECCIÓN', 'ID', 'Nombre', 'RUT', 'Correo', 'Teléfono', 'Dirección', 'Consentimiento', 'Creado en']);
+  getClients().forEach(client => {
+    rows.push([
+      'Clientes',
+      client.id || '',
+      client.customer || '',
+      client.rut || '',
+      client.email || '',
+      client.phone || '',
+      client.address || '',
+      client.notificationsConsent ? 'Sí' : 'No',
+      client.createdAt || ''
+    ]);
+  });
+
+  rows.push([]);
+  rows.push(['SECCIÓN', 'ID', 'Nombre', 'Especialidad', 'Correo', 'WhatsApp']);
+  getLawyers().forEach(lawyer => {
+    rows.push([
+      'Abogadas',
+      lawyer.id || '',
+      lawyer.name || '',
+      lawyer.specialty || '',
+      lawyer.email || '',
+      lawyer.phone || ''
+    ]);
+  });
+
+  return rows;
 }
 
 function renderReports() {
@@ -1444,46 +1505,15 @@ lawyerCalendarMonth.addEventListener('change', renderLawyerCalendar);
 sharedOnlyInput.addEventListener('change', renderLawyerCalendar);
 
 downloadGeneralReportBtn.addEventListener('click', () => {
-  const stats = getGeneralStatusStats();
-  downloadCsv('reporte-general-tacam.csv', [
-    ['Estado', 'Cantidad'],
-    ['Nueva', stats.nueva],
-    ['Confirmada', stats.confirmada],
-    ['Atendida', stats.atendida],
-    ['Cancelada', stats.cancelada]
-  ]);
+  downloadCsv('reporte-completo-tacam.csv', buildFullExportRows());
 });
 
 downloadLawyerReportBtn.addEventListener('click', () => {
-  const rows = [['Abogada', 'Total citas', 'Atendidas']];
-  getLawyerAttentionStats().forEach(item => {
-    rows.push([item.lawyer, item.total, item.atendida]);
-  });
-  downloadCsv('reporte-abogadas-tacam.csv', rows);
+  downloadCsv('reporte-completo-tacam.csv', buildFullExportRows());
 });
 
 downloadBookingsReportBtn.addEventListener('click', () => {
-  const rows = [[
-    'ID', 'Cliente', 'RUT', 'Materia', 'Telefono', 'Correo', 'Fecha', 'Hora', 'Abogada', 'Estado', 'Consentimiento', 'Motivo', 'Creada en'
-  ]];
-  getBookings().forEach(booking => {
-    rows.push([
-      booking.id,
-      booking.customer,
-      booking.rut,
-      normalizeMatterLabel(booking.matter),
-      booking.phone,
-      booking.email,
-      booking.date,
-      booking.time,
-      booking.assignedTo,
-      booking.status,
-      booking.notificationsConsent ? 'Sí' : 'No',
-      booking.notes,
-      booking.createdAt
-    ]);
-  });
-  downloadCsv('reporte-detalle-citas-tacam.csv', rows);
+  downloadCsv('reporte-completo-tacam.csv', buildFullExportRows());
 });
 
 remarketingForm.addEventListener('submit', async event => {
