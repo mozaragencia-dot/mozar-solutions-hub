@@ -180,6 +180,7 @@ function statusLabel(status) {
   return ({
     nueva: 'Nueva',
     confirmada: 'Confirmada',
+    asistio: 'Asistió',
     atendida: 'Atendida',
     cancelada: 'Cancelada'
   })[status] || status;

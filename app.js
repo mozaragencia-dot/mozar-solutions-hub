@@ -268,6 +268,12 @@ function buildStatusChangeMessage(booking, status) {
   return `TACAM: el estado de tu reserva cambió a ${statusLabel(status)}. Fecha/Hora: ${appointment}. Materia: ${matter}.`;
 }
 
+function buildDispatchConfirmationMessage(booking) {
+  const appointment = `${booking.date || '-'} ${booking.time || ''}`.trim();
+  const matter = normalizeMatterLabel(booking.matter) || 'General';
+  return `TACAM: confirmamos tu agendamiento. Fecha/Hora: ${appointment}. Materia: ${matter}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+}
+
 async function updateBookingStatusWithNotification(bookingId, status) {
   const bookings = getBookings();
   const booking = bookings.find(item => item.id === bookingId);
@@ -722,7 +728,7 @@ function renderBookings() {
   if (!bookings.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 9;
+    cell.colSpan = 8;
     cell.textContent = 'Sin reservas registradas';
     row.appendChild(cell);
     bookingsBody.appendChild(row);
@@ -731,14 +737,26 @@ function renderBookings() {
 
   bookings.forEach(booking => {
     const row = document.createElement('tr');
-
-    appendCell(row, fmtDate(booking.createdAt));
     appendCell(row, booking.customer || '');
-    appendCell(row, normalizeMatterLabel(booking.matter) || 'General');
-    appendCell(row, booking.phone || '');
     appendCell(row, formatAppointment(booking));
+    const lawyerCell = document.createElement('td');
+    const lawyerSelect = document.createElement('select');
+    lawyerSelect.dataset.assignLawyer = booking.id;
 
-    appendCell(row, booking.assignedTo || 'Sin abogada');
+    const noneOption = document.createElement('option');
+    noneOption.value = '';
+    noneOption.textContent = 'No asignar';
+    lawyerSelect.appendChild(noneOption);
+
+    getLawyerNames().forEach(name => {
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      lawyerSelect.appendChild(option);
+    });
+    lawyerSelect.value = booking.assignedTo || '';
+    lawyerCell.appendChild(lawyerSelect);
+    row.appendChild(lawyerCell);
 
     const statusCell = document.createElement('td');
     const statusBadge = document.createElement('span');
@@ -747,17 +765,25 @@ function renderBookings() {
     statusCell.appendChild(statusBadge);
     row.appendChild(statusCell);
 
+    appendCell(row, booking.confirmationSentAt ? `Email/WhatsApp enviado ${fmtDate(booking.confirmationSentAt)}` : 'Pendiente');
+    appendCell(row, booking.postVisitOutcome || '-');
+
     const actionsCell = document.createElement('td');
 
-    const confirmBtn = document.createElement('button');
-    confirmBtn.dataset.confirmBtn = booking.id;
-    confirmBtn.textContent = 'Confirmar';
-    actionsCell.appendChild(confirmBtn);
+    const sendConfirmBtn = document.createElement('button');
+    sendConfirmBtn.dataset.sendConfirmBtn = booking.id;
+    sendConfirmBtn.textContent = 'Enviar confirmación';
+    actionsCell.appendChild(sendConfirmBtn);
 
-    const cancelBtn = document.createElement('button');
-    cancelBtn.dataset.cancelBtn = booking.id;
-    cancelBtn.textContent = 'Cancelar';
-    actionsCell.appendChild(cancelBtn);
+    const rescheduleBtn = document.createElement('button');
+    rescheduleBtn.dataset.rescheduleBtn = booking.id;
+    rescheduleBtn.textContent = 'Reagendar';
+    actionsCell.appendChild(rescheduleBtn);
+
+    const attendedBtn = document.createElement('button');
+    attendedBtn.dataset.attendedBtn = booking.id;
+    attendedBtn.textContent = 'Marcar como asistió';
+    actionsCell.appendChild(attendedBtn);
 
     row.appendChild(actionsCell);
 
@@ -771,15 +797,65 @@ function renderBookings() {
     bookingsBody.appendChild(row);
   });
 
-  bookingsBody.querySelectorAll('[data-confirm-btn]').forEach(btn => {
-    btn.onclick = async () => {
-      await updateBookingStatusWithNotification(btn.dataset.confirmBtn, 'confirmada');
+  bookingsBody.querySelectorAll('[data-assign-lawyer]').forEach(select => {
+    select.onchange = () => {
+      updateBooking(select.dataset.assignLawyer, booking => {
+        booking.assignedTo = select.value.trim();
+      });
     };
   });
 
-  bookingsBody.querySelectorAll('[data-cancel-btn]').forEach(btn => {
+  bookingsBody.querySelectorAll('[data-send-confirm-btn]').forEach(btn => {
     btn.onclick = async () => {
-      await updateBookingStatusWithNotification(btn.dataset.cancelBtn, 'cancelada');
+      const bookingsData = getBookings();
+      const booking = bookingsData.find(item => item.id === btn.dataset.sendConfirmBtn);
+      if (!booking) return;
+
+      const sent = await notifyBookingChannels(booking, buildDispatchConfirmationMessage(booking), 'TACAM: confirmación de agendamiento');
+      if (!sent) return;
+
+      booking.confirmationSentAt = new Date().toISOString();
+      if (booking.status === 'nueva') {
+        booking.status = 'confirmada';
+      }
+      saveBookings(bookingsData);
+      renderAll();
+    };
+  });
+
+  bookingsBody.querySelectorAll('[data-reschedule-btn]').forEach(btn => {
+    btn.onclick = () => {
+      const booking = getBookings().find(item => item.id === btn.dataset.rescheduleBtn);
+      if (!booking) return;
+
+      const newDate = window.prompt('Nueva fecha (YYYY-MM-DD):', booking.date || '');
+      if (!newDate) return;
+      const newTime = window.prompt('Nueva hora (HH:MM):', booking.time || '');
+      if (!newTime) return;
+
+      updateBooking(booking.id, item => {
+        item.date = newDate.trim();
+        item.time = newTime.trim();
+        item.reminder24hSentAt = '';
+        item.reminder1hSentAt = '';
+      });
+      void notifyReschedule(booking, booking.date, newDate.trim());
+    };
+  });
+
+  bookingsBody.querySelectorAll('[data-attended-btn]').forEach(btn => {
+    btn.onclick = () => {
+      const outcome = window.prompt('Post-visita: escribe "Contrató" o "No contrató"', 'Contrató');
+      if (!outcome) return;
+      const normalized = outcome.trim().toLowerCase();
+      const finalOutcome = normalized === 'no contrató' || normalized === 'no contrato'
+        ? 'No contrató'
+        : 'Contrató';
+
+      updateBooking(btn.dataset.attendedBtn, booking => {
+        booking.status = 'asistio';
+        booking.postVisitOutcome = finalOutcome;
+      });
     };
   });
 
