@@ -5,6 +5,7 @@ const loginError = document.getElementById('login-error');
 
 const bookingsBody = document.getElementById('bookings-body');
 const agendaBody = document.getElementById('agenda-body');
+const clientsBody = document.getElementById('clients-body');
 const clientForm = document.getElementById('client-form');
 const bookingForm = document.getElementById('booking-form');
 const prisonVisitForm = document.getElementById('prison-visit-form');
@@ -1210,6 +1211,62 @@ function renderOutcomes() {
   });
 }
 
+function loadClientInForm(clientId) {
+  const client = getClients().find(item => item.id === clientId);
+  if (!client) return;
+  clientForm.elements.clientId.value = client.id;
+  clientForm.elements.customer.value = client.customer || '';
+  clientForm.elements.rut.value = client.rut || '';
+  clientForm.elements.address.value = client.address || '';
+  clientForm.elements.phone.value = client.phone || '+569';
+  clientForm.elements.email.value = client.email || '';
+  clientForm.elements.notificationsConsent.checked = Boolean(client.notificationsConsent);
+}
+
+function renderClients() {
+  const clients = getClients().sort((a, b) => (a.customer || '').localeCompare(b.customer || '', 'es'));
+  clientsBody.replaceChildren();
+
+  if (!clients.length) {
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 5;
+    cell.textContent = 'Sin clientes registrados.';
+    row.appendChild(cell);
+    clientsBody.appendChild(row);
+    return;
+  }
+
+  clients.forEach(client => {
+    const row = document.createElement('tr');
+    appendCell(row, client.customer || '');
+    appendCell(row, client.rut || '');
+    appendCell(row, client.phone || '');
+    appendCell(row, client.email || '');
+
+    const actionCell = document.createElement('td');
+    const editBtn = document.createElement('button');
+    editBtn.dataset.editClient = client.id;
+    editBtn.textContent = 'Editar';
+    actionCell.appendChild(editBtn);
+    row.appendChild(actionCell);
+    clientsBody.appendChild(row);
+  });
+
+  clientsBody.querySelectorAll('[data-edit-client]').forEach(btn => {
+    btn.onclick = () => loadClientInForm(btn.dataset.editClient);
+  });
+}
+
+function loadLawyerInForm(lawyerId) {
+  const lawyer = getLawyers().find(item => item.id === lawyerId);
+  if (!lawyer) return;
+  lawyerForm.elements.lawyerId.value = lawyer.id;
+  lawyerForm.elements.name.value = lawyer.name || '';
+  lawyerForm.elements.specialty.value = lawyer.specialty || '';
+  lawyerForm.elements.phone.value = lawyer.phone || '';
+}
+
 function renderLawyers() {
   const lawyers = getLawyers();
   lawyerList.replaceChildren();
@@ -1251,6 +1308,12 @@ function renderLawyers() {
     phone.textContent = lawyer.phone || 'Sin WhatsApp';
     content.appendChild(phone);
 
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.dataset.editLawyer = lawyer.id;
+    editBtn.textContent = 'Editar perfil';
+    content.appendChild(editBtn);
+
     const stats = getLawyerStats(lawyer.name || '');
     const statsList = document.createElement('ul');
     statsList.className = 'lawyer-stats';
@@ -1272,6 +1335,10 @@ function renderLawyers() {
     content.appendChild(statsList);
     card.appendChild(content);
     lawyerList.appendChild(card);
+  });
+
+  lawyerList.querySelectorAll('[data-edit-lawyer]').forEach(btn => {
+    btn.onclick = () => loadLawyerInForm(btn.dataset.editLawyer);
   });
 }
 
@@ -1315,6 +1382,7 @@ function renderProfiles() {
 
 function renderAll() {
   renderClientOptions();
+  renderClients();
   renderLawyerOptions();
   renderBookings();
   renderAgenda();
@@ -1347,6 +1415,7 @@ loginForm.addEventListener('submit', event => {
 clientForm.addEventListener('submit', event => {
   event.preventDefault();
   const data = new FormData(clientForm);
+  const clientId = String(data.get('clientId') || '').trim();
   const rut = formatRut(data.get('rut'));
   const phone = formatPhone(data.get('phone'));
   const email = String(data.get('email') || '').trim();
@@ -1374,7 +1443,9 @@ clientForm.addEventListener('submit', event => {
 
   const clients = getClients();
   const normalizedRut = rut.toUpperCase();
-  const existing = clients.find(client => String(client.rut || '').toUpperCase() === normalizedRut);
+  const existing = clientId
+    ? clients.find(client => client.id === clientId)
+    : clients.find(client => String(client.rut || '').toUpperCase() === normalizedRut);
   const clientPayload = {
     customer: String(data.get('customer') || '').trim(),
     rut,
@@ -1397,6 +1468,8 @@ clientForm.addEventListener('submit', event => {
 
   saveClients(clients);
   clientForm.reset();
+  clientForm.elements.clientId.value = '';
+  clientForm.elements.notificationsConsent.checked = false;
   clientPhoneInput.value = '+569';
   renderAll();
 });
@@ -1541,31 +1614,41 @@ moduleTabs.forEach(tab => {
 lawyerForm.addEventListener('submit', async event => {
   event.preventDefault();
   const data = new FormData(lawyerForm);
+  const lawyerId = String(data.get('lawyerId') || '').trim();
   const file = data.get('photo');
-  if (!(file instanceof File) || !file.size) return;
 
   const name = String(data.get('name') || '').trim();
   if (!name) return;
 
   const lawyers = getLawyers();
-  const existing = lawyers.find(lawyer => (lawyer.name || '').trim().toLowerCase() === name.toLowerCase());
+  const existing = lawyerId
+    ? lawyers.find(lawyer => lawyer.id === lawyerId)
+    : lawyers.find(lawyer => (lawyer.name || '').trim().toLowerCase() === name.toLowerCase());
 
   if (existing) {
+    existing.name = name;
     existing.specialty = String(data.get('specialty') || '').trim();
     existing.phone = String(data.get('phone') || '').trim();
-    existing.photo = await fileToDataUrl(file);
+    if (file instanceof File && file.size) {
+      existing.photo = await fileToDataUrl(file);
+    }
   } else {
+    let photo = 'assets/logo-color.svg';
+    if (file instanceof File && file.size) {
+      photo = await fileToDataUrl(file);
+    }
     lawyers.unshift({
       id: crypto.randomUUID(),
       name,
       specialty: String(data.get('specialty') || '').trim(),
       phone: String(data.get('phone') || '').trim(),
-      photo: await fileToDataUrl(file)
+      photo
     });
   }
 
   saveLawyers(lawyers);
   lawyerForm.reset();
+  lawyerForm.elements.lawyerId.value = '';
   renderAll();
 });
 
