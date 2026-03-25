@@ -16,6 +16,9 @@ const prisonMonthInput = document.getElementById('prison-month');
 const prisonCalendar = document.getElementById('prison-calendar');
 const prisonCalendarLegend = document.getElementById('prison-calendar-legend');
 const prisonVisitsBody = document.getElementById('prison-visits-body');
+const contractedBody = document.getElementById('contracted-body');
+const nonContractedBody = document.getElementById('non-contracted-body');
+const remarketingForm = document.getElementById('remarketing-form');
 const lawyerForm = document.getElementById('lawyer-form');
 const lawyerList = document.getElementById('lawyer-list');
 const lawyerCalendarFilter = document.getElementById('lawyer-calendar-filter');
@@ -1042,6 +1045,71 @@ function renderPrisonVisitsList() {
   });
 }
 
+function renderOutcomes() {
+  const bookings = getBookings().filter(booking => booking.status === 'asistio');
+  const contracted = bookings.filter(booking => (booking.postVisitOutcome || '').trim().toLowerCase() === 'contrató');
+  const nonContracted = bookings.filter(booking => (booking.postVisitOutcome || '').trim().toLowerCase() === 'no contrató');
+
+  contractedBody.replaceChildren();
+  nonContractedBody.replaceChildren();
+
+  if (!contracted.length) {
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 5;
+    cell.textContent = 'Sin personas contratadas registradas.';
+    row.appendChild(cell);
+    contractedBody.appendChild(row);
+  } else {
+    contracted.forEach(booking => {
+      const row = document.createElement('tr');
+      appendCell(row, booking.customer || '');
+      appendCell(row, booking.email || '');
+      appendCell(row, booking.phone || '');
+      appendCell(row, formatAppointment(booking));
+      appendCell(row, booking.assignedTo || 'Sin abogada');
+      contractedBody.appendChild(row);
+    });
+  }
+
+  if (!nonContracted.length) {
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 5;
+    cell.textContent = 'Sin personas en no contratados.';
+    row.appendChild(cell);
+    nonContractedBody.appendChild(row);
+  } else {
+    nonContracted.forEach(booking => {
+      const row = document.createElement('tr');
+      appendCell(row, booking.customer || '');
+      appendCell(row, booking.email || '');
+      appendCell(row, booking.phone || '');
+      appendCell(row, formatAppointment(booking));
+
+      const actionCell = document.createElement('td');
+      const mailBtn = document.createElement('button');
+      mailBtn.dataset.nonContractedMail = booking.id;
+      mailBtn.textContent = 'Escribir y enviar';
+      actionCell.appendChild(mailBtn);
+      row.appendChild(actionCell);
+      nonContractedBody.appendChild(row);
+    });
+  }
+
+  nonContractedBody.querySelectorAll('[data-non-contracted-mail]').forEach(btn => {
+    btn.onclick = async () => {
+      const booking = getBookings().find(item => item.id === btn.dataset.nonContractedMail);
+      if (!booking) return;
+      const subject = window.prompt('Asunto del correo', 'Seguimiento TACAM');
+      if (!subject) return;
+      const message = window.prompt('Escribe el correo a enviar', `Hola ${booking.customer || 'cliente'}, te contactamos para darte seguimiento a tu caso.`);
+      if (!message) return;
+      await sendEmailViaBrevo(booking, subject.trim(), message.trim());
+    };
+  });
+}
+
 function renderLawyers() {
   const lawyers = getLawyers();
   lawyerList.replaceChildren();
@@ -1153,6 +1221,7 @@ function renderAll() {
   renderAgendaCalendar();
   renderPrisonCalendar();
   renderPrisonVisitsList();
+  renderOutcomes();
   renderLawyers();
   renderLawyerCalendar();
   renderProfiles();
@@ -1376,6 +1445,24 @@ downloadBookingsReportBtn.addEventListener('click', () => {
     ]);
   });
   downloadCsv('reporte-detalle-citas-tacam.csv', rows);
+});
+
+remarketingForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const data = new FormData(remarketingForm);
+  const subject = String(data.get('subject') || '').trim();
+  const message = String(data.get('message') || '').trim();
+  if (!subject || !message) return;
+
+  const nonContracted = getBookings().filter(booking =>
+    booking.status === 'asistio' && (booking.postVisitOutcome || '').trim().toLowerCase() === 'no contrató'
+  );
+
+  for (const booking of nonContracted) {
+    await sendEmailViaBrevo(booking, subject, message);
+  }
+
+  remarketingForm.reset();
 });
 
 moduleTabs.forEach(tab => {
