@@ -181,6 +181,7 @@ function statusLabel(status) {
     nueva: 'Nueva',
     confirmada: 'Confirmada',
     asistio: 'Asistió',
+    no_asistio: 'No asistió',
     atendida: 'Atendida',
     cancelada: 'Cancelada'
   })[status] || status;

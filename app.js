@@ -780,10 +780,35 @@ function renderBookings() {
     rescheduleBtn.textContent = 'Reagendar';
     actionsCell.appendChild(rescheduleBtn);
 
-    const attendedBtn = document.createElement('button');
-    attendedBtn.dataset.attendedBtn = booking.id;
-    attendedBtn.textContent = 'Marcar como asistió';
-    actionsCell.appendChild(attendedBtn);
+    const confirmSelect = document.createElement('select');
+    confirmSelect.dataset.confirmState = booking.id;
+    [
+      { value: '', label: 'Confirmar / Cancelar' },
+      { value: 'confirmada', label: 'Confirmar' },
+      { value: 'cancelada', label: 'Cancelar' }
+    ].forEach(optionData => {
+      const option = document.createElement('option');
+      option.value = optionData.value;
+      option.textContent = optionData.label;
+      confirmSelect.appendChild(option);
+    });
+    confirmSelect.value = booking.status === 'confirmada' || booking.status === 'cancelada' ? booking.status : '';
+    actionsCell.appendChild(confirmSelect);
+
+    const attendanceSelect = document.createElement('select');
+    attendanceSelect.dataset.attendanceState = booking.id;
+    [
+      { value: '', label: 'Asistió / No asistió' },
+      { value: 'asistio', label: 'Asistió' },
+      { value: 'no_asistio', label: 'No asistió' }
+    ].forEach(optionData => {
+      const option = document.createElement('option');
+      option.value = optionData.value;
+      option.textContent = optionData.label;
+      attendanceSelect.appendChild(option);
+    });
+    attendanceSelect.value = booking.status === 'asistio' || booking.status === 'no_asistio' ? booking.status : '';
+    actionsCell.appendChild(attendanceSelect);
 
     row.appendChild(actionsCell);
 
@@ -843,18 +868,35 @@ function renderBookings() {
     };
   });
 
-  bookingsBody.querySelectorAll('[data-attended-btn]').forEach(btn => {
-    btn.onclick = () => {
-      const outcome = window.prompt('Post-visita: escribe "Contrató" o "No contrató"', 'Contrató');
-      if (!outcome) return;
-      const normalized = outcome.trim().toLowerCase();
-      const finalOutcome = normalized === 'no contrató' || normalized === 'no contrato'
-        ? 'No contrató'
-        : 'Contrató';
+  bookingsBody.querySelectorAll('[data-confirm-state]').forEach(select => {
+    select.onchange = async () => {
+      if (!select.value) return;
+      await updateBookingStatusWithNotification(select.dataset.confirmState, select.value);
+    };
+  });
 
-      updateBooking(btn.dataset.attendedBtn, booking => {
-        booking.status = 'asistio';
-        booking.postVisitOutcome = finalOutcome;
+  bookingsBody.querySelectorAll('[data-attendance-state]').forEach(select => {
+    select.onchange = () => {
+      if (!select.value) return;
+      const bookingId = select.dataset.attendanceState;
+      if (select.value === 'asistio') {
+        const outcome = window.prompt('Post-visita: escribe "Contrató" o "No contrató"', 'Contrató');
+        if (!outcome) return;
+        const normalized = outcome.trim().toLowerCase();
+        const finalOutcome = normalized === 'no contrató' || normalized === 'no contrato'
+          ? 'No contrató'
+          : 'Contrató';
+
+        updateBooking(bookingId, booking => {
+          booking.status = 'asistio';
+          booking.postVisitOutcome = finalOutcome;
+        });
+        return;
+      }
+
+      updateBooking(bookingId, booking => {
+        booking.status = 'no_asistio';
+        booking.postVisitOutcome = '-';
       });
     };
   });
