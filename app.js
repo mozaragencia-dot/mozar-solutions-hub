@@ -35,6 +35,9 @@ const prisonStatsChart = document.getElementById('prison-stats-chart');
 const downloadGeneralReportBtn = document.getElementById('download-general-report');
 const downloadLawyerReportBtn = document.getElementById('download-lawyer-report');
 const downloadBookingsReportBtn = document.getElementById('download-bookings-report');
+const downloadBackupJsonBtn = document.getElementById('download-backup-json');
+const restoreBackupJsonBtn = document.getElementById('restore-backup-json');
+const restoreBackupInput = document.getElementById('restore-backup-input');
 const profileForm = document.getElementById('profile-form');
 const profileList = document.getElementById('profile-list');
 const clientRutInput = clientForm.elements.rut;
@@ -830,6 +833,28 @@ function buildFullExportRows() {
   });
 
   return rows;
+}
+
+function downloadJson(filename, payload) {
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  URL.revokeObjectURL(link.href);
+  link.remove();
+}
+
+function buildBackupPayload() {
+  return {
+    exportedAt: new Date().toISOString(),
+    bookings: getBookings(),
+    clients: getClients(),
+    lawyers: getLawyers(),
+    profiles: getProfiles()
+  };
 }
 
 function renderReports() {
@@ -1659,6 +1684,37 @@ downloadLawyerReportBtn.addEventListener('click', () => {
 
 downloadBookingsReportBtn.addEventListener('click', () => {
   downloadCsv('reporte-completo-tacam.csv', buildFullExportRows());
+});
+
+downloadBackupJsonBtn.addEventListener('click', () => {
+  const dateTag = new Date().toISOString().slice(0, 10);
+  downloadJson(`respaldo-tacam-${dateTag}.json`, buildBackupPayload());
+});
+
+restoreBackupJsonBtn.addEventListener('click', () => {
+  restoreBackupInput.click();
+});
+
+restoreBackupInput.addEventListener('change', async event => {
+  const file = event.target.files?.[0];
+  if (!(file instanceof File)) return;
+
+  try {
+    const content = await file.text();
+    const parsed = JSON.parse(content);
+    if (!parsed || typeof parsed !== 'object') return;
+
+    if (Array.isArray(parsed.bookings)) saveBookings(parsed.bookings);
+    if (Array.isArray(parsed.clients)) saveClients(parsed.clients);
+    if (Array.isArray(parsed.lawyers)) saveLawyers(parsed.lawyers);
+    if (Array.isArray(parsed.profiles)) saveProfiles(parsed.profiles);
+
+    renderAll();
+  } catch (error) {
+    console.warn('No se pudo restaurar el respaldo JSON', error);
+  } finally {
+    restoreBackupInput.value = '';
+  }
 });
 
 remarketingForm.addEventListener('submit', async event => {
