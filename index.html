@@ -43,74 +43,61 @@
     <main>
       <nav class="module-tabs" aria-label="Módulos TACAM">
         <button type="button" class="module-tab active" data-module-tab="create">Ingreso de Cliente</button>
-        <button type="button" class="module-tab" data-module-tab="bookings">No Contrataron / Contratados</button>
-        <button type="button" class="module-tab" data-module-tab="agenda">Agendamiento</button>
-        <button type="button" class="module-tab" data-module-tab="prison-visits">Visitas a la Cárcel</button>
+        <button type="button" class="module-tab" data-module-tab="bookings">Agendamiento</button>
+        <button type="button" class="module-tab" data-module-tab="agenda">Calendario de Abogadas</button>
+        <button type="button" class="module-tab" data-module-tab="prison-visits">Visitas a la Carcel</button>
+        <button type="button" class="module-tab" data-module-tab="outcomes">Contratados / No contratados</button>
         <button type="button" class="module-tab" data-module-tab="lawyers">Perfiles de Abogados</button>
         <button type="button" class="module-tab" data-module-tab="reports">Reportes y Gráficos</button>
       </nav>
 
       <section class="card module-panel active" data-module-panel="create">
-        <h2>Crear Reserva</h2>
-        <form id="booking-form" class="grid">
-          <label>Nombre de la persona <input name="customer" required /></label>
+        <h2>Ingreso de Cliente</h2>
+        <form id="client-form" class="grid">
+          <label>Nombre del cliente <input name="customer" required /></label>
           <label>RUT <input name="rut" required placeholder="12.345.678-9" maxlength="12" /></label>
+          <label>Dirección <input name="address" required placeholder="Calle 123, comuna" /></label>
           <label>Teléfono <input name="phone" required placeholder="+56912345678" maxlength="12" /></label>
           <label>Correo <input name="email" type="email" required placeholder="cliente@correo.com" /></label>
+          <label class="full checkbox-inline consent-box">
+            <input name="notificationsConsent" type="checkbox" required /> El cliente declara consentimiento verbal para el envio de WhatsApp y correos
+          </label>
+          <button type="submit">Agregar nuevo cliente</button>
+        </form>
+
+        <h3>Agendar atención</h3>
+        <form id="booking-form" class="grid">
+          <label>Cliente registrado
+            <select name="clientId" required>
+              <option value="">Seleccione cliente</option>
+            </select>
+          </label>
           <label>Materia
             <select name="matter" required>
               <option value="">Seleccione materia</option>
               <option value="Familiar">Familiar</option>
               <option value="Penal">Penal</option>
-              <option value="Visita a la Cárcel">Visita a la Cárcel</option>
+              <option value="Policía Local">Policía Local</option>
             </select>
           </label>
           <label>Fecha de reserva <input name="date" type="date" required /></label>
-          <label>Hora de reserva
-            <select name="time" required>
-              <option value="">Seleccione un horario</option>
-              <option value="08:00">08:00</option>
-              <option value="08:30">08:30</option>
-              <option value="09:00">09:00</option>
-              <option value="09:30">09:30</option>
-              <option value="10:00">10:00</option>
-              <option value="10:30">10:30</option>
-              <option value="11:00">11:00</option>
-              <option value="11:30">11:30</option>
-              <option value="12:00">12:00</option>
-              <option value="12:30">12:30</option>
-              <option value="13:00">13:00</option>
-              <option value="13:30">13:30</option>
-              <option value="14:00">14:00</option>
-              <option value="14:30">14:30</option>
-              <option value="15:00">15:00</option>
-              <option value="15:30">15:30</option>
-              <option value="16:00">16:00</option>
-              <option value="16:30">16:30</option>
-              <option value="17:00">17:00</option>
-              <option value="17:30">17:30</option>
-              <option value="18:00">18:00</option>
-            </select>
-          </label>
+          <label>Hora de reserva <input name="time" type="time" min="08:00" max="18:00" step="1800" required /></label>
           <label>Abogado asignado
-            <select name="assignedTo" required>
-              <option value="">Seleccione</option>
+            <select name="assignedTo">
+              <option value="">No asignar ahora</option>
             </select>
           </label>
           <label class="full">Motivo de consulta <textarea name="notes" rows="3" placeholder="Detalle del caso..."></textarea></label>
-          <label class="full checkbox-inline consent-box">
-            <input name="notificationsConsent" type="checkbox" /> La secretaria recibió consentimiento verbal para enviar correo y WhatsApp
-          </label>
-          <button type="submit">Guardar reserva</button>
+          <button type="submit">Agendar atención</button>
         </form>
       </section>
 
       <section class="card module-panel" data-module-panel="bookings">
-        <h2>Reservas y Confirmación</h2>
+        <h2>Agendamiento</h2>
         <p class="muted">WhatsApp de notificación TACAM: <strong>+56987591312</strong></p>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Fecha creación</th><th>Persona</th><th>Materia</th><th>Teléfono</th><th>Cita</th><th>Abogado</th><th>Estado</th><th>Gestión</th><th>Notificar</th></tr></thead>
+            <thead><tr><th>Persona</th><th>Cita</th><th>Abogado</th><th>Estado</th><th>Confirmación</th><th>Post-visita</th><th>Acciones</th><th>WhatsApp</th></tr></thead>
             <tbody id="bookings-body"></tbody>
           </table>
         </div>
@@ -147,13 +134,29 @@
       <section class="card module-panel" data-module-panel="prison-visits">
         <div class="section-heading">
           <div>
-            <h2>Visitas a la Cárcel</h2>
-            <p class="muted">Calendario exclusivo para la materia Visita a la Cárcel, con recordatorios por WhatsApp y correo.</p>
+            <h2>Visitas a la Carcel</h2>
+            <p class="muted">Calendario exclusivo para la materia Visita a la Carcel. Las notificaciones por WhatsApp y correo se envían a la abogada asignada.</p>
           </div>
           <label>Mes
             <input id="prison-month" type="month" />
           </label>
         </div>
+        <form id="prison-visit-form" class="grid">
+          <label>Cliente registrado
+            <select name="clientId" required>
+              <option value="">Seleccione cliente</option>
+            </select>
+          </label>
+          <label>Fecha de visita <input name="date" type="date" required /></label>
+          <label>Hora de visita <input name="time" type="time" min="08:00" max="18:00" step="1800" required /></label>
+          <label>Abogado asignado
+            <select name="assignedTo">
+              <option value="">No asignar ahora</option>
+            </select>
+          </label>
+          <label class="full">Notas de visita <textarea name="notes" rows="3" placeholder="Detalle para visita a la carcel..."></textarea></label>
+          <button type="submit">Agendar visita a la carcel</button>
+        </form>
         <div id="prison-calendar-legend" class="calendar-legend"></div>
         <div id="prison-calendar" class="calendar"></div>
         <div class="table-wrap">
@@ -162,6 +165,33 @@
             <tbody id="prison-visits-body"></tbody>
           </table>
         </div>
+      </section>
+
+      <section class="card module-panel" data-module-panel="outcomes">
+        <h2>Contratados y No contratados</h2>
+
+        <h3>Contratados</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Persona</th><th>Correo</th><th>Teléfono</th><th>Cita</th><th>Abogado</th></tr></thead>
+            <tbody id="contracted-body"></tbody>
+          </table>
+        </div>
+
+        <h3>No contratados</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Persona</th><th>Correo</th><th>Teléfono</th><th>Cita</th><th>Acción email</th></tr></thead>
+            <tbody id="non-contracted-body"></tbody>
+          </table>
+        </div>
+
+        <h3>Campaña de remarketing (No contratados)</h3>
+        <form id="remarketing-form" class="grid">
+          <label class="full">Asunto <input name="subject" required placeholder="Ej: Seguimiento de tu caso con TACAM" /></label>
+          <label class="full">Mensaje <textarea name="message" rows="4" required placeholder="Escribe aquí el correo para enviar a todos los no contratados..."></textarea></label>
+          <button type="submit">Enviar campaña a todos los no contratados</button>
+        </form>
       </section>
 
       <section class="card module-panel" data-module-panel="lawyers">
@@ -224,15 +254,16 @@
         <div class="report-grid">
           <article class="report-card">
             <h3>General por estado</h3>
-            <canvas id="general-stats-chart" width="800" height="320"></canvas>
+            <canvas id="general-stats-chart" width="1100" height="420"></canvas>
           </article>
           <article class="report-card">
             <h3>Atenciones por abogada</h3>
-            <canvas id="lawyer-stats-chart" width="800" height="320"></canvas>
+            <canvas id="lawyer-stats-chart" width="1100" height="420"></canvas>
           </article>
           <article class="report-card">
-            <h3>Visitas a la Cárcel por abogada</h3>
-            <canvas id="prison-stats-chart" width="800" height="320"></canvas>
+            <h3>Visitas a la Carcel por abogada</h3>
+            <p class="muted">Indicador por color: rojo (0-1), amarillo (2-3), verde (4 o más).</p>
+            <canvas id="prison-stats-chart" width="1100" height="420"></canvas>
           </article>
         </div>
 
