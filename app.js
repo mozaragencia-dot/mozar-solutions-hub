@@ -47,8 +47,13 @@ const assignedToSelect = bookingForm.elements.assignedTo;
 const prisonAssignedToSelect = prisonVisitForm.elements.assignedTo;
 const clientSelect = bookingForm.elements.clientId;
 const prisonClientSelect = prisonVisitForm.elements.clientId;
+const bookingClientSearchInput = bookingForm.elements.clientSearch;
+const prisonClientSearchInput = prisonVisitForm.elements.clientSearch;
+const bookingClientOptions = document.getElementById('booking-client-options');
+const prisonClientOptions = document.getElementById('prison-client-options');
 const moduleTabs = document.querySelectorAll('[data-module-tab]');
 const modulePanels = document.querySelectorAll('[data-module-panel]');
+let clientOptionMap = new Map();
 
 function switchModule(moduleName) {
   moduleTabs.forEach(tab => {
@@ -461,36 +466,35 @@ function renderClientOptions() {
   const clients = getClients().sort((a, b) => getClientLabel(a).localeCompare(getClientLabel(b), 'es'));
   const currentBookingClient = clientSelect.value;
   const currentPrisonClient = prisonClientSelect.value;
-
-  clientSelect.replaceChildren();
-  prisonClientSelect.replaceChildren();
-
-  const bookingFirst = document.createElement('option');
-  bookingFirst.value = '';
-  bookingFirst.textContent = 'Seleccione cliente';
-  clientSelect.appendChild(bookingFirst);
-
-  const prisonFirst = document.createElement('option');
-  prisonFirst.value = '';
-  prisonFirst.textContent = 'Seleccione cliente';
-  prisonClientSelect.appendChild(prisonFirst);
+  const map = new Map();
+  bookingClientOptions.replaceChildren();
+  prisonClientOptions.replaceChildren();
 
   clients.forEach(client => {
-    const option = document.createElement('option');
-    option.value = client.id;
-    option.textContent = getClientLabel(client);
-    clientSelect.appendChild(option);
+    const label = getClientLabel(client);
+    map.set(label, client.id);
 
-    const prisonOption = option.cloneNode(true);
-    prisonClientSelect.appendChild(prisonOption);
+    const bookingOption = document.createElement('option');
+    bookingOption.value = label;
+    bookingClientOptions.appendChild(bookingOption);
+
+    const prisonOption = document.createElement('option');
+    prisonOption.value = label;
+    prisonClientOptions.appendChild(prisonOption);
   });
 
-  if (clients.some(client => client.id === currentBookingClient)) {
-    clientSelect.value = currentBookingClient;
-  }
-  if (clients.some(client => client.id === currentPrisonClient)) {
-    prisonClientSelect.value = currentPrisonClient;
-  }
+  clientOptionMap = map;
+
+  const currentBooking = clients.find(client => client.id === currentBookingClient);
+  if (currentBooking) bookingClientSearchInput.value = getClientLabel(currentBooking);
+
+  const currentPrison = clients.find(client => client.id === currentPrisonClient);
+  if (currentPrison) prisonClientSearchInput.value = getClientLabel(currentPrison);
+}
+
+function syncClientIdFromSearch(searchInput, hiddenInput) {
+  const typed = String(searchInput.value || '').trim();
+  hiddenInput.value = clientOptionMap.get(typed) || '';
 }
 
 function getLawyerStats(lawyerName) {
@@ -1620,15 +1624,16 @@ clientForm.addEventListener('submit', event => {
 
 bookingForm.addEventListener('submit', async event => {
   event.preventDefault();
+  syncClientIdFromSearch(bookingClientSearchInput, clientSelect);
   const data = new FormData(bookingForm);
   const clientId = String(data.get('clientId') || '').trim();
   const client = getClientById(clientId);
   if (!client) {
-    bookingForm.elements.clientId.setCustomValidity('Debes seleccionar un cliente ya agregado');
-    bookingForm.elements.clientId.reportValidity();
+    bookingClientSearchInput.setCustomValidity('Debes seleccionar un cliente ya agregado');
+    bookingClientSearchInput.reportValidity();
     return;
   }
-  bookingForm.elements.clientId.setCustomValidity('');
+  bookingClientSearchInput.setCustomValidity('');
 
   const bookings = getBookings();
   bookings.unshift({
@@ -1660,15 +1665,16 @@ bookingForm.addEventListener('submit', async event => {
 
 prisonVisitForm.addEventListener('submit', async event => {
   event.preventDefault();
+  syncClientIdFromSearch(prisonClientSearchInput, prisonClientSelect);
   const data = new FormData(prisonVisitForm);
   const clientId = String(data.get('clientId') || '').trim();
   const client = getClientById(clientId);
   if (!client) {
-    prisonVisitForm.elements.clientId.setCustomValidity('Debes seleccionar un cliente ya agregado');
-    prisonVisitForm.elements.clientId.reportValidity();
+    prisonClientSearchInput.setCustomValidity('Debes seleccionar un cliente ya agregado');
+    prisonClientSearchInput.reportValidity();
     return;
   }
-  prisonVisitForm.elements.clientId.setCustomValidity('');
+  prisonClientSearchInput.setCustomValidity('');
 
   const bookings = getBookings();
   bookings.unshift({
@@ -1706,6 +1712,12 @@ clientRutInput.addEventListener('input', () => {
 
 clientPhoneInput.addEventListener('input', () => {
   clientPhoneInput.value = formatPhone(clientPhoneInput.value);
+});
+bookingClientSearchInput.addEventListener('input', () => {
+  syncClientIdFromSearch(bookingClientSearchInput, clientSelect);
+});
+prisonClientSearchInput.addEventListener('input', () => {
+  syncClientIdFromSearch(prisonClientSearchInput, prisonClientSelect);
 });
 
 lawyerFilter.addEventListener('change', () => {

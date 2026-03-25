@@ -75,9 +75,9 @@
         <h3>Agendar atención</h3>
         <form id="booking-form" class="grid">
           <label>Cliente registrado
-            <select name="clientId" required>
-              <option value="">Seleccione cliente</option>
-            </select>
+            <input name="clientSearch" list="booking-client-options" placeholder="Escribe nombre o RUT" required />
+            <input name="clientId" type="hidden" />
+            <datalist id="booking-client-options"></datalist>
           </label>
           <label>Materia
             <select name="matter" required>
@@ -172,9 +172,9 @@
         </div>
         <form id="prison-visit-form" class="grid">
           <label>Cliente registrado
-            <select name="clientId" required>
-              <option value="">Seleccione cliente</option>
-            </select>
+            <input name="clientSearch" list="prison-client-options" placeholder="Escribe nombre o RUT" required />
+            <input name="clientId" type="hidden" />
+            <datalist id="prison-client-options"></datalist>
           </label>
           <label>Fecha de visita <input name="date" type="date" required /></label>
           <label>Hora de visita <input name="time" type="time" min="08:00" max="18:00" step="1800" required /></label>
