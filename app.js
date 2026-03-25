@@ -206,7 +206,7 @@ function buildVisitScheduledMessage(booking) {
 async function notifyBookingChannels(booking, message, emailSubject) {
   if (!hasNotificationConsent(booking)) return false;
 
-  const targets = [cleanPhone(booking.phone), getLawyerPhone(booking.assignedTo)].filter(Boolean);
+  const targets = [cleanPhone(booking.phone)].filter(Boolean);
   let sent = false;
 
   for (const target of [...new Set(targets)]) {
