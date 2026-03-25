@@ -628,6 +628,8 @@ function getLawyerAttentionStats() {
 
 function getPrisonVisitStats() {
   const map = new Map();
+  getLawyerNames().forEach(name => map.set(name, 0));
+
   getBookings()
     .filter(booking => isPrisonVisit(booking))
     .forEach(booking => {
@@ -639,6 +641,12 @@ function getPrisonVisitStats() {
   return [...map.entries()]
     .map(([lawyer, total]) => ({ lawyer, total }))
     .sort((a, b) => a.lawyer.localeCompare(b.lawyer, 'es'));
+}
+
+function getPrisonVisitLoadColor(total) {
+  if (total <= 1) return '#d90429'; // rojo
+  if (total <= 3) return '#ffbe0b'; // amarillo
+  return '#2a9d8f'; // verde
 }
 
 function drawBarChart(canvas, labels, values, colors, title) {
@@ -720,7 +728,7 @@ function renderReports() {
   const prisonStats = getPrisonVisitStats();
   const prisonLabels = prisonStats.map(item => item.lawyer);
   const prisonValues = prisonStats.map(item => item.total);
-  const prisonColors = prisonLabels.map(getLawyerColor);
+  const prisonColors = prisonValues.map(getPrisonVisitLoadColor);
   drawBarChart(prisonStatsChart, prisonLabels, prisonValues, prisonColors, 'Visitas a la cárcel por abogada');
 }
 
