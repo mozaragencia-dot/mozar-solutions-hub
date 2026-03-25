@@ -27,6 +27,9 @@ const prisonStatsChart = document.getElementById('prison-stats-chart');
 const downloadGeneralReportBtn = document.getElementById('download-general-report');
 const downloadLawyerReportBtn = document.getElementById('download-lawyer-report');
 const downloadBookingsReportBtn = document.getElementById('download-bookings-report');
+const downloadFullBackupBtn = document.getElementById('download-full-backup');
+const restoreFullBackupBtn = document.getElementById('restore-full-backup');
+const restoreFullBackupInput = document.getElementById('restore-full-backup-input');
 const profileForm = document.getElementById('profile-form');
 const profileList = document.getElementById('profile-list');
 const rutInput = bookingForm.elements.rut;
@@ -642,6 +645,55 @@ function downloadCsv(filename, rows) {
   link.remove();
 }
 
+function downloadJson(filename, payload) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  URL.revokeObjectURL(link.href);
+  link.remove();
+}
+
+function buildSystemBackup() {
+  return {
+    exportedAt: new Date().toISOString(),
+    app: 'TACAM',
+    version: 2,
+    data: {
+      bookings: getBookings(),
+      lawyers: getLawyers(),
+      profiles: getProfiles()
+    }
+  };
+}
+
+function isValidBackupPayload(payload) {
+  return Boolean(
+    payload
+      && typeof payload === 'object'
+      && payload.data
+      && Array.isArray(payload.data.bookings)
+      && Array.isArray(payload.data.lawyers)
+      && Array.isArray(payload.data.profiles)
+  );
+}
+
+async function restoreSystemBackupFromFile(file) {
+  const raw = await file.text();
+  const payload = JSON.parse(raw);
+
+  if (!isValidBackupPayload(payload)) {
+    throw new Error('Formato de respaldo inválido');
+  }
+
+  saveBookings(payload.data.bookings);
+  saveLawyers(payload.data.lawyers);
+  saveProfiles(payload.data.profiles);
+  renderAll();
+}
+
 function renderReports() {
   const general = getGeneralStatusStats();
   const generalLabels = ['Nueva', 'Confirmada', 'Atendida', 'Cancelada'];
@@ -1122,6 +1174,33 @@ downloadBookingsReportBtn.addEventListener('click', () => {
     ]);
   });
   downloadCsv('reporte-detalle-citas-tacam.csv', rows);
+});
+
+downloadFullBackupBtn.addEventListener('click', () => {
+  const backup = buildSystemBackup();
+  const timestamp = backup.exportedAt.replace(/[:.]/g, '-');
+  downloadJson(`tacam-respaldo-${timestamp}.json`, backup);
+});
+
+restoreFullBackupBtn.addEventListener('click', () => {
+  restoreFullBackupInput.value = '';
+  restoreFullBackupInput.click();
+});
+
+restoreFullBackupInput.addEventListener('change', async () => {
+  const file = restoreFullBackupInput.files?.[0];
+  if (!file) return;
+
+  const shouldRestore = window.confirm('Esta acción reemplazará reservas, abogadas y perfiles actuales. ¿Deseas continuar?');
+  if (!shouldRestore) return;
+
+  try {
+    await restoreSystemBackupFromFile(file);
+    window.alert('Respaldo restaurado correctamente.');
+  } catch (error) {
+    console.error(error);
+    window.alert('No se pudo restaurar el respaldo. Verifica que sea un JSON válido exportado desde TACAM.');
+  }
 });
 
 moduleTabs.forEach(tab => {

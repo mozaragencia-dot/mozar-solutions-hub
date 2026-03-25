@@ -32,7 +32,7 @@
       <div>
         <h1 class="brand-title white"><img src="assets/logo-white.svg" alt="Logo TACAM" /> <span>Sistema de Reservas</span></h1>
         <p>Reserva de personas para atención en oficina de abogados</p>
-        <span class="version-badge">Versión 1</span>
+        <span class="version-badge">Versión 2</span>
       </div>
       <div class="header-clock" aria-live="polite">
         <small>Hora local Chile</small>
@@ -240,6 +240,9 @@
           <button type="button" id="download-general-report">Descargar reporte general (Excel/CSV)</button>
           <button type="button" id="download-lawyer-report">Descargar reporte por abogada (Excel/CSV)</button>
           <button type="button" id="download-bookings-report">Descargar detalle completo (Excel/CSV)</button>
+          <button type="button" id="download-full-backup">Descargar respaldo completo (JSON)</button>
+          <button type="button" id="restore-full-backup">Restaurar respaldo (JSON)</button>
+          <input id="restore-full-backup-input" type="file" accept="application/json" hidden />
         </div>
       </section>
 
