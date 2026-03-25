@@ -32,6 +32,8 @@ const profileList = document.getElementById('profile-list');
 const rutInput = bookingForm.elements.rut;
 const phoneInput = bookingForm.elements.phone;
 const chileClock = document.getElementById('chile-clock');
+const currentUserLabel = document.getElementById('current-user');
+const logoutButton = document.getElementById('logout-button');
 const assignedToSelect = bookingForm.elements.assignedTo;
 const moduleTabs = document.querySelectorAll('[data-module-tab]');
 const modulePanels = document.querySelectorAll('[data-module-panel]');
@@ -55,6 +57,19 @@ function showLogin() {
   loginScreen.hidden = false;
   appShell.hidden = true;
   loginError.hidden = true;
+}
+
+function updateCurrentUserLabel(username) {
+  if (!currentUserLabel) return;
+  const clean = String(username || '').trim();
+  currentUserLabel.textContent = `Usuario: ${clean || '--'}`;
+}
+
+function closeSession() {
+  saveSession({ loggedIn: false, username: '' });
+  updateCurrentUserLabel('');
+  loginForm.reset();
+  showLogin();
 }
 
 const ALLOWED_CREDENTIALS = [
@@ -995,6 +1010,7 @@ loginForm.addEventListener('submit', event => {
 
   if (tryLogin(username, password)) {
     saveSession({ loggedIn: true, username });
+    updateCurrentUserLabel(username);
     loginError.hidden = true;
     showApp();
     renderAll();
@@ -1002,6 +1018,8 @@ loginForm.addEventListener('submit', event => {
     loginError.hidden = false;
   }
 });
+
+logoutButton.addEventListener('click', closeSession);
 
 bookingForm.addEventListener('submit', async event => {
   event.preventDefault();
@@ -1205,8 +1223,15 @@ lawyerCalendarMonth.value = currentMonth;
 phoneInput.value = '+569';
 updateChileClock();
 
-saveSession({ loggedIn: false });
-showLogin();
+const session = getSession();
+if (session?.loggedIn) {
+  updateCurrentUserLabel(session.username);
+  showApp();
+  renderAll();
+} else {
+  updateCurrentUserLabel('');
+  showLogin();
+}
 
 setInterval(() => {
   updateChileClock();
