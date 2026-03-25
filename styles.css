@@ -30,6 +30,9 @@ h2{margin:0 0 10px}
 label{display:flex;flex-direction:column;gap:4px;font-size:14px}.full{grid-column:1/-1}
 input,textarea,select,button{font:inherit;padding:9px;border-radius:8px;border:1px solid #c9bdc1}
 button{background:var(--wine);color:#fff;border-color:var(--wine-dark);cursor:pointer;font-weight:700}
+.danger-button{background:#8f203a;border-color:#6e182d}
+.import-backup-label{display:inline-flex;align-items:center}
+.import-backup-label span{display:inline-flex;align-items:center;padding:9px;border-radius:8px;border:1px solid var(--wine-dark);background:var(--wine);color:#fff;font-weight:700;cursor:pointer}
 .table-wrap{overflow:auto} table{width:100%;border-collapse:collapse} th,td{padding:8px;border-bottom:1px solid #eee;text-align:left;font-size:14px;vertical-align:top}
 .badge{font-size:12px;font-weight:700;padding:3px 8px;border-radius:999px;display:inline-block;background:#eee}
 .badge.nueva{background:#f5d3dc}.badge.confirmada{background:#ead8fa}.badge.atendida{background:#ceefd8}.badge.cancelada{background:#ffd1d1}

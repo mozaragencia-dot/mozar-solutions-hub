@@ -27,6 +27,9 @@ const prisonStatsChart = document.getElementById('prison-stats-chart');
 const downloadGeneralReportBtn = document.getElementById('download-general-report');
 const downloadLawyerReportBtn = document.getElementById('download-lawyer-report');
 const downloadBookingsReportBtn = document.getElementById('download-bookings-report');
+const downloadBackupDataBtn = document.getElementById('download-backup-data');
+const importBackupFileInput = document.getElementById('import-backup-file');
+const restoreStableVersionBtn = document.getElementById('restore-stable-version');
 const profileForm = document.getElementById('profile-form');
 const profileList = document.getElementById('profile-list');
 const rutInput = bookingForm.elements.rut;
@@ -642,6 +645,80 @@ function downloadCsv(filename, rows) {
   link.remove();
 }
 
+function downloadJson(filename, payload) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  URL.revokeObjectURL(link.href);
+  link.remove();
+}
+
+function buildStableBooking() {
+  const now = new Date();
+  return {
+    id: crypto.randomUUID(),
+    customer: 'Cliente Demo',
+    rut: '12.345.678-9',
+    phone: '+56911111111',
+    email: 'cliente.demo@tacam.cl',
+    matter: 'Familiar',
+    date: now.toISOString().slice(0, 10),
+    time: '10:30',
+    assignedTo: 'KATHERINE SERRANO MARREY',
+    notes: 'Consulta por materia familiar.',
+    notificationsConsent: false,
+    consentAt: '',
+    status: 'nueva',
+    createdAt: now.toISOString(),
+    reminder24hSentAt: '',
+    reminder1hSentAt: '',
+    checkedInAt: ''
+  };
+}
+
+function buildDefaultAdminProfile() {
+  return {
+    id: crypto.randomUUID(),
+    name: 'Administrador TACAM',
+    username: 'admin',
+    role: 'Admin',
+    permissions: ['Reservas', 'Agenda', 'Abogadas', 'Estadísticas']
+  };
+}
+
+function getBackupPayload() {
+  return {
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    bookings: getBookings(),
+    lawyers: getLawyers(),
+    profiles: getProfiles()
+  };
+}
+
+function restoreStableVersion() {
+  saveBookings([buildStableBooking()]);
+  saveLawyers(OFFICIAL_LAWYERS.map(lawyer => ({ id: crypto.randomUUID(), ...lawyer })));
+  saveProfiles([buildDefaultAdminProfile()]);
+  saveSession({ loggedIn: false });
+}
+
+function importBackupPayload(payload) {
+  const bookings = Array.isArray(payload?.bookings) ? payload.bookings : null;
+  const lawyers = Array.isArray(payload?.lawyers) ? payload.lawyers : null;
+  const profiles = Array.isArray(payload?.profiles) ? payload.profiles : null;
+  if (!bookings || !lawyers || !profiles) return false;
+
+  saveBookings(bookings);
+  saveLawyers(lawyers);
+  saveProfiles(profiles);
+  saveSession({ loggedIn: false });
+  return true;
+}
+
 function renderReports() {
   const general = getGeneralStatusStats();
   const generalLabels = ['Nueva', 'Confirmada', 'Atendida', 'Cancelada'];
@@ -1122,6 +1199,42 @@ downloadBookingsReportBtn.addEventListener('click', () => {
     ]);
   });
   downloadCsv('reporte-detalle-citas-tacam.csv', rows);
+});
+
+downloadBackupDataBtn.addEventListener('click', () => {
+  downloadJson('respaldo-tacam.json', getBackupPayload());
+});
+
+importBackupFileInput.addEventListener('change', async event => {
+  const [file] = event.target.files || [];
+  if (!file) return;
+
+  try {
+    const parsed = JSON.parse(await file.text());
+    const imported = importBackupPayload(parsed);
+    if (!imported) {
+      window.alert('El archivo no tiene el formato de respaldo esperado.');
+      return;
+    }
+
+    window.alert('Respaldo cargado correctamente. El sistema volvió al inicio de sesión.');
+    showLogin();
+    renderAll();
+  } catch {
+    window.alert('No se pudo leer el respaldo JSON.');
+  } finally {
+    importBackupFileInput.value = '';
+  }
+});
+
+restoreStableVersionBtn.addEventListener('click', () => {
+  const accepted = window.confirm('Se reemplazarán reservas, abogadas y perfiles actuales por la versión estable. ¿Continuar?');
+  if (!accepted) return;
+
+  restoreStableVersion();
+  window.alert('Versión estable restaurada. Vuelve a iniciar sesión.');
+  showLogin();
+  renderAll();
 });
 
 moduleTabs.forEach(tab => {

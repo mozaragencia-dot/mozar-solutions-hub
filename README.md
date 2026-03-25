@@ -8,6 +8,7 @@ Aplicación web unificada para gestionar reservas de atención jurídica.
 - Agenda por abogado: filtro por profesional y opción para marcar cita como atendida.
 - Perfiles de abogados con foto, especialidad y WhatsApp.
 - Persistencia local en navegador (`localStorage`) y soporte PWA.
+- Respaldo completo en JSON, restauración desde respaldo y opción para volver a la versión estable base del sistema.
 
 ## WhatsApp de notificación
 - Número de referencia TACAM: **+56987591312**.
