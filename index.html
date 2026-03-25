@@ -76,13 +76,14 @@
               <option value="">Seleccione materia</option>
               <option value="Familiar">Familiar</option>
               <option value="Penal">Penal</option>
+              <option value="Policía Local">Policía Local</option>
             </select>
           </label>
           <label>Fecha de reserva <input name="date" type="date" required /></label>
           <label>Hora de reserva <input name="time" type="time" min="08:00" max="18:00" step="1800" required /></label>
           <label>Abogado asignado
-            <select name="assignedTo" required>
-              <option value="">Seleccione</option>
+            <select name="assignedTo">
+              <option value="">No asignar ahora</option>
             </select>
           </label>
           <label class="full">Motivo de consulta <textarea name="notes" rows="3" placeholder="Detalle del caso..."></textarea></label>
@@ -148,8 +149,8 @@
           <label>Fecha de visita <input name="date" type="date" required /></label>
           <label>Hora de visita <input name="time" type="time" min="08:00" max="18:00" step="1800" required /></label>
           <label>Abogado asignado
-            <select name="assignedTo" required>
-              <option value="">Seleccione</option>
+            <select name="assignedTo">
+              <option value="">No asignar ahora</option>
             </select>
           </label>
           <label class="full">Notas de visita <textarea name="notes" rows="3" placeholder="Detalle para visita a la cárcel..."></textarea></label>

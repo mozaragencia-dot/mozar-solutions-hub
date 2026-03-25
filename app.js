@@ -380,8 +380,8 @@ function fillSelectWithNames(select, names, firstLabel) {
 
 function renderLawyerOptions() {
   const names = getLawyerNames();
-  fillSelectWithNames(assignedToSelect, names, 'Seleccione');
-  fillSelectWithNames(prisonAssignedToSelect, names, 'Seleccione');
+  fillSelectWithNames(assignedToSelect, names, 'No asignar ahora');
+  fillSelectWithNames(prisonAssignedToSelect, names, 'No asignar ahora');
   fillSelectWithNames(lawyerFilter, names, 'Todos');
   fillSelectWithNames(lawyerCalendarFilter, names, 'Todas');
 }
