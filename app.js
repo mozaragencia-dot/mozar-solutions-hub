@@ -127,13 +127,41 @@ async function sendEmailViaBrevo(booking, subject, message) {
   return sendEmailViaBrevoToRecipient(booking?.email, booking?.customer || 'Cliente', subject, message);
 }
 
+async function sendWhatsAppViaBrevo(phone, textContent) {
+  const toPhone = cleanPhone(phone);
+  if (!toPhone || !textContent) return false;
+
+  try {
+    const response = await fetch('brevo-whatsapp.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ toPhone, textContent })
+    });
+    return response.ok;
+  } catch (error) {
+    console.warn('Brevo WhatsApp request failed', error);
+    return false;
+  }
+}
+
+async function openWhatsAppFallback(phone, textContent) {
+  const toPhone = cleanPhone(phone);
+  if (!toPhone || !textContent) return false;
+  window.open(`https://wa.me/${toPhone}?text=${encodeURIComponent(textContent)}`, '_blank', 'noopener');
+  return true;
+}
+
+async function sendWhatsAppMessage(phone, textContent) {
+  const sentViaBrevo = await sendWhatsAppViaBrevo(phone, textContent);
+  if (sentViaBrevo) return true;
+  return openWhatsAppFallback(phone, textContent);
+}
+
 async function notifyBooking(booking) {
   if (!hasNotificationConsent(booking)) return false;
   const destination = cleanPhone(booking.phone);
   if (!destination) return false;
-  const msg = encodeURIComponent(buildTacamMessage(booking));
-  window.open(`https://wa.me/${destination}?text=${msg}`, '_blank', 'noopener');
-  return true;
+  return sendWhatsAppMessage(destination, buildTacamMessage(booking));
 }
 
 function buildRescheduleMessage(booking, fromDate, toDate) {
@@ -175,14 +203,13 @@ function buildVisitScheduledMessage(booking) {
 async function notifyBookingChannels(booking, message, emailSubject) {
   if (!hasNotificationConsent(booking)) return false;
 
-  const encoded = encodeURIComponent(message);
   const targets = [cleanPhone(booking.phone), getLawyerPhone(booking.assignedTo)].filter(Boolean);
   let sent = false;
 
-  [...new Set(targets)].forEach(target => {
-    window.open(`https://wa.me/${target}?text=${encoded}`, '_blank', 'noopener');
-    sent = true;
-  });
+  for (const target of [...new Set(targets)]) {
+    const targetSent = await sendWhatsAppMessage(target, message);
+    if (targetSent) sent = true;
+  }
 
   const emailSent = await sendEmailViaBrevo(booking, emailSubject, message);
   return sent || emailSent;
@@ -214,12 +241,10 @@ async function notifyReschedule(booking, fromDate, toDate) {
 async function notifyLawyerChannels(booking, message, emailSubject) {
   const lawyerPhone = getLawyerPhone(booking.assignedTo);
   const lawyerEmail = getLawyerEmail(booking.assignedTo);
-  const encoded = encodeURIComponent(message);
   let sent = false;
 
   if (lawyerPhone) {
-    window.open(`https://wa.me/${lawyerPhone}?text=${encoded}`, '_blank', 'noopener');
-    sent = true;
+    sent = await sendWhatsAppMessage(lawyerPhone, message);
   }
 
   const emailSent = await sendEmailViaBrevoToRecipient(lawyerEmail, booking.assignedTo || 'Abogada', emailSubject, message);
