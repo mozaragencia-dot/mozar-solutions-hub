@@ -4,6 +4,8 @@ const loginForm = document.getElementById('login-form');
 const loginError = document.getElementById('login-error');
 
 const bookingsBody = document.getElementById('bookings-body');
+const bookingStatusFilter = document.getElementById('booking-status-filter');
+const bookingMatterFilter = document.getElementById('booking-matter-filter');
 const agendaBody = document.getElementById('agenda-body');
 const clientsBody = document.getElementById('clients-body');
 const clientForm = document.getElementById('client-form');
@@ -826,13 +828,19 @@ function renderReports() {
 }
 
 function renderBookings() {
-  const bookings = getBookings();
+  const selectedStatus = bookingStatusFilter.value.trim();
+  const selectedMatter = normalizeMatterLabel(bookingMatterFilter.value);
+  const bookings = getBookings().filter(booking => {
+    if (selectedStatus && booking.status !== selectedStatus) return false;
+    if (selectedMatter && normalizeMatterLabel(booking.matter) !== selectedMatter) return false;
+    return true;
+  });
   bookingsBody.replaceChildren();
 
   if (!bookings.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 8;
+    cell.colSpan = 11;
     cell.textContent = 'Sin reservas registradas';
     row.appendChild(cell);
     bookingsBody.appendChild(row);
@@ -842,7 +850,9 @@ function renderBookings() {
   bookings.forEach(booking => {
     const row = document.createElement('tr');
     appendCell(row, booking.customer || '');
-    appendCell(row, formatAppointment(booking));
+    appendCell(row, normalizeMatterLabel(booking.matter) || 'General');
+    appendCell(row, booking.date || '-');
+    appendCell(row, booking.time || '--:--');
     const lawyerCell = document.createElement('td');
     const lawyerSelect = document.createElement('select');
     lawyerSelect.dataset.assignLawyer = booking.id;
@@ -869,20 +879,14 @@ function renderBookings() {
     statusCell.appendChild(statusBadge);
     row.appendChild(statusCell);
 
-    appendCell(row, booking.confirmationSentAt ? `Email/WhatsApp enviado ${fmtDate(booking.confirmationSentAt)}` : 'Pendiente');
-    appendCell(row, booking.postVisitOutcome || '-');
-
-    const actionsCell = document.createElement('td');
+    appendCell(row, booking.confirmationSentAt ? `Enviado ${fmtDate(booking.confirmationSentAt)}` : 'Pendiente');
 
     const sendConfirmBtn = document.createElement('button');
     sendConfirmBtn.dataset.sendConfirmBtn = booking.id;
     sendConfirmBtn.textContent = 'Enviar confirmación';
-    actionsCell.appendChild(sendConfirmBtn);
-
-    const rescheduleBtn = document.createElement('button');
-    rescheduleBtn.dataset.rescheduleBtn = booking.id;
-    rescheduleBtn.textContent = 'Reagendar';
-    actionsCell.appendChild(rescheduleBtn);
+    const statusActionCell = document.createElement('td');
+    statusActionCell.appendChild(sendConfirmBtn);
+    row.appendChild(statusActionCell);
 
     const confirmSelect = document.createElement('select');
     confirmSelect.dataset.confirmState = booking.id;
@@ -897,8 +901,9 @@ function renderBookings() {
       confirmSelect.appendChild(option);
     });
     confirmSelect.value = booking.status === 'confirmada' || booking.status === 'cancelada' ? booking.status : '';
-    actionsCell.appendChild(confirmSelect);
+    statusActionCell.appendChild(confirmSelect);
 
+    const attendanceCell = document.createElement('td');
     const attendanceSelect = document.createElement('select');
     attendanceSelect.dataset.attendanceState = booking.id;
     [
@@ -912,9 +917,43 @@ function renderBookings() {
       attendanceSelect.appendChild(option);
     });
     attendanceSelect.value = booking.status === 'asistio' || booking.status === 'no_asistio' ? booking.status : '';
-    actionsCell.appendChild(attendanceSelect);
+    attendanceCell.appendChild(attendanceSelect);
+    row.appendChild(attendanceCell);
 
-    row.appendChild(actionsCell);
+    const postVisitCell = document.createElement('td');
+    const postVisitSelect = document.createElement('select');
+    postVisitSelect.dataset.postVisit = booking.id;
+    [
+      { value: '', label: 'Sin definir' },
+      { value: 'Contrató', label: 'Contrató' },
+      { value: 'No contrató', label: 'No contrató' }
+    ].forEach(optionData => {
+      const option = document.createElement('option');
+      option.value = optionData.value;
+      option.textContent = optionData.label;
+      postVisitSelect.appendChild(option);
+    });
+    postVisitSelect.value = booking.postVisitOutcome || '';
+    postVisitCell.appendChild(postVisitSelect);
+    row.appendChild(postVisitCell);
+
+    const rescheduleCell = document.createElement('td');
+    const dateInput = document.createElement('input');
+    dateInput.type = 'date';
+    dateInput.value = booking.date || '';
+    dateInput.dataset.rescheduleDate = booking.id;
+    rescheduleCell.appendChild(dateInput);
+    const timeInput = document.createElement('input');
+    timeInput.type = 'time';
+    timeInput.value = booking.time || '';
+    timeInput.step = '1800';
+    timeInput.dataset.rescheduleTime = booking.id;
+    rescheduleCell.appendChild(timeInput);
+    const saveRescheduleBtn = document.createElement('button');
+    saveRescheduleBtn.dataset.rescheduleBtn = booking.id;
+    saveRescheduleBtn.textContent = 'Guardar';
+    rescheduleCell.appendChild(saveRescheduleBtn);
+    row.appendChild(rescheduleCell);
 
     const notifyCell = document.createElement('td');
     const notifyBtn = document.createElement('button');
@@ -956,11 +995,9 @@ function renderBookings() {
     btn.onclick = () => {
       const booking = getBookings().find(item => item.id === btn.dataset.rescheduleBtn);
       if (!booking) return;
-
-      const newDate = window.prompt('Nueva fecha (YYYY-MM-DD):', booking.date || '');
-      if (!newDate) return;
-      const newTime = window.prompt('Nueva hora (HH:MM):', booking.time || '');
-      if (!newTime) return;
+      const newDate = bookingsBody.querySelector(`[data-reschedule-date="${booking.id}"]`)?.value || '';
+      const newTime = bookingsBody.querySelector(`[data-reschedule-time="${booking.id}"]`)?.value || '';
+      if (!newDate || !newTime) return;
 
       updateBooking(booking.id, item => {
         item.date = newDate.trim();
@@ -1000,7 +1037,15 @@ function renderBookings() {
 
       updateBooking(bookingId, booking => {
         booking.status = 'no_asistio';
-        booking.postVisitOutcome = '-';
+        booking.postVisitOutcome = '';
+      });
+    };
+  });
+
+  bookingsBody.querySelectorAll('[data-post-visit]').forEach(select => {
+    select.onchange = () => {
+      updateBooking(select.dataset.postVisit, booking => {
+        booking.postVisitOutcome = select.value;
       });
     };
   });
@@ -1568,6 +1613,8 @@ lawyerFilter.addEventListener('change', () => {
   renderAgenda();
   renderAgendaCalendar();
 });
+bookingStatusFilter.addEventListener('change', renderBookings);
+bookingMatterFilter.addEventListener('change', renderBookings);
 agendaMonthInput.addEventListener('change', renderAgendaCalendar);
 prisonMonthInput.addEventListener('change', () => {
   renderPrisonCalendar();

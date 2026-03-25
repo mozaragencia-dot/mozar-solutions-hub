@@ -102,9 +102,30 @@
       <section class="card module-panel" data-module-panel="bookings">
         <h2>Agendamiento</h2>
         <p class="muted">WhatsApp de notificación TACAM: <strong>+56987591312</strong></p>
+        <div class="calendar-controls">
+          <label>Filtrar por estado
+            <select id="booking-status-filter">
+              <option value="">Todos</option>
+              <option value="nueva">Nueva</option>
+              <option value="confirmada">Confirmada</option>
+              <option value="cancelada">Cancelada</option>
+              <option value="asistio">Asistió</option>
+              <option value="no_asistio">No asistió</option>
+            </select>
+          </label>
+          <label>Filtrar por materia
+            <select id="booking-matter-filter">
+              <option value="">Todas</option>
+              <option value="Familiar">Familiar</option>
+              <option value="Penal">Penal</option>
+              <option value="Policía Local">Policía Local</option>
+              <option value="Visita a la Carcel">Visita a la Carcel</option>
+            </select>
+          </label>
+        </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Persona</th><th>Cita</th><th>Abogado</th><th>Estado</th><th>Confirmación</th><th>Post-visita</th><th>Acciones</th><th>WhatsApp</th></tr></thead>
+            <thead><tr><th>Persona</th><th>Materia</th><th>Fecha</th><th>Hora</th><th>Abogada</th><th>Confirmación</th><th>Estado</th><th>Asistencia</th><th>Post-visita</th><th>Reagendar</th><th>Notificar</th></tr></thead>
             <tbody id="bookings-body"></tbody>
           </table>
         </div>
