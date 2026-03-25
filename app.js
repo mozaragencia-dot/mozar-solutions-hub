@@ -5,7 +5,9 @@ const loginError = document.getElementById('login-error');
 
 const bookingsBody = document.getElementById('bookings-body');
 const agendaBody = document.getElementById('agenda-body');
+const clientForm = document.getElementById('client-form');
 const bookingForm = document.getElementById('booking-form');
+const prisonVisitForm = document.getElementById('prison-visit-form');
 const lawyerFilter = document.getElementById('lawyer-filter');
 const agendaMonthInput = document.getElementById('agenda-month');
 const agendaCalendar = document.getElementById('agenda-calendar');
@@ -29,10 +31,13 @@ const downloadLawyerReportBtn = document.getElementById('download-lawyer-report'
 const downloadBookingsReportBtn = document.getElementById('download-bookings-report');
 const profileForm = document.getElementById('profile-form');
 const profileList = document.getElementById('profile-list');
-const rutInput = bookingForm.elements.rut;
-const phoneInput = bookingForm.elements.phone;
+const clientRutInput = clientForm.elements.rut;
+const clientPhoneInput = clientForm.elements.phone;
 const chileClock = document.getElementById('chile-clock');
 const assignedToSelect = bookingForm.elements.assignedTo;
+const prisonAssignedToSelect = prisonVisitForm.elements.assignedTo;
+const clientSelect = bookingForm.elements.clientId;
+const prisonClientSelect = prisonVisitForm.elements.clientId;
 const moduleTabs = document.querySelectorAll('[data-module-tab]');
 const modulePanels = document.querySelectorAll('[data-module-panel]');
 
@@ -341,6 +346,17 @@ function getLawyerNames() {
   return [...names].sort((a, b) => a.localeCompare(b, 'es'));
 }
 
+function getClientLabel(client) {
+  const name = String(client?.customer || '').trim();
+  const rut = String(client?.rut || '').trim();
+  if (!name) return rut || 'Cliente sin nombre';
+  return rut ? `${name} · ${rut}` : name;
+}
+
+function getClientById(clientId) {
+  return getClients().find(client => client.id === clientId);
+}
+
 function fillSelectWithNames(select, names, firstLabel) {
   const currentValue = select.value;
   select.replaceChildren();
@@ -365,8 +381,45 @@ function fillSelectWithNames(select, names, firstLabel) {
 function renderLawyerOptions() {
   const names = getLawyerNames();
   fillSelectWithNames(assignedToSelect, names, 'Seleccione');
+  fillSelectWithNames(prisonAssignedToSelect, names, 'Seleccione');
   fillSelectWithNames(lawyerFilter, names, 'Todos');
   fillSelectWithNames(lawyerCalendarFilter, names, 'Todas');
+}
+
+function renderClientOptions() {
+  const clients = getClients().sort((a, b) => getClientLabel(a).localeCompare(getClientLabel(b), 'es'));
+  const currentBookingClient = clientSelect.value;
+  const currentPrisonClient = prisonClientSelect.value;
+
+  clientSelect.replaceChildren();
+  prisonClientSelect.replaceChildren();
+
+  const bookingFirst = document.createElement('option');
+  bookingFirst.value = '';
+  bookingFirst.textContent = 'Seleccione cliente';
+  clientSelect.appendChild(bookingFirst);
+
+  const prisonFirst = document.createElement('option');
+  prisonFirst.value = '';
+  prisonFirst.textContent = 'Seleccione cliente';
+  prisonClientSelect.appendChild(prisonFirst);
+
+  clients.forEach(client => {
+    const option = document.createElement('option');
+    option.value = client.id;
+    option.textContent = getClientLabel(client);
+    clientSelect.appendChild(option);
+
+    const prisonOption = option.cloneNode(true);
+    prisonClientSelect.appendChild(prisonOption);
+  });
+
+  if (clients.some(client => client.id === currentBookingClient)) {
+    clientSelect.value = currentBookingClient;
+  }
+  if (clients.some(client => client.id === currentPrisonClient)) {
+    prisonClientSelect.value = currentPrisonClient;
+  }
 }
 
 function getLawyerStats(lawyerName) {
@@ -975,6 +1028,7 @@ function renderProfiles() {
 }
 
 function renderAll() {
+  renderClientOptions();
   renderLawyerOptions();
   renderBookings();
   renderAgenda();
@@ -1003,48 +1057,91 @@ loginForm.addEventListener('submit', event => {
   }
 });
 
-bookingForm.addEventListener('submit', async event => {
+clientForm.addEventListener('submit', event => {
   event.preventDefault();
-  const data = new FormData(bookingForm);
+  const data = new FormData(clientForm);
   const rut = formatRut(data.get('rut'));
   const phone = formatPhone(data.get('phone'));
   const email = String(data.get('email') || '').trim();
 
   if (!isValidRut(rut)) {
-    rutInput.setCustomValidity('El RUT debe tener formato xx.xxx.xxx-x');
-    rutInput.reportValidity();
+    clientRutInput.setCustomValidity('El RUT debe tener formato xx.xxx.xxx-x');
+    clientRutInput.reportValidity();
     return;
   }
-  rutInput.setCustomValidity('');
+  clientRutInput.setCustomValidity('');
 
   if (!isValidPhone(phone)) {
-    phoneInput.setCustomValidity('El teléfono debe tener formato +5691111111');
-    phoneInput.reportValidity();
+    clientPhoneInput.setCustomValidity('El teléfono debe tener formato +56911111111');
+    clientPhoneInput.reportValidity();
     return;
   }
-  phoneInput.setCustomValidity('');
+  clientPhoneInput.setCustomValidity('');
 
   if (!email) {
-    bookingForm.elements.email.setCustomValidity('El correo es obligatorio');
-    bookingForm.elements.email.reportValidity();
+    clientForm.elements.email.setCustomValidity('El correo es obligatorio');
+    clientForm.elements.email.reportValidity();
     return;
   }
-  bookingForm.elements.email.setCustomValidity('');
+  clientForm.elements.email.setCustomValidity('');
+
+  const clients = getClients();
+  const normalizedRut = rut.toUpperCase();
+  const existing = clients.find(client => String(client.rut || '').toUpperCase() === normalizedRut);
+  const clientPayload = {
+    customer: String(data.get('customer') || '').trim(),
+    rut,
+    address: String(data.get('address') || '').trim(),
+    phone,
+    email,
+    notificationsConsent: true,
+    consentAt: new Date().toISOString()
+  };
+
+  if (existing) {
+    Object.assign(existing, clientPayload);
+  } else {
+    clients.unshift({
+      id: crypto.randomUUID(),
+      ...clientPayload,
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  saveClients(clients);
+  clientForm.reset();
+  clientPhoneInput.value = '+569';
+  renderAll();
+});
+
+bookingForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const data = new FormData(bookingForm);
+  const clientId = String(data.get('clientId') || '').trim();
+  const client = getClientById(clientId);
+  if (!client) {
+    bookingForm.elements.clientId.setCustomValidity('Debes seleccionar un cliente ya agregado');
+    bookingForm.elements.clientId.reportValidity();
+    return;
+  }
+  bookingForm.elements.clientId.setCustomValidity('');
 
   const bookings = getBookings();
   bookings.unshift({
     id: crypto.randomUUID(),
-    customer: String(data.get('customer') || '').trim(),
-    rut,
-    phone,
-    email,
+    clientId: client.id,
+    customer: client.customer,
+    rut: client.rut,
+    phone: client.phone,
+    email: client.email,
+    address: client.address || '',
     matter: normalizeMatterLabel(data.get('matter')),
     date: String(data.get('date') || '').trim(),
     time: String(data.get('time') || '').trim(),
     assignedTo: String(data.get('assignedTo') || '').trim(),
     notes: String(data.get('notes') || '').trim(),
-    notificationsConsent: Boolean(data.get('notificationsConsent')),
-    consentAt: data.get('notificationsConsent') ? new Date().toISOString() : '',
+    notificationsConsent: Boolean(client.notificationsConsent),
+    consentAt: client.consentAt || '',
     status: 'nueva',
     createdAt: new Date().toISOString(),
     reminder24hSentAt: '',
@@ -1054,18 +1151,57 @@ bookingForm.addEventListener('submit', async event => {
   saveBookings(bookings);
   await notifyVisitScheduled(bookings[0]);
   bookingForm.reset();
-  phoneInput.value = '+569';
   renderAll();
 });
 
-rutInput.addEventListener('input', () => {
-  const cursorAtEnd = rutInput.selectionStart === rutInput.value.length;
-  rutInput.value = formatRut(rutInput.value);
-  if (cursorAtEnd) rutInput.setSelectionRange(rutInput.value.length, rutInput.value.length);
+prisonVisitForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const data = new FormData(prisonVisitForm);
+  const clientId = String(data.get('clientId') || '').trim();
+  const client = getClientById(clientId);
+  if (!client) {
+    prisonVisitForm.elements.clientId.setCustomValidity('Debes seleccionar un cliente ya agregado');
+    prisonVisitForm.elements.clientId.reportValidity();
+    return;
+  }
+  prisonVisitForm.elements.clientId.setCustomValidity('');
+
+  const bookings = getBookings();
+  bookings.unshift({
+    id: crypto.randomUUID(),
+    clientId: client.id,
+    customer: client.customer,
+    rut: client.rut,
+    phone: client.phone,
+    email: client.email,
+    address: client.address || '',
+    matter: PRISON_VISIT_MATTER,
+    date: String(data.get('date') || '').trim(),
+    time: String(data.get('time') || '').trim(),
+    assignedTo: String(data.get('assignedTo') || '').trim(),
+    notes: String(data.get('notes') || '').trim(),
+    notificationsConsent: Boolean(client.notificationsConsent),
+    consentAt: client.consentAt || '',
+    status: 'nueva',
+    createdAt: new Date().toISOString(),
+    reminder24hSentAt: '',
+    reminder1hSentAt: '',
+    checkedInAt: ''
+  });
+  saveBookings(bookings);
+  await notifyVisitScheduled(bookings[0]);
+  prisonVisitForm.reset();
+  renderAll();
 });
 
-phoneInput.addEventListener('input', () => {
-  phoneInput.value = formatPhone(phoneInput.value);
+clientRutInput.addEventListener('input', () => {
+  const cursorAtEnd = clientRutInput.selectionStart === clientRutInput.value.length;
+  clientRutInput.value = formatRut(clientRutInput.value);
+  if (cursorAtEnd) clientRutInput.setSelectionRange(clientRutInput.value.length, clientRutInput.value.length);
+});
+
+clientPhoneInput.addEventListener('input', () => {
+  clientPhoneInput.value = formatPhone(clientPhoneInput.value);
 });
 
 lawyerFilter.addEventListener('change', () => {
@@ -1202,7 +1338,7 @@ const currentMonth = monthValueFromDate(new Date());
 agendaMonthInput.value = currentMonth;
 prisonMonthInput.value = currentMonth;
 lawyerCalendarMonth.value = currentMonth;
-phoneInput.value = '+569';
+clientPhoneInput.value = '+569';
 updateChileClock();
 
 saveSession({ loggedIn: false });

@@ -1,5 +1,6 @@
 const STORAGE_KEYS = {
   bookings: 'tacam_bookings',
+  clients: 'tacam_clients',
   lawyers: 'tacam_lawyers',
   profiles: 'tacam_profiles',
   session: 'tacam_session'
@@ -28,6 +29,8 @@ function saveJson(key, value) {
 }
 
 function seedData() {
+  migrateClientsFromBookings();
+
   const bookings = loadJson(STORAGE_KEYS.bookings, []);
   if (!bookings.length) {
     saveJson(STORAGE_KEYS.bookings, [
@@ -112,6 +115,41 @@ function getBookings() {
 
 function saveBookings(bookings) {
   saveJson(STORAGE_KEYS.bookings, bookings);
+}
+
+function getClients() {
+  return loadJson(STORAGE_KEYS.clients, []);
+}
+
+function saveClients(clients) {
+  saveJson(STORAGE_KEYS.clients, clients);
+}
+
+function migrateClientsFromBookings() {
+  const clients = loadJson(STORAGE_KEYS.clients, []);
+  if (clients.length) return;
+
+  const bookings = loadJson(STORAGE_KEYS.bookings, []);
+  const byRut = new Map();
+  bookings.forEach(booking => {
+    const rut = String(booking.rut || '').trim().toUpperCase();
+    if (!rut || byRut.has(rut)) return;
+    byRut.set(rut, {
+      id: crypto.randomUUID(),
+      customer: booking.customer || '',
+      rut,
+      address: booking.address || '',
+      phone: booking.phone || '',
+      email: booking.email || '',
+      notificationsConsent: Boolean(booking.notificationsConsent),
+      consentAt: booking.consentAt || '',
+      createdAt: booking.createdAt || new Date().toISOString()
+    });
+  });
+
+  if (byRut.size) {
+    saveJson(STORAGE_KEYS.clients, [...byRut.values()]);
+  }
 }
 
 function getLawyers() {
