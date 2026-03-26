@@ -127,13 +127,49 @@ async function sendEmailViaBrevo(booking, subject, message) {
   }
 }
 
+async function sendWhatsAppViaBrevo(contactNumbers, message) {
+  const uniqueNumbers = [...new Set((contactNumbers || []).map(cleanPhone).filter(Boolean))];
+  if (!uniqueNumbers.length || !String(message || '').trim()) return false;
+
+  try {
+    const response = await fetch('brevo-whatsapp.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contactNumbers: uniqueNumbers,
+        text: message
+      })
+    });
+
+    if (!response.ok) {
+      console.warn('Brevo WhatsApp error', await response.text());
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.warn('Brevo WhatsApp request failed', error);
+    return false;
+  }
+}
+
+function openWhatsAppFallback(target, message) {
+  const cleanTarget = cleanPhone(target);
+  if (!cleanTarget) return false;
+  window.open(`https://wa.me/${cleanTarget}?text=${encodeURIComponent(message)}`, '_blank', 'noopener');
+  return true;
+}
+
 async function notifyBooking(booking) {
   if (!hasNotificationConsent(booking)) return false;
   const destination = cleanPhone(booking.phone);
   if (!destination) return false;
-  const msg = encodeURIComponent(buildTacamMessage(booking));
-  window.open(`https://wa.me/${destination}?text=${msg}`, '_blank', 'noopener');
-  return true;
+
+  const message = buildTacamMessage(booking);
+  const viaBrevo = await sendWhatsAppViaBrevo([destination], message);
+  if (viaBrevo) return true;
+
+  return openWhatsAppFallback(destination, message);
 }
 
 function buildRescheduleMessage(booking, fromDate, toDate) {
@@ -175,14 +211,17 @@ function buildVisitScheduledMessage(booking) {
 async function notifyBookingChannels(booking, message, emailSubject) {
   if (!hasNotificationConsent(booking)) return false;
 
-  const encoded = encodeURIComponent(message);
   const targets = [cleanPhone(booking.phone), getLawyerPhone(booking.assignedTo)].filter(Boolean);
   let sent = false;
 
-  [...new Set(targets)].forEach(target => {
-    window.open(`https://wa.me/${target}?text=${encoded}`, '_blank', 'noopener');
+  const sentViaBrevo = await sendWhatsAppViaBrevo(targets, message);
+  if (sentViaBrevo) {
     sent = true;
-  });
+  } else {
+    [...new Set(targets)].forEach(target => {
+      sent = openWhatsAppFallback(target, message) || sent;
+    });
+  }
 
   const emailSent = await sendEmailViaBrevo(booking, emailSubject, message);
   return sent || emailSent;

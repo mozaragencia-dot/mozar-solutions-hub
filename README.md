@@ -28,11 +28,18 @@ La app ahora puede enviar correos mediante `brevo-email.php`, manteniendo la API
 - `BREVO_REPLY_TO_EMAIL` (opcional)
 - `BREVO_REPLY_TO_NAME` (opcional)
 
+### Variables opcionales para WhatsApp con Brevo API
+- `BREVO_WHATSAPP_SENDER_NUMBER` (ejemplo: `+569...` o formato internacional sin símbolos según tu cuenta Brevo)
+- `BREVO_WHATSAPP_TEMPLATE_ID` (opcional, recomendado si tu cuenta exige template aprobado)
+
+Si estas variables no están configuradas o la API falla, la app hace fallback a `wa.me` (abre WhatsApp Web/App).
+
 ### Cómo probar localmente con PHP
 ```bash
 BREVO_API_KEY=tu_api_key \
 BREVO_SENDER_EMAIL=tacam@agenciayousay.cl \
 BREVO_SENDER_NAME="tacam" \
+BREVO_WHATSAPP_SENDER_NUMBER=+56912345678 \
 php -S 127.0.0.1:4173
 ```
 
