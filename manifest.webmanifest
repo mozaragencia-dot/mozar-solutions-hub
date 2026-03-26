@@ -1,12 +1,12 @@
 {
-  "name": "TACAM Sistema de Reservas",
-  "short_name": "TACAM Reservas",
+  "name": "Sushi Daruma Menú Digital",
+  "short_name": "Sushi Menú",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#8f203a",
-  "theme_color": "#8f203a",
+  "background_color": "#fff7f7",
+  "theme_color": "#d81818",
   "lang": "es",
-  "description": "Sistema de reserva de personas para oficina de abogados TACAM.",
+  "description": "Web app para mostrar menú, marcar productos y generar pedidos por correo para un restaurante de sushi.",
   "icons": [
     {
       "src": "assets/logo-color.svg",

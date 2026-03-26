@@ -3,252 +3,87 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#b21f3a" />
+  <meta name="theme-color" content="#d81818" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" type="image/svg+xml" href="assets/logo-color.svg" />
-  <link rel="shortcut icon" href="assets/logo-color.svg" />
-  <link rel="apple-touch-icon" href="assets/logo-color.svg" />
-  <title>TACAM | Reservas Oficina Jurídica</title>
+  <title>Sushi Daruma | Menú Digital</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <section id="login-screen" class="login-screen">
-    <div class="login-panel">
-      <img src="assets/logo-color.svg" alt="Logo TACAM" />
-      <h2 class="brand-title"><img src="assets/logo-color.svg" alt="Logo TACAM" /> <span>Ingreso Administrador</span></h2>
-      <p>Acceso restringido al sistema TACAM.</p>
-      <form id="login-form" class="grid">
-        <label>Usuario <input name="username" required placeholder="admin" /></label>
-        <label>Contraseña <input name="password" type="password" required placeholder="admin" /></label>
-        <button type="submit">Ingresar</button>
-      </form>
-      <p id="login-error" class="login-error" hidden>Credenciales inválidas. Usa admin/admin.</p>
+  <header class="hero">
+    <img src="assets/logo-color.svg" alt="Logo Sushi Daruma" class="brand-logo" />
+    <div>
+      <h1>Sushi Daruma · Menú Digital</h1>
+      <p>Revisa el menú, marca tus productos y genera un pedido listo para enviar por correo.</p>
     </div>
-  </section>
+  </header>
 
-  <div id="app-shell" hidden>
-    <header class="topbar">
-      <img src="assets/logo-color.svg" alt="Logo TACAM" />
-      <div>
-        <h1 class="brand-title white"><img src="assets/logo-white.svg" alt="Logo TACAM" /> <span>Sistema de Reservas</span></h1>
-        <p>Reserva de personas para atención en oficina de abogados</p>
-        <span class="version-badge">Versión 1</span>
+  <main class="layout">
+    <section class="card uploader">
+      <h2>Cargar productos</h2>
+      <p>Puedes cargar un archivo <strong>JSON o CSV</strong> con los productos (nombre, categoría, precio, foto).</p>
+      <label class="file-input">Archivo de productos
+        <input id="catalog-file" type="file" accept=".json,.csv,application/json,text/csv" />
+      </label>
+      <div class="actions-row">
+        <button type="button" id="load-demo">Usar menú demo</button>
+        <button type="button" id="clear-data" class="ghost">Limpiar catálogo</button>
       </div>
-      <div class="header-clock" aria-live="polite">
-        <small>Hora local Chile</small>
-        <strong id="chile-clock">--:--:--</strong>
+      <small id="catalog-status" class="muted">Aún no has cargado archivo. Se puede trabajar con menú demo o con export CSV de WooCommerce.</small>
+      <details>
+        <summary>Formato esperado del JSON</summary>
+<pre>{
+  "restaurant": "Sushi Daruma",
+  "orderEmail": "pedidos@turestaurant.cl",
+  "products": [
+    {
+      "id": "nigiri-salmon",
+      "name": "Nigiri Salmón (2)",
+      "category": "Nigiri",
+      "price": 3900,
+      "description": "Arroz sazonado y salmón fresco.",
+      "image": "https://.../foto.jpg"
+    }
+  ]
+}</pre>
+      </details>
+    </section>
+
+    <section class="card" id="menu-section">
+      <div class="menu-head">
+        <h2>Menú</h2>
+        <input id="menu-search" type="search" placeholder="Buscar producto..." />
       </div>
-    </header>
+      <div id="category-filters" class="filters"></div>
+      <div id="menu-grid" class="menu-grid"></div>
+    </section>
 
-    <main>
-      <nav class="module-tabs" aria-label="Módulos TACAM">
-        <button type="button" class="module-tab active" data-module-tab="create">Ingreso de Cliente</button>
-        <button type="button" class="module-tab" data-module-tab="bookings">No Contrataron / Contratados</button>
-        <button type="button" class="module-tab" data-module-tab="agenda">Agendamiento</button>
-        <button type="button" class="module-tab" data-module-tab="prison-visits">Visitas a la Cárcel</button>
-        <button type="button" class="module-tab" data-module-tab="lawyers">Perfiles de Abogados</button>
-        <button type="button" class="module-tab" data-module-tab="reports">Reportes y Gráficos</button>
-      </nav>
+    <aside class="card order-panel">
+      <h2>Tu selección</h2>
+      <ul id="order-list" class="order-list"></ul>
+      <div class="order-total">
+        <span>Total estimado</span>
+        <strong id="order-total">$0</strong>
+      </div>
 
-      <section class="card module-panel active" data-module-panel="create">
-        <h2>Crear Reserva</h2>
-        <form id="booking-form" class="grid">
-          <label>Nombre de la persona <input name="customer" required /></label>
-          <label>RUT <input name="rut" required placeholder="12.345.678-9" maxlength="12" /></label>
-          <label>Teléfono <input name="phone" required placeholder="+56912345678" maxlength="12" /></label>
-          <label>Correo <input name="email" type="email" required placeholder="cliente@correo.com" /></label>
-          <label>Materia
-            <select name="matter" required>
-              <option value="">Seleccione materia</option>
-              <option value="Familiar">Familiar</option>
-              <option value="Penal">Penal</option>
-              <option value="Visita a la Cárcel">Visita a la Cárcel</option>
-            </select>
-          </label>
-          <label>Fecha de reserva <input name="date" type="date" required /></label>
-          <label>Hora de reserva
-            <select name="time" required>
-              <option value="">Seleccione un horario</option>
-              <option value="08:00">08:00</option>
-              <option value="08:30">08:30</option>
-              <option value="09:00">09:00</option>
-              <option value="09:30">09:30</option>
-              <option value="10:00">10:00</option>
-              <option value="10:30">10:30</option>
-              <option value="11:00">11:00</option>
-              <option value="11:30">11:30</option>
-              <option value="12:00">12:00</option>
-              <option value="12:30">12:30</option>
-              <option value="13:00">13:00</option>
-              <option value="13:30">13:30</option>
-              <option value="14:00">14:00</option>
-              <option value="14:30">14:30</option>
-              <option value="15:00">15:00</option>
-              <option value="15:30">15:30</option>
-              <option value="16:00">16:00</option>
-              <option value="16:30">16:30</option>
-              <option value="17:00">17:00</option>
-              <option value="17:30">17:30</option>
-              <option value="18:00">18:00</option>
-            </select>
-          </label>
-          <label>Abogado asignado
-            <select name="assignedTo" required>
-              <option value="">Seleccione</option>
-            </select>
-          </label>
-          <label class="full">Motivo de consulta <textarea name="notes" rows="3" placeholder="Detalle del caso..."></textarea></label>
-          <label class="full checkbox-inline consent-box">
-            <input name="notificationsConsent" type="checkbox" /> La secretaria recibió consentimiento verbal para enviar correo y WhatsApp
-          </label>
-          <button type="submit">Guardar reserva</button>
-        </form>
-      </section>
-
-      <section class="card module-panel" data-module-panel="bookings">
-        <h2>Reservas y Confirmación</h2>
-        <p class="muted">WhatsApp de notificación TACAM: <strong>+56987591312</strong></p>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Fecha creación</th><th>Persona</th><th>Materia</th><th>Teléfono</th><th>Cita</th><th>Abogado</th><th>Estado</th><th>Gestión</th><th>Notificar</th></tr></thead>
-            <tbody id="bookings-body"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="card module-panel" data-module-panel="agenda">
-        <h2>Agenda por Abogado</h2>
-        <div class="calendar-controls">
-          <label>Filtrar por abogado
-            <select id="lawyer-filter">
-              <option value="">Todos</option>
-              <option value="Daniela Sierra">Daniela Sierra</option>
-              <option value="Natalie Gómez">Natalie Gómez</option>
-              <option value="Camila Vásquez">Camila Vásquez</option>
-              <option value="Carolina Contreras">Carolina Contreras</option>
-            </select>
-          </label>
-          <label>Mes
-            <input id="agenda-month" type="month" />
-          </label>
-        </div>
-        <div id="agenda-color-legend" class="calendar-legend"></div>
-        <p class="muted">Tip: puedes arrastrar y soltar una cita a otro día para reagendar.</p>
-        <div id="agenda-calendar" class="calendar"></div>
-
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Persona</th><th>Materia</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Acciones</th></tr></thead>
-            <tbody id="agenda-body"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="card module-panel" data-module-panel="prison-visits">
-        <div class="section-heading">
-          <div>
-            <h2>Visitas a la Cárcel</h2>
-            <p class="muted">Calendario exclusivo para la materia Visita a la Cárcel, con recordatorios por WhatsApp y correo.</p>
-          </div>
-          <label>Mes
-            <input id="prison-month" type="month" />
-          </label>
-        </div>
-        <div id="prison-calendar-legend" class="calendar-legend"></div>
-        <div id="prison-calendar" class="calendar"></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Abogada</th><th>Persona</th><th>Fecha</th><th>Hora</th><th>Estado</th><th>Check-in secretaria</th><th>Recordatorios</th></tr></thead>
-            <tbody id="prison-visits-body"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="card module-panel" data-module-panel="lawyers">
-        <h2>Perfiles de Abogados</h2>
-        <form id="lawyer-form" class="grid">
-          <label>Nombre completo <input name="name" required /></label>
-          <label>Especialidad <input name="specialty" /></label>
-          <label>WhatsApp <input name="phone" placeholder="+569..." /></label>
-          <label class="full">Foto de perfil <input name="photo" type="file" accept="image/*" required /></label>
-          <button type="submit">Guardar perfil</button>
-        </form>
-        <div id="lawyer-list" class="lawyer-grid"></div>
-
-        <h3>Calendario General de Abogadas</h3>
-        <div class="calendar-controls">
-          <label>Ver agenda de
-            <select id="lawyer-calendar-filter">
-              <option value="">Todas</option>
-            </select>
-          </label>
-          <label>Mes
-            <input id="lawyer-calendar-month" type="month" />
-          </label>
-          <label class="checkbox-inline">
-            <input id="shared-only" type="checkbox" /> Solo horarios compartidos (más de una abogada)
-          </label>
-        </div>
-        <div id="lawyer-calendar-legend" class="calendar-legend"></div>
-        <p class="muted">Tip: usa drag &amp; drop para mover reuniones de día.</p>
-        <div id="lawyer-calendar" class="calendar"></div>
-
-        <h3>Creador de Perfil (Permisos)</h3>
-        <form id="profile-form" class="grid">
-          <label>Nombre <input name="name" required /></label>
-          <label>Usuario <input name="username" required /></label>
-          <label>Rol
-            <select name="role" required>
-              <option value="">Seleccione</option>
-              <option value="Admin">Admin</option>
-              <option value="Recepción">Recepción</option>
-              <option value="Abogada">Abogada</option>
-            </select>
-          </label>
-          <fieldset class="full permissions-box">
-            <legend>Permisos (marcar/tickear)</legend>
-            <label><input type="checkbox" name="permBookings" /> Reservas</label>
-            <label><input type="checkbox" name="permAgenda" /> Agenda</label>
-            <label><input type="checkbox" name="permLawyers" /> Abogadas</label>
-            <label><input type="checkbox" name="permReports" /> Estadísticas</label>
-          </fieldset>
-          <button type="submit">Crear / Actualizar perfil</button>
-        </form>
-        <div id="profile-list" class="profile-grid"></div>
-      </section>
-
-      <section class="card module-panel" data-module-panel="reports">
-        <h2>Reportes de Atenciones</h2>
-        <p class="muted">Visualiza métricas generales y separadas por abogada. Puedes descargar los datos en formato Excel (CSV).</p>
-
-        <div class="report-grid">
-          <article class="report-card">
-            <h3>General por estado</h3>
-            <canvas id="general-stats-chart" width="800" height="320"></canvas>
-          </article>
-          <article class="report-card">
-            <h3>Atenciones por abogada</h3>
-            <canvas id="lawyer-stats-chart" width="800" height="320"></canvas>
-          </article>
-          <article class="report-card">
-            <h3>Visitas a la Cárcel por abogada</h3>
-            <canvas id="prison-stats-chart" width="800" height="320"></canvas>
-          </article>
-        </div>
-
-        <div class="report-actions">
-          <button type="button" id="download-general-report">Descargar reporte general (Excel/CSV)</button>
-          <button type="button" id="download-lawyer-report">Descargar reporte por abogada (Excel/CSV)</button>
-          <button type="button" id="download-bookings-report">Descargar detalle completo (Excel/CSV)</button>
-        </div>
-      </section>
-
-      <footer class="footer-sign">
-        <img src="assets/logo-color.svg" alt="Logo TACAM" />
-        <span><strong>TACAM</strong> · Desarrollo por <strong>Agencia Digital</strong></span>
-      </footer>
-    </main>
-  </div>
+      <form id="order-form" class="order-form">
+        <label>Nombre
+          <input name="customerName" required />
+        </label>
+        <label>Correo
+          <input name="customerEmail" type="email" required />
+        </label>
+        <label>Teléfono
+          <input name="customerPhone" placeholder="+56..." />
+        </label>
+        <label>Notas del pedido
+          <textarea name="notes" rows="3" placeholder="Ej: sin cebollín, retiro 20:30"></textarea>
+        </label>
+        <button type="submit">Generar correo de pedido</button>
+      </form>
+      <p class="muted" id="mail-note">Se abrirá tu cliente de correo con el pedido armado y estilo de marca en HTML.</p>
+    </aside>
+  </main>
 
   <script src="delivery-core.js"></script>
   <script src="app.js"></script>
