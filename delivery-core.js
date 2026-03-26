@@ -1,18 +1,54 @@
 const STORAGE_KEYS = {
-  bookings: 'tacam_bookings',
-  lawyers: 'tacam_lawyers',
-  profiles: 'tacam_profiles',
-  session: 'tacam_session'
+  catalog: 'sushi_catalog_v1',
+  order: 'sushi_order_v1'
 };
 
-const LEGACY_LAWYER_NAMES = new Set(['Daniela Sierra', 'Natalie Gómez', 'Camila Vásquez', 'Carolina Contreras']);
-const OFFICIAL_LAWYERS = [
-  { name: 'KATHERINE SERRANO MARREY', rut: '16.592.789-3', specialty: 'Penal - policía local', email: 'kserrano@tacam.cl', phone: '', photo: 'assets/logo-color.svg' },
-  { name: 'CONSTANZA ROCÍO CLIMENT DEL RÍO', rut: '16.380.148-5', specialty: 'Familia', email: 'ccliment@tacam.cl', phone: '', photo: 'assets/logo-color.svg' },
-  { name: 'VALENTINA BELEN REICHERT GODOY', rut: '20.135.049-2', specialty: 'Penal - Policía local', email: 'vreichert@tacam.cl', phone: '', photo: 'assets/logo-color.svg' },
-  { name: 'SARA BERNARDA TAPIA GONZÁLEZ', rut: '12.836.725-K', specialty: 'Penal - Policía local - Familia', email: 'stapia@tacam.cl', phone: '', photo: 'assets/logo-color.svg' },
-  { name: 'DIANDRA ARACENA MORA', rut: '15.981.484-K', specialty: 'Penal', email: 'daracena@tacam.cl', phone: '', photo: 'assets/logo-color.svg' }
-];
+const DEMO_CATALOG = {
+  restaurant: 'Sushi Daruma',
+  orderEmail: 'pedidos@sushidaruma.cl',
+  products: [
+    {
+      id: 'uramaki-salmon-queso',
+      name: 'Uramaki Salmón Queso (10)',
+      category: 'Rolls',
+      price: 6990,
+      description: 'Salmón, queso crema y cebollín.',
+      image: 'https://images.unsplash.com/photo-1611143669185-af224c5e3252?auto=format&fit=crop&w=900&q=80'
+    },
+    {
+      id: 'ebi-furai-roll',
+      name: 'Ebi Furai Roll (10)',
+      category: 'Rolls',
+      price: 7590,
+      description: 'Camarón furai, palta y salsa acevichada.',
+      image: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=900&q=80'
+    },
+    {
+      id: 'nigiri-mix',
+      name: 'Nigiri Mix (6)',
+      category: 'Nigiri',
+      price: 6400,
+      description: 'Selección de salmón, atún y camarón.',
+      image: 'https://images.unsplash.com/photo-1625938145312-59e95fb3384f?auto=format&fit=crop&w=900&q=80'
+    },
+    {
+      id: 'gyoza-camaron',
+      name: 'Gyoza Camarón (5)',
+      category: 'Entradas',
+      price: 4990,
+      description: 'Gyozas al vapor con salsa ponzu.',
+      image: 'https://images.unsplash.com/photo-1607301405390-d831c242f59b?auto=format&fit=crop&w=900&q=80'
+    },
+    {
+      id: 'ramune-original',
+      name: 'Ramune Original',
+      category: 'Bebidas',
+      price: 2590,
+      description: 'Bebida japonesa sabor clásico.',
+      image: 'https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=900&q=80'
+    }
+  ]
+};
 
 function loadJson(key, fallback) {
   try {
@@ -27,155 +63,53 @@ function saveJson(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
-function seedData() {
-  const bookings = loadJson(STORAGE_KEYS.bookings, []);
-  if (!bookings.length) {
-    saveJson(STORAGE_KEYS.bookings, [
-      {
-        id: crypto.randomUUID(),
-        customer: 'Cliente Demo',
-        rut: '12.345.678-9',
-        phone: '+56911111111',
-        email: 'cliente.demo@tacam.cl',
-        matter: 'Familiar',
-        date: new Date().toISOString().slice(0, 10),
-        time: '10:30',
-        assignedTo: 'KATHERINE SERRANO MARREY',
-        notes: 'Consulta por materia familiar.',
-        status: 'nueva',
-        createdAt: new Date().toISOString()
-      }
-    ]);
-  }
-
-  syncLawyersData();
-
-  const profiles = loadJson(STORAGE_KEYS.profiles, []);
-  if (!profiles.length) {
-    saveJson(STORAGE_KEYS.profiles, [
-      {
-        id: crypto.randomUUID(),
-        name: 'Administrador TACAM',
-        username: 'admin',
-        role: 'Admin',
-        permissions: ['Reservas', 'Agenda', 'Abogadas', 'Estadísticas']
-      }
-    ]);
-  }
+function getCatalog() {
+  return loadJson(STORAGE_KEYS.catalog, null);
 }
 
-function normalizeLawyerKey(name) {
-  return String(name || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+function saveCatalog(catalog) {
+  saveJson(STORAGE_KEYS.catalog, catalog);
 }
 
-function syncLawyersData() {
-  const lawyers = loadJson(STORAGE_KEYS.lawyers, []);
-  const retainedLawyers = lawyers.filter(lawyer => !LEGACY_LAWYER_NAMES.has(String(lawyer.name || '').trim()));
-  const officialKeys = new Set(OFFICIAL_LAWYERS.map(lawyer => normalizeLawyerKey(lawyer.name)));
-  const map = new Map();
-
-  retainedLawyers.forEach(lawyer => {
-    const key = normalizeLawyerKey(lawyer.name);
-    if (!key) return;
-    map.set(key, { ...lawyer, id: lawyer.id || crypto.randomUUID(), photo: lawyer.photo || 'assets/logo-color.svg' });
-  });
-
-  OFFICIAL_LAWYERS.forEach(lawyer => {
-    const key = normalizeLawyerKey(lawyer.name);
-    const existing = map.get(key) || {};
-    map.set(key, {
-      id: existing.id || crypto.randomUUID(),
-      name: lawyer.name,
-      rut: lawyer.rut,
-      specialty: lawyer.specialty,
-      email: lawyer.email,
-      phone: existing.phone || lawyer.phone || '',
-      photo: existing.photo || lawyer.photo || 'assets/logo-color.svg'
-    });
-  });
-
-  const syncedLawyers = [
-    ...OFFICIAL_LAWYERS.map(lawyer => map.get(normalizeLawyerKey(lawyer.name))),
-    ...retainedLawyers.filter(lawyer => !officialKeys.has(normalizeLawyerKey(lawyer.name))).map(lawyer => map.get(normalizeLawyerKey(lawyer.name)))
-  ].filter(Boolean);
-
-  const currentSerialized = JSON.stringify(lawyers);
-  const syncedSerialized = JSON.stringify(syncedLawyers);
-  if (currentSerialized !== syncedSerialized) {
-    saveJson(STORAGE_KEYS.lawyers, syncedLawyers);
-  }
+function clearCatalog() {
+  localStorage.removeItem(STORAGE_KEYS.catalog);
 }
 
-function getBookings() {
-  return loadJson(STORAGE_KEYS.bookings, []);
+function getOrder() {
+  return loadJson(STORAGE_KEYS.order, {});
 }
 
-function saveBookings(bookings) {
-  saveJson(STORAGE_KEYS.bookings, bookings);
+function saveOrder(orderMap) {
+  saveJson(STORAGE_KEYS.order, orderMap);
 }
 
-function getLawyers() {
-  return loadJson(STORAGE_KEYS.lawyers, []);
+function clearOrder() {
+  localStorage.removeItem(STORAGE_KEYS.order);
 }
 
-function saveLawyers(lawyers) {
-  saveJson(STORAGE_KEYS.lawyers, lawyers);
+function currencyCLP(value) {
+  return new Intl.NumberFormat('es-CL', {
+    style: 'currency',
+    currency: 'CLP',
+    maximumFractionDigits: 0
+  }).format(Number(value || 0));
 }
 
-function getProfiles() {
-  return loadJson(STORAGE_KEYS.profiles, []);
+function normalizeCatalog(raw) {
+  const products = Array.isArray(raw?.products) ? raw.products : [];
+  return {
+    restaurant: String(raw?.restaurant || 'Sushi Daruma').trim(),
+    orderEmail: String(raw?.orderEmail || 'pedidos@sushidaruma.cl').trim(),
+    products: products
+      .map((item, index) => ({
+        id: String(item.id || `${item.name || 'producto'}-${index}`).trim().toLowerCase().replace(/\s+/g, '-'),
+        name: String(item.name || '').trim(),
+        category: String(item.category || 'Otros').trim(),
+        price: Number(item.price || 0),
+        stock: Math.max(0, Number(item.stock ?? 20)),
+        description: String(item.description || '').trim(),
+        image: String(item.image || '').trim()
+      }))
+      .filter(item => item.name)
+  };
 }
-
-function saveProfiles(profiles) {
-  saveJson(STORAGE_KEYS.profiles, profiles);
-}
-
-function getSession() {
-  return loadJson(STORAGE_KEYS.session, { loggedIn: false });
-}
-
-function saveSession(session) {
-  saveJson(STORAGE_KEYS.session, session);
-}
-
-function statusLabel(status) {
-  return ({
-    nueva: 'Nueva',
-    confirmada: 'Confirmada',
-    atendida: 'Atendida',
-    cancelada: 'Cancelada'
-  })[status] || status;
-}
-
-function fmtDate(iso) {
-  return new Date(iso).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' });
-}
-
-function cleanPhone(phone) {
-  return String(phone || '').replace(/\D/g, '');
-}
-
-function normalizeMatterLabel(value) {
-  const clean = String(value || '').trim();
-  if (!clean) return '';
-  const normalized = clean.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  if (normalized.includes('cartel') || normalized.includes('carcel')) return 'Visita a la Cárcel';
-  return clean;
-}
-
-function buildTacamMessage(booking) {
-  const appointment = `${booking.date || ''} ${booking.time || ''}`.trim();
-  const matter = normalizeMatterLabel(booking.matter) || 'General';
-  return `Desde TACAM, informamos toda la información de su reserva. Persona: ${booking.customer}. Materia: ${matter}. Fecha/Hora: ${appointment}. Abogado: ${booking.assignedTo || 'Por confirmar'}. Estado: ${statusLabel(booking.status)}.`;
-}
-
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-seedData();

@@ -1,53 +1,73 @@
-# TACAM · Sistema de Reserva de Personas (Oficina de Abogados)
+# Sushi Daruma · Menú Digital + Pre-pedido por correo
 
-Aplicación web unificada para gestionar reservas de atención jurídica.
+Aplicación web estática para restaurantes de sushi que permite:
 
-## Funcionalidades
-- Registro de reserva con: nombre, teléfono, fecha, hora, abogado asignado y motivo de consulta.
-- Gestión de reservas: confirmar, cancelar, reasignar abogado y notificar por WhatsApp.
-- Agenda por abogado: filtro por profesional y opción para marcar cita como atendida.
-- Perfiles de abogados con foto, especialidad y WhatsApp.
-- Persistencia local en navegador (`localStorage`) y soporte PWA.
+- Mostrar productos con foto y categorías.
+- Marcar productos en una lista de pedido (carrito básico).
+- Cargar un catálogo desde archivo JSON o CSV (incluye export de WooCommerce).
+- Generar un correo listo para enviar con detalle del pedido y bloque HTML con estilo de marca.
+- Guardar catálogo y selección en `localStorage`.
+- Mostrar notificación de confirmación con botón **Aceptar** cuando se guarda información.
+- Administrador separado para inventario interno (usuario `admin`, clave `admin`).
+- Funcionar como PWA básica (cache offline de archivos estáticos).
 
-## WhatsApp de notificación
-- Número de referencia TACAM: **+56987591312**.
-- Mensaje base: "Desde TACAM, informamos toda la información de su reserva..."
+## Uso rápido
 
+1. Abrir `index.html` en un servidor local.
+2. Cargar un JSON/CSV con productos (o usar menú demo).
+3. Seleccionar productos con los botones `+` y `−`.
+4. Completar datos del cliente.
+5. Presionar **Generar correo de pedido**.
 
-## Dominio de producción
-- Subdominio objetivo: `www.apolo.tacam.cl`.
-- Recomendación: servir esta carpeta desde ese host y mantener el endpoint `brevo-email.php` en el mismo dominio para evitar CORS.
+## Administrador de inventario
 
-## Brevo (correo transaccional)
-La app ahora puede enviar correos mediante `brevo-email.php`, manteniendo la API key fuera del navegador.
+- Botón **Administrador** en la cabecera.
+- Credenciales por defecto:
+  - Usuario: `admin`
+  - Clave: `admin`
+- Permite:
+  - Ajustar stock por producto.
+  - Eliminar productos.
+  - Crear productos nuevos.
 
-### Variables necesarias en el servidor
-- `BREVO_API_KEY`
-- `BREVO_SENDER_EMAIL`
-- `BREVO_SENDER_NAME`
-- `BREVO_REPLY_TO_EMAIL` (opcional)
-- `BREVO_REPLY_TO_NAME` (opcional)
+## Formato de catálogo JSON
 
-### Cómo probar localmente con PHP
-```bash
-BREVO_API_KEY=tu_api_key \
-BREVO_SENDER_EMAIL=tacam@agenciayousay.cl \
-BREVO_SENDER_NAME="tacam" \
-php -S 127.0.0.1:4173
+```json
+{
+  "restaurant": "Sushi Daruma",
+  "orderEmail": "pedidos@turestaurant.cl",
+  "products": [
+    {
+      "id": "nigiri-salmon",
+      "name": "Nigiri Salmón (2)",
+      "category": "Nigiri",
+      "price": 3900,
+      "description": "Arroz sazonado y salmón fresco.",
+      "image": "https://.../foto.jpg"
+    }
+  ]
+}
 ```
 
-Luego abre `http://127.0.0.1:4173` (en producción usar `https://www.apolo.tacam.cl`).
+## CSV de WooCommerce
 
-> Importante: el remitente configurado en Brevo debe estar verificado en tu cuenta.
+También puedes subir directamente un CSV exportado desde WooCommerce (`Products > Export`), usando columnas típicas como:
 
-## Empaquetar para envío
-```bash
-./package.sh
-```
-El paquete queda en `dist/tacam-static-app.zip`.
+- `Name`
+- `Categories`
+- `Regular price` (o `Sale price` / `Price`)
+- `Images`
+- `Short description` (opcional)
 
-## Ejecutar localmente (modo estático, sin Brevo)
+## Nota sobre el módulo de compra
+
+Esta primera versión deja listo el flujo de selección y pre-pedido por correo.
+El siguiente paso puede ser integrar pasarela de pago y envío automático de email transaccional (por ejemplo con Brevo, Resend o SendGrid).
+
+## Ejecutar localmente
+
 ```bash
 python3 -m http.server 4173
 ```
-Abrir: `http://localhost:4173`
+
+Abrir: `http://localhost:4173`.
