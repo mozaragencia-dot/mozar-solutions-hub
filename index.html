@@ -16,6 +16,7 @@
       <h1>Sushi Daruma · Menú Digital</h1>
       <p>Revisa el menú, marca tus productos y genera un pedido listo para enviar por correo.</p>
     </div>
+    <button type="button" id="open-admin" class="ghost">Administrador</button>
   </header>
 
   <main class="layout">
@@ -85,6 +86,44 @@
       <p class="muted" id="mail-note">Se abrirá tu cliente de correo con el pedido armado y estilo de marca en HTML.</p>
     </aside>
   </main>
+
+  <section id="admin-panel" class="card admin-panel" hidden>
+    <div class="admin-head">
+      <h2>Administrador de Inventario</h2>
+      <button type="button" id="close-admin" class="ghost">Cerrar</button>
+    </div>
+    <p class="muted">Usuario: admin · Clave: admin (solo uso interno).</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Producto</th><th>Categoría</th><th>Precio</th><th>Stock</th><th>Acción</th></tr></thead>
+        <tbody id="admin-products-body"></tbody>
+      </table>
+    </div>
+
+    <h3>Agregar producto</h3>
+    <form id="admin-product-form" class="grid">
+      <label>Nombre <input name="name" required /></label>
+      <label>Categoría <input name="category" required /></label>
+      <label>Precio CLP <input name="price" type="number" min="0" required /></label>
+      <label>Stock <input name="stock" type="number" min="0" required value="0" /></label>
+      <label class="full">Descripción <textarea name="description" rows="2"></textarea></label>
+      <label class="full">URL imagen <input name="image" type="url" placeholder="https://..." /></label>
+      <button type="submit">Guardar producto</button>
+    </form>
+  </section>
+
+  <div id="admin-login" class="admin-login" hidden role="dialog" aria-label="Login administrador">
+    <form id="admin-login-form" class="admin-login-card">
+      <h3>Acceso administrador</h3>
+      <label>Usuario <input name="username" required /></label>
+      <label>Clave <input name="password" type="password" required /></label>
+      <div class="actions-row">
+        <button type="submit">Ingresar</button>
+        <button type="button" id="cancel-admin-login" class="ghost">Cancelar</button>
+      </div>
+      <p id="admin-login-error" class="login-error" hidden>Credenciales inválidas.</p>
+    </form>
+  </div>
 
   <div id="confirm-toast" class="confirm-toast" hidden role="alertdialog" aria-live="assertive" aria-label="Notificación de guardado">
     <p id="confirm-toast-message">Cambios guardados.</p>

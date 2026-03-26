@@ -106,6 +106,7 @@ function normalizeCatalog(raw) {
         name: String(item.name || '').trim(),
         category: String(item.category || 'Otros').trim(),
         price: Number(item.price || 0),
+        stock: Math.max(0, Number(item.stock ?? 20)),
         description: String(item.description || '').trim(),
         image: String(item.image || '').trim()
       }))

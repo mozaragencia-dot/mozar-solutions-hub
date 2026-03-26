@@ -13,11 +13,23 @@ const saveOrderBtn = document.getElementById('save-order');
 const confirmToast = document.getElementById('confirm-toast');
 const confirmToastMessage = document.getElementById('confirm-toast-message');
 const confirmToastAccept = document.getElementById('confirm-toast-accept');
+const openAdminBtn = document.getElementById('open-admin');
+const closeAdminBtn = document.getElementById('close-admin');
+const adminPanel = document.getElementById('admin-panel');
+const adminProductsBody = document.getElementById('admin-products-body');
+const adminProductForm = document.getElementById('admin-product-form');
+const adminLogin = document.getElementById('admin-login');
+const adminLoginForm = document.getElementById('admin-login-form');
+const cancelAdminLogin = document.getElementById('cancel-admin-login');
+const adminLoginError = document.getElementById('admin-login-error');
 
 let activeCategory = 'Todos';
 let currentCatalog = getCatalog() || normalizeCatalog(DEMO_CATALOG);
 let currentOrder = getOrder();
 let confirmToastTimer = null;
+let adminLoggedIn = false;
+
+const ADMIN_CREDENTIALS = { username: 'admin', password: 'admin' };
 
 function updateStatus(message) {
   statusLabel.textContent = message;
@@ -53,6 +65,11 @@ function getFilteredProducts() {
   });
 }
 
+function getStock(product) {
+  const stock = Number(product?.stock ?? 0);
+  return Number.isFinite(stock) && stock >= 0 ? stock : 0;
+}
+
 function renderCategories() {
   const categories = ['Todos', ...new Set(currentCatalog.products.map(item => item.category))];
   categoryFilters.innerHTML = '';
@@ -72,8 +89,14 @@ function renderCategories() {
 }
 
 function changeQty(productId, delta) {
+  const product = currentCatalog.products.find(item => item.id === productId);
+  const stockLimit = getStock(product);
   const current = Number(currentOrder[productId] || 0);
   const next = Math.max(0, current + delta);
+  if (delta > 0 && next > stockLimit) {
+    showConfirmToast('No hay más stock disponible para ese producto.');
+    return;
+  }
   if (next === 0) {
     delete currentOrder[productId];
   } else {
@@ -97,18 +120,20 @@ function renderMenu() {
     const qty = Number(currentOrder[item.id] || 0);
     const card = document.createElement('article');
     card.className = 'product-card';
+    const stock = getStock(item);
     card.innerHTML = `
       <img src="${item.image || 'assets/logo-color.svg'}" alt="${item.name}" loading="lazy" />
       <div class="product-body">
         <small>${item.category}</small>
         <h3>${item.name}</h3>
         <p>${item.description || 'Sin descripción.'}</p>
+        <small class="muted">Stock: ${stock}</small>
         <div class="product-footer">
           <strong>${currencyCLP(item.price)}</strong>
           <div class="qty-control">
             <button type="button" data-delta="-1" data-id="${item.id}">−</button>
             <span>${qty}</span>
-            <button type="button" data-delta="1" data-id="${item.id}">+</button>
+            <button type="button" data-delta="1" data-id="${item.id}" ${qty >= stock ? 'disabled' : ''}>+</button>
           </div>
         </div>
       </div>
@@ -231,6 +256,74 @@ function loadCatalogFromRaw(raw, sourceLabel) {
   renderOrder();
   updateStatus(`Catálogo cargado (${sourceLabel}) con ${normalized.products.length} productos.`);
   showConfirmToast('Catálogo guardado correctamente.');
+  renderAdminProducts();
+}
+
+function renderAdminProducts() {
+  if (!adminProductsBody) return;
+  adminProductsBody.innerHTML = '';
+
+  if (!currentCatalog.products.length) {
+    adminProductsBody.innerHTML = '<tr><td colspan="5" class="muted">No hay productos.</td></tr>';
+    return;
+  }
+
+  currentCatalog.products.forEach(item => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${item.name}</td>
+      <td>${item.category}</td>
+      <td>${currencyCLP(item.price)}</td>
+      <td><input type="number" min="0" value="${getStock(item)}" data-stock-id="${item.id}" /></td>
+      <td><button type="button" class="ghost" data-remove-id="${item.id}">Eliminar</button></td>
+    `;
+    adminProductsBody.appendChild(row);
+  });
+
+  adminProductsBody.querySelectorAll('[data-stock-id]').forEach(input => {
+    input.addEventListener('change', () => {
+      const product = currentCatalog.products.find(item => item.id === input.dataset.stockId);
+      if (!product) return;
+      product.stock = Math.max(0, Number(input.value || 0));
+      persistState();
+      renderMenu();
+      renderOrder();
+      showConfirmToast('Stock actualizado.');
+    });
+  });
+
+  adminProductsBody.querySelectorAll('[data-remove-id]').forEach(button => {
+    button.addEventListener('click', () => {
+      const id = button.dataset.removeId;
+      currentCatalog.products = currentCatalog.products.filter(item => item.id !== id);
+      delete currentOrder[id];
+      persistState();
+      renderCategories();
+      renderMenu();
+      renderOrder();
+      renderAdminProducts();
+      showConfirmToast('Producto eliminado.');
+    });
+  });
+}
+
+function openAdminLogin() {
+  adminLoginError.hidden = true;
+  adminLogin.hidden = false;
+}
+
+function closeAdminLogin() {
+  adminLogin.hidden = true;
+  adminLoginForm.reset();
+}
+
+function showAdminPanel() {
+  adminPanel.hidden = false;
+  renderAdminProducts();
+}
+
+function hideAdminPanel() {
+  adminPanel.hidden = true;
 }
 
 function parseCsvLine(line) {
@@ -355,8 +448,59 @@ saveOrderBtn.addEventListener('click', () => {
   showConfirmToast('Selección guardada correctamente.');
 });
 confirmToastAccept.addEventListener('click', hideConfirmToast);
+openAdminBtn.addEventListener('click', () => {
+  if (adminLoggedIn) {
+    showAdminPanel();
+    return;
+  }
+  openAdminLogin();
+});
+cancelAdminLogin.addEventListener('click', closeAdminLogin);
+closeAdminBtn.addEventListener('click', hideAdminPanel);
+adminLoginForm.addEventListener('submit', event => {
+  event.preventDefault();
+  const formData = new FormData(adminLoginForm);
+  const username = String(formData.get('username') || '').trim();
+  const password = String(formData.get('password') || '').trim();
+  if (username !== ADMIN_CREDENTIALS.username || password !== ADMIN_CREDENTIALS.password) {
+    adminLoginError.hidden = false;
+    return;
+  }
+  adminLoggedIn = true;
+  closeAdminLogin();
+  showAdminPanel();
+  showConfirmToast('Ingreso administrador correcto.');
+});
+adminProductForm.addEventListener('submit', event => {
+  event.preventDefault();
+  const formData = new FormData(adminProductForm);
+  const name = String(formData.get('name') || '').trim();
+  const category = String(formData.get('category') || '').trim();
+  const price = Math.max(0, Number(formData.get('price') || 0));
+  const stock = Math.max(0, Number(formData.get('stock') || 0));
+  if (!name || !category) return;
+
+  currentCatalog.products.push({
+    id: `${name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+    name,
+    category,
+    price,
+    stock,
+    description: String(formData.get('description') || '').trim(),
+    image: String(formData.get('image') || '').trim()
+  });
+
+  persistState();
+  renderCategories();
+  renderMenu();
+  renderOrder();
+  renderAdminProducts();
+  adminProductForm.reset();
+  showConfirmToast('Producto guardado correctamente.');
+});
 
 renderCategories();
 renderMenu();
 renderOrder();
+renderAdminProducts();
 updateStatus(getCatalog() ? 'Catálogo recuperado desde tu navegador.' : 'Cargado menú demo base. Sube tu archivo para usar tu catálogo real.');

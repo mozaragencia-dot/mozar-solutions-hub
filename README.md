@@ -8,6 +8,7 @@ Aplicación web estática para restaurantes de sushi que permite:
 - Generar un correo listo para enviar con detalle del pedido y bloque HTML con estilo de marca.
 - Guardar catálogo y selección en `localStorage`.
 - Mostrar notificación de confirmación con botón **Aceptar** cuando se guarda información.
+- Administrador separado para inventario interno (usuario `admin`, clave `admin`).
 - Funcionar como PWA básica (cache offline de archivos estáticos).
 
 ## Uso rápido
@@ -17,6 +18,17 @@ Aplicación web estática para restaurantes de sushi que permite:
 3. Seleccionar productos con los botones `+` y `−`.
 4. Completar datos del cliente.
 5. Presionar **Generar correo de pedido**.
+
+## Administrador de inventario
+
+- Botón **Administrador** en la cabecera.
+- Credenciales por defecto:
+  - Usuario: `admin`
+  - Clave: `admin`
+- Permite:
+  - Ajustar stock por producto.
+  - Eliminar productos.
+  - Crear productos nuevos.
 
 ## Formato de catálogo JSON
 

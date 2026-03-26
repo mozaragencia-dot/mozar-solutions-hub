@@ -34,6 +34,7 @@ body {
 
 .hero h1 { margin: 0; }
 .hero p { margin: 4px 0 0; opacity: .94; }
+.hero .ghost { margin-left: auto; border-color: #ffd2d2; color: #fff; background: transparent; }
 
 .layout {
   max-width: 1200px;
@@ -50,6 +51,9 @@ body {
   border-radius: 14px;
   padding: 12px;
 }
+.table-wrap { overflow: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; border-bottom: 1px solid #f1caca; padding: 8px; font-size: 14px; }
 
 .actions-row { display: flex; gap: 8px; margin: 10px 0; }
 button {
@@ -160,6 +164,43 @@ pre { white-space: pre-wrap; font-size: 12px; background: #fff; border: 1px soli
   margin: 0;
   color: #572b2b;
   font-size: 14px;
+}
+
+.admin-panel {
+  max-width: 1200px;
+  margin: 0 auto 20px;
+}
+
+.admin-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.admin-login {
+  position: fixed;
+  inset: 0;
+  z-index: 998;
+  background: rgba(32, 8, 8, 0.55);
+  display: grid;
+  place-items: center;
+  padding: 12px;
+}
+
+.admin-login-card {
+  width: min(420px, 100%);
+  background: #fff;
+  border: 1px solid #efc1c1;
+  border-radius: 12px;
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.login-error {
+  color: #9f1111;
+  margin: 0;
+  font-weight: 600;
 }
 
 @media (max-width: 1050px) {
