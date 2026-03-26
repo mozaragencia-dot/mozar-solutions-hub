@@ -153,23 +153,12 @@ async function sendWhatsAppViaBrevo(contactNumbers, message) {
   }
 }
 
-function openWhatsAppFallback(target, message) {
-  const cleanTarget = cleanPhone(target);
-  if (!cleanTarget) return false;
-  window.open(`https://wa.me/${cleanTarget}?text=${encodeURIComponent(message)}`, '_blank', 'noopener');
-  return true;
-}
-
 async function notifyBooking(booking) {
   if (!hasNotificationConsent(booking)) return false;
   const destination = cleanPhone(booking.phone);
   if (!destination) return false;
 
-  const message = buildTacamMessage(booking);
-  const viaBrevo = await sendWhatsAppViaBrevo([destination], message);
-  if (viaBrevo) return true;
-
-  return openWhatsAppFallback(destination, message);
+  return sendWhatsAppViaBrevo([destination], buildTacamMessage(booking));
 }
 
 function buildRescheduleMessage(booking, fromDate, toDate) {
@@ -212,19 +201,9 @@ async function notifyBookingChannels(booking, message, emailSubject) {
   if (!hasNotificationConsent(booking)) return false;
 
   const targets = [cleanPhone(booking.phone), getLawyerPhone(booking.assignedTo)].filter(Boolean);
-  let sent = false;
-
-  const sentViaBrevo = await sendWhatsAppViaBrevo(targets, message);
-  if (sentViaBrevo) {
-    sent = true;
-  } else {
-    [...new Set(targets)].forEach(target => {
-      sent = openWhatsAppFallback(target, message) || sent;
-    });
-  }
-
+  const whatsappSent = await sendWhatsAppViaBrevo(targets, message);
   const emailSent = await sendEmailViaBrevo(booking, emailSubject, message);
-  return sent || emailSent;
+  return whatsappSent || emailSent;
 }
 
 async function notifyVisitScheduled(booking) {
