@@ -702,7 +702,7 @@ function renderBookings() {
   if (!bookings.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 9;
+    cell.colSpan = 8;
     cell.textContent = 'Sin reservas registradas';
     row.appendChild(cell);
     bookingsBody.appendChild(row);
@@ -728,45 +728,36 @@ function renderBookings() {
     row.appendChild(statusCell);
 
     const actionsCell = document.createElement('td');
+    actionsCell.className = 'table-switch-cell';
 
-    const confirmBtn = document.createElement('button');
-    confirmBtn.dataset.confirmBtn = booking.id;
-    confirmBtn.textContent = 'Confirmar';
-    actionsCell.appendChild(confirmBtn);
+    const switchWrap = document.createElement('label');
+    switchWrap.className = 'switch-toggle';
 
-    const cancelBtn = document.createElement('button');
-    cancelBtn.dataset.cancelBtn = booking.id;
-    cancelBtn.textContent = 'Cancelar';
-    actionsCell.appendChild(cancelBtn);
+    const switchInput = document.createElement('input');
+    switchInput.type = 'checkbox';
+    switchInput.dataset.contractSwitch = booking.id;
+    switchInput.checked = booking.status === 'confirmada' || booking.status === 'atendida';
 
+    const switchSlider = document.createElement('span');
+    switchSlider.className = 'switch-slider';
+
+    const switchText = document.createElement('span');
+    switchText.className = 'switch-text';
+    switchText.textContent = switchInput.checked ? 'Confirmada' : 'Cancelada';
+
+    switchWrap.appendChild(switchInput);
+    switchWrap.appendChild(switchSlider);
+    switchWrap.appendChild(switchText);
+    actionsCell.appendChild(switchWrap);
     row.appendChild(actionsCell);
-
-    const notifyCell = document.createElement('td');
-    const notifyBtn = document.createElement('button');
-    notifyBtn.dataset.notifyBtn = booking.id;
-    notifyBtn.textContent = 'WhatsApp';
-    notifyCell.appendChild(notifyBtn);
-    row.appendChild(notifyCell);
 
     bookingsBody.appendChild(row);
   });
 
-  bookingsBody.querySelectorAll('[data-confirm-btn]').forEach(btn => {
-    btn.onclick = async () => {
-      await updateBookingStatusWithNotification(btn.dataset.confirmBtn, 'confirmada');
-    };
-  });
-
-  bookingsBody.querySelectorAll('[data-cancel-btn]').forEach(btn => {
-    btn.onclick = async () => {
-      await updateBookingStatusWithNotification(btn.dataset.cancelBtn, 'cancelada');
-    };
-  });
-
-  bookingsBody.querySelectorAll('[data-notify-btn]').forEach(btn => {
-    btn.onclick = async () => {
-      const booking = getBookings().find(item => item.id === btn.dataset.notifyBtn);
-      if (booking) await notifyBooking(booking);
+  bookingsBody.querySelectorAll('[data-contract-switch]').forEach(input => {
+    input.onchange = async () => {
+      const nextStatus = input.checked ? 'confirmada' : 'cancelada';
+      await updateBookingStatusWithNotification(input.dataset.contractSwitch, nextStatus);
     };
   });
 }
@@ -802,18 +793,37 @@ function renderAgenda() {
       row.appendChild(statusCell);
 
       const actionCell = document.createElement('td');
-      const attendBtn = document.createElement('button');
-      attendBtn.dataset.attend = booking.id;
-      attendBtn.textContent = 'Marcar atendida';
-      actionCell.appendChild(attendBtn);
+      actionCell.className = 'table-switch-cell';
+
+      const assistWrap = document.createElement('label');
+      assistWrap.className = 'switch-toggle';
+
+      const assistInput = document.createElement('input');
+      assistInput.type = 'checkbox';
+      assistInput.dataset.attendSwitch = booking.id;
+      assistInput.checked = booking.status === 'atendida';
+
+      const assistSlider = document.createElement('span');
+      assistSlider.className = 'switch-slider';
+
+      const assistText = document.createElement('span');
+      assistText.className = 'switch-text';
+      assistText.textContent = assistInput.checked ? 'Asistió' : 'No asistió';
+
+      assistWrap.appendChild(assistInput);
+      assistWrap.appendChild(assistSlider);
+      assistWrap.appendChild(assistText);
+      actionCell.appendChild(assistWrap);
       row.appendChild(actionCell);
 
       agendaBody.appendChild(row);
     });
   }
 
-  agendaBody.querySelectorAll('[data-attend]').forEach(btn => {
-    btn.onclick = () => updateBooking(btn.dataset.attend, booking => { booking.status = 'atendida'; });
+  agendaBody.querySelectorAll('[data-attend-switch]').forEach(input => {
+    input.onchange = () => updateBooking(input.dataset.attendSwitch, booking => {
+      booking.status = input.checked ? 'atendida' : 'confirmada';
+    });
   });
 }
 
