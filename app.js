@@ -35,6 +35,7 @@ const phoneInput = bookingForm.elements.phone;
 const chileClock = document.getElementById('chile-clock');
 const currentUserLabel = document.getElementById('current-user');
 const logoutButton = document.getElementById('logout-button');
+const saveToast = document.getElementById('save-toast');
 const assignedToSelect = bookingForm.elements.assignedTo;
 const moduleTabs = document.querySelectorAll('[data-module-tab]');
 const modulePanels = document.querySelectorAll('[data-module-panel]');
@@ -71,6 +72,22 @@ function closeSession() {
   updateCurrentUserLabel('');
   loginForm.reset();
   showLogin();
+}
+
+let saveToastTimer;
+function showSaveToast(message = 'Guardado') {
+  if (!saveToast) return;
+  saveToast.textContent = message;
+  saveToast.hidden = false;
+  saveToast.classList.add('show');
+
+  clearTimeout(saveToastTimer);
+  saveToastTimer = setTimeout(() => {
+    saveToast.classList.remove('show');
+    setTimeout(() => {
+      saveToast.hidden = true;
+    }, 280);
+  }, 1800);
 }
 
 const ALLOWED_CREDENTIALS = [
@@ -273,6 +290,7 @@ function moveBookingDate(bookingId, newDate) {
   booking.reminder1hSentAt = '';
   saveBookings(bookings);
   renderAll();
+  showSaveToast();
   void notifyReschedule(booking, oldDate, newDate);
 }
 
@@ -283,6 +301,7 @@ function updateBooking(bookingId, updater) {
   updater(booking);
   saveBookings(bookings);
   renderAll();
+  showSaveToast();
 }
 
 
@@ -309,6 +328,7 @@ async function updateBookingStatusWithNotification(bookingId, status) {
   booking.status = status;
   saveBookings(bookings);
   renderAll();
+  showSaveToast();
 
   const subject = status === 'confirmada'
     ? 'TACAM: reserva confirmada'
@@ -1209,6 +1229,7 @@ bookingForm.addEventListener('submit', async event => {
   bookingForm.reset();
   phoneInput.value = '+569';
   renderAll();
+  showSaveToast();
 });
 
 rutInput.addEventListener('input', () => {
@@ -1310,6 +1331,7 @@ lawyerForm.addEventListener('submit', async event => {
   saveLawyers(lawyers);
   lawyerForm.reset();
   renderAll();
+  showSaveToast();
 });
 
 profileForm.addEventListener('submit', event => {
@@ -1347,6 +1369,7 @@ profileForm.addEventListener('submit', event => {
   saveProfiles(profiles);
   profileForm.reset();
   renderProfiles();
+  showSaveToast();
 });
 
 switchModule('create');
