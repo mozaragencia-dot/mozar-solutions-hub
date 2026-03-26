@@ -29,6 +29,7 @@ const downloadLawyerReportBtn = document.getElementById('download-lawyer-report'
 const downloadBookingsReportBtn = document.getElementById('download-bookings-report');
 const profileForm = document.getElementById('profile-form');
 const profileList = document.getElementById('profile-list');
+const clientList = document.getElementById('client-list');
 const rutInput = bookingForm.elements.rut;
 const phoneInput = bookingForm.elements.phone;
 const chileClock = document.getElementById('chile-clock');
@@ -89,6 +90,10 @@ function normalizeMatterLabel(value) {
 
 function isPrisonVisit(booking) {
   return normalizeMatterLabel(booking?.matter) === PRISON_VISIT_MATTER;
+}
+
+function isContracted(booking) {
+  return Boolean(booking?.contracted);
 }
 
 function tryLogin(username, password) {
@@ -773,11 +778,13 @@ function renderAgenda() {
   if (!bookings.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 6;
+    cell.colSpan = 7;
     cell.textContent = 'Sin citas para mostrar';
     row.appendChild(cell);
     agendaBody.appendChild(row);
   } else {
+    const lawyers = getLawyers();
+
     bookings.forEach(booking => {
       const row = document.createElement('tr');
       appendCell(row, booking.customer || '');
@@ -792,29 +799,65 @@ function renderAgenda() {
       statusCell.appendChild(statusBadge);
       row.appendChild(statusCell);
 
-      const actionCell = document.createElement('td');
-      actionCell.className = 'table-switch-cell';
-
+      const attendanceCell = document.createElement('td');
+      attendanceCell.className = 'table-switch-cell';
       const assistWrap = document.createElement('label');
       assistWrap.className = 'switch-toggle';
-
       const assistInput = document.createElement('input');
       assistInput.type = 'checkbox';
       assistInput.dataset.attendSwitch = booking.id;
       assistInput.checked = booking.status === 'atendida';
-
       const assistSlider = document.createElement('span');
       assistSlider.className = 'switch-slider';
-
       const assistText = document.createElement('span');
       assistText.className = 'switch-text';
       assistText.textContent = assistInput.checked ? 'Asistió' : 'No asistió';
-
       assistWrap.appendChild(assistInput);
       assistWrap.appendChild(assistSlider);
       assistWrap.appendChild(assistText);
-      actionCell.appendChild(assistWrap);
-      row.appendChild(actionCell);
+      attendanceCell.appendChild(assistWrap);
+      row.appendChild(attendanceCell);
+
+      const contractCell = document.createElement('td');
+      contractCell.className = 'table-switch-cell';
+      const contractWrap = document.createElement('div');
+      contractWrap.className = 'contract-wrap';
+
+      const contractLabel = document.createElement('label');
+      contractLabel.className = 'switch-toggle';
+      const contractInput = document.createElement('input');
+      contractInput.type = 'checkbox';
+      contractInput.dataset.contractToggle = booking.id;
+      contractInput.checked = isContracted(booking);
+      const contractSlider = document.createElement('span');
+      contractSlider.className = 'switch-slider';
+      const contractText = document.createElement('span');
+      contractText.className = 'switch-text';
+      contractText.textContent = contractInput.checked ? 'Contrató' : 'No contrató';
+      contractLabel.appendChild(contractInput);
+      contractLabel.appendChild(contractSlider);
+      contractLabel.appendChild(contractText);
+
+      const assignSelect = document.createElement('select');
+      assignSelect.dataset.assignLawyer = booking.id;
+      assignSelect.className = 'assign-lawyer-select';
+      const firstOption = document.createElement('option');
+      firstOption.value = '';
+      firstOption.textContent = 'Asignar abogada';
+      assignSelect.appendChild(firstOption);
+      lawyers.forEach(lawyer => {
+        const option = document.createElement('option');
+        option.value = lawyer.name || '';
+        option.textContent = lawyer.name || '';
+        assignSelect.appendChild(option);
+      });
+      assignSelect.value = booking.assignedTo || '';
+      assignSelect.hidden = !contractInput.checked;
+
+      contractWrap.appendChild(contractLabel);
+      contractWrap.appendChild(assignSelect);
+      contractCell.appendChild(contractWrap);
+      row.appendChild(contractCell);
 
       agendaBody.appendChild(row);
     });
@@ -823,6 +866,24 @@ function renderAgenda() {
   agendaBody.querySelectorAll('[data-attend-switch]').forEach(input => {
     input.onchange = () => updateBooking(input.dataset.attendSwitch, booking => {
       booking.status = input.checked ? 'atendida' : 'confirmada';
+    });
+  });
+
+  agendaBody.querySelectorAll('[data-contract-toggle]').forEach(input => {
+    input.onchange = () => updateBooking(input.dataset.contractToggle, booking => {
+      booking.contracted = input.checked;
+      if (!input.checked) {
+        booking.assignedTo = '';
+      }
+    });
+  });
+
+  agendaBody.querySelectorAll('[data-assign-lawyer]').forEach(select => {
+    select.onchange = () => updateBooking(select.dataset.assignLawyer, booking => {
+      booking.assignedTo = String(select.value || '').trim();
+      if (booking.assignedTo) {
+        booking.contracted = true;
+      }
     });
   });
 }
@@ -1017,6 +1078,50 @@ function renderProfiles() {
   });
 }
 
+function renderClients() {
+  if (!clientList) return;
+  const bookings = getBookings();
+  clientList.replaceChildren();
+
+  if (!bookings.length) {
+    const empty = document.createElement('p');
+    empty.textContent = 'Aún no hay fichas de clientes.';
+    clientList.appendChild(empty);
+    return;
+  }
+
+  bookings.forEach(booking => {
+    const card = document.createElement('article');
+    card.className = 'client-card';
+
+    const title = document.createElement('h4');
+    title.textContent = booking.customer || 'Sin nombre';
+    card.appendChild(title);
+
+    const meta = document.createElement('p');
+    meta.className = 'muted';
+    meta.textContent = `${booking.phone || '-'} · ${booking.email || '-'}`;
+    card.appendChild(meta);
+
+    const details = document.createElement('ul');
+    details.className = 'profile-perms';
+    const rows = [
+      `Estado: ${statusLabel(booking.status)}`,
+      `Contrato: ${isContracted(booking) ? 'Contrató' : 'No contrató'}`,
+      `Abogada: ${booking.assignedTo || 'Sin asignar'}`,
+      `Cita: ${formatAppointment(booking)}`
+    ];
+    rows.forEach(text => {
+      const li = document.createElement('li');
+      li.textContent = text;
+      details.appendChild(li);
+    });
+
+    card.appendChild(details);
+    clientList.appendChild(card);
+  });
+}
+
 function renderAll() {
   renderLawyerOptions();
   renderBookings();
@@ -1027,6 +1132,7 @@ function renderAll() {
   renderLawyers();
   renderLawyerCalendar();
   renderProfiles();
+  renderClients();
   renderReports();
 }
 
@@ -1087,7 +1193,7 @@ bookingForm.addEventListener('submit', async event => {
     matter: normalizeMatterLabel(data.get('matter')),
     date: String(data.get('date') || '').trim(),
     time: String(data.get('time') || '').trim(),
-    assignedTo: String(data.get('assignedTo') || '').trim(),
+    assignedTo: '',
     notes: String(data.get('notes') || '').trim(),
     notificationsConsent: Boolean(data.get('notificationsConsent')),
     consentAt: data.get('notificationsConsent') ? new Date().toISOString() : '',
@@ -1095,7 +1201,8 @@ bookingForm.addEventListener('submit', async event => {
     createdAt: new Date().toISOString(),
     reminder24hSentAt: '',
     reminder1hSentAt: '',
-    checkedInAt: ''
+    checkedInAt: '',
+    contracted: false
   });
   saveBookings(bookings);
   await notifyVisitScheduled(bookings[0]);

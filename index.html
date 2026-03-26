@@ -49,7 +49,8 @@
         <button type="button" class="module-tab active" data-module-tab="create">Ingreso de Cliente</button>
         <button type="button" class="module-tab" data-module-tab="prison-visits">Visitas a la Cárcel</button>
         <button type="button" class="module-tab" data-module-tab="agenda">Agendamiento</button>
-        <button type="button" class="module-tab" data-module-tab="bookings">Lead´s</button>
+        <button type="button" class="module-tab" data-module-tab="bookings">Prospectos</button>
+        <button type="button" class="module-tab" data-module-tab="clients">Clientes</button>
         <button type="button" class="module-tab" data-module-tab="lawyers">Perfiles de Abogados</button>
         <button type="button" class="module-tab" data-module-tab="reports">Reportes y Gráficos</button>
       </nav>
@@ -97,7 +98,7 @@
             </select>
           </label>
           <label>Abogado asignado
-            <select name="assignedTo" required>
+            <select name="assignedTo">
               <option value="">Seleccione</option>
             </select>
           </label>
@@ -110,7 +111,7 @@
       </section>
 
       <section class="card module-panel" data-module-panel="bookings">
-        <h2>Lead´s</h2>
+        <h2>Prospectos</h2>
         <p class="muted">WhatsApp de notificación TACAM: <strong>+56987591312</strong></p>
         <div class="table-wrap">
           <table>
@@ -142,7 +143,7 @@
 
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Persona</th><th>Materia</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Persona</th><th>Materia</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Asistencia</th><th>Contrato</th></tr></thead>
             <tbody id="agenda-body"></tbody>
           </table>
         </div>
@@ -166,6 +167,12 @@
             <tbody id="prison-visits-body"></tbody>
           </table>
         </div>
+      </section>
+
+      <section class="card module-panel" data-module-panel="clients">
+        <h2>Clientes</h2>
+        <p class="muted">Listado general de fichas creadas en el sistema.</p>
+        <div id="client-list" class="client-grid"></div>
       </section>
 
       <section class="card module-panel" data-module-panel="lawyers">
