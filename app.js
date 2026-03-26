@@ -9,10 +9,15 @@ const orderList = document.getElementById('order-list');
 const orderTotal = document.getElementById('order-total');
 const orderForm = document.getElementById('order-form');
 const mailNote = document.getElementById('mail-note');
+const saveOrderBtn = document.getElementById('save-order');
+const confirmToast = document.getElementById('confirm-toast');
+const confirmToastMessage = document.getElementById('confirm-toast-message');
+const confirmToastAccept = document.getElementById('confirm-toast-accept');
 
 let activeCategory = 'Todos';
 let currentCatalog = getCatalog() || normalizeCatalog(DEMO_CATALOG);
 let currentOrder = getOrder();
+let confirmToastTimer = null;
 
 function updateStatus(message) {
   statusLabel.textContent = message;
@@ -21,6 +26,21 @@ function updateStatus(message) {
 function persistState() {
   saveCatalog(currentCatalog);
   saveOrder(currentOrder);
+}
+
+function hideConfirmToast() {
+  confirmToast.hidden = true;
+}
+
+function showConfirmToast(message) {
+  if (confirmToastTimer) {
+    clearTimeout(confirmToastTimer);
+    confirmToastTimer = null;
+  }
+
+  confirmToastMessage.textContent = message;
+  confirmToast.hidden = false;
+  confirmToastTimer = setTimeout(hideConfirmToast, 7000);
 }
 
 function getFilteredProducts() {
@@ -210,6 +230,7 @@ function loadCatalogFromRaw(raw, sourceLabel) {
   renderMenu();
   renderOrder();
   updateStatus(`Catálogo cargado (${sourceLabel}) con ${normalized.products.length} productos.`);
+  showConfirmToast('Catálogo guardado correctamente.');
 }
 
 function parseCsvLine(line) {
@@ -324,10 +345,16 @@ clearDataBtn.addEventListener('click', () => {
   renderMenu();
   renderOrder();
   updateStatus('Se limpiaron los datos guardados del navegador.');
+  showConfirmToast('Se eliminó la información guardada.');
 });
 
 menuSearch.addEventListener('input', renderMenu);
 orderForm.addEventListener('submit', handleOrderSubmit);
+saveOrderBtn.addEventListener('click', () => {
+  persistState();
+  showConfirmToast('Selección guardada correctamente.');
+});
+confirmToastAccept.addEventListener('click', hideConfirmToast);
 
 renderCategories();
 renderMenu();

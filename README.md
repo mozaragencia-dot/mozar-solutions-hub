@@ -7,6 +7,7 @@ Aplicación web estática para restaurantes de sushi que permite:
 - Cargar un catálogo desde archivo JSON o CSV (incluye export de WooCommerce).
 - Generar un correo listo para enviar con detalle del pedido y bloque HTML con estilo de marca.
 - Guardar catálogo y selección en `localStorage`.
+- Mostrar notificación de confirmación con botón **Aceptar** cuando se guarda información.
 - Funcionar como PWA básica (cache offline de archivos estáticos).
 
 ## Uso rápido

@@ -80,10 +80,16 @@
           <textarea name="notes" rows="3" placeholder="Ej: sin cebollín, retiro 20:30"></textarea>
         </label>
         <button type="submit">Generar correo de pedido</button>
+        <button type="button" id="save-order" class="ghost">Guardar selección</button>
       </form>
       <p class="muted" id="mail-note">Se abrirá tu cliente de correo con el pedido armado y estilo de marca en HTML.</p>
     </aside>
   </main>
+
+  <div id="confirm-toast" class="confirm-toast" hidden role="alertdialog" aria-live="assertive" aria-label="Notificación de guardado">
+    <p id="confirm-toast-message">Cambios guardados.</p>
+    <button type="button" id="confirm-toast-accept">Aceptar</button>
+  </div>
 
   <script src="delivery-core.js"></script>
   <script src="app.js"></script>

@@ -140,6 +140,28 @@ textarea {
 .muted { color: #7d4f4f; font-size: 13px; }
 pre { white-space: pre-wrap; font-size: 12px; background: #fff; border: 1px solid #f2caca; padding: 8px; border-radius: 8px; }
 
+.confirm-toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 999;
+  width: min(360px, calc(100% - 24px));
+  background: #fff;
+  border: 1px solid #efb7b7;
+  border-left: 5px solid var(--red);
+  border-radius: 10px;
+  box-shadow: 0 14px 40px rgba(93, 20, 20, 0.24);
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.confirm-toast p {
+  margin: 0;
+  color: #572b2b;
+  font-size: 14px;
+}
+
 @media (max-width: 1050px) {
   .layout { grid-template-columns: 1fr; }
 }
