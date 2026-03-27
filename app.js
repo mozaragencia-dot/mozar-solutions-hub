@@ -28,6 +28,8 @@ const prisonStatsChart = document.getElementById('prison-stats-chart');
 const downloadGeneralReportBtn = document.getElementById('download-general-report');
 const downloadLawyerReportBtn = document.getElementById('download-lawyer-report');
 const downloadBookingsReportBtn = document.getElementById('download-bookings-report');
+const downloadBackupBtn = document.getElementById('download-backup');
+const uploadBackupInput = document.getElementById('upload-backup');
 const profileForm = document.getElementById('profile-form');
 const profileList = document.getElementById('profile-list');
 const rutInput = bookingForm.elements.rut;
@@ -697,6 +699,48 @@ function downloadCsv(filename, rows) {
   link.remove();
 }
 
+
+function downloadBackup() {
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    bookings: getBookings(),
+    lawyers: getLawyers(),
+    profiles: getProfiles(),
+    session: getSession()
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `respaldo-tacam-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(link);
+  link.click();
+  URL.revokeObjectURL(link.href);
+  link.remove();
+  showSaveToast('Respaldo descargado');
+}
+
+async function restoreBackup(file) {
+  if (!(file instanceof File)) return;
+
+  const text = await file.text();
+  const data = JSON.parse(text);
+
+  if (!data || !Array.isArray(data.bookings) || !Array.isArray(data.lawyers) || !Array.isArray(data.profiles)) {
+    throw new Error('Formato de respaldo inválido');
+  }
+
+  saveBookings(data.bookings);
+  saveLawyers(data.lawyers);
+  saveProfiles(data.profiles);
+  if (data.session && typeof data.session === 'object') {
+    saveSession(data.session);
+  }
+
+  renderAll();
+  showSaveToast('Respaldo restaurado');
+}
+
 function renderReports() {
   const general = getGeneralStatusStats();
   const generalLabels = ['Nueva', 'Confirmada', 'Atendida', 'Cancelada'];
@@ -1211,6 +1255,21 @@ downloadBookingsReportBtn.addEventListener('click', () => {
     ]);
   });
   downloadCsv('reporte-detalle-citas-tacam.csv', rows);
+});
+
+downloadBackupBtn?.addEventListener('click', downloadBackup);
+uploadBackupInput?.addEventListener('change', async event => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  try {
+    await restoreBackup(file);
+  } catch (error) {
+    console.warn('Restore backup failed', error);
+    alert('No se pudo restaurar el respaldo. Verifica que sea un JSON válido de TACAM.');
+  } finally {
+    uploadBackupInput.value = '';
+  }
 });
 
 moduleTabs.forEach(tab => {
