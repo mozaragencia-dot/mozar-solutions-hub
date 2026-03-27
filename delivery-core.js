@@ -1,4 +1,5 @@
 const STORAGE_KEYS = {
+  clients: 'tacam_clients',
   bookings: 'tacam_bookings',
   lawyers: 'tacam_lawyers',
   profiles: 'tacam_profiles',
@@ -28,24 +29,49 @@ function saveJson(key, value) {
 }
 
 function seedData() {
+  const existingClients = loadJson(STORAGE_KEYS.clients, []);
+  if (!existingClients.length) {
+    saveJson(STORAGE_KEYS.clients, [
+      {
+        id: crypto.randomUUID(),
+        name: 'Cliente Demo',
+        rut: '12.345.678-9',
+        phone: '+56911111111',
+        email: 'cliente.demo@tacam.cl',
+        address: 'Dirección demo',
+        createdAt: new Date().toISOString()
+      }
+    ]);
+  }
+  const clients = loadJson(STORAGE_KEYS.clients, []);
+
   const bookings = loadJson(STORAGE_KEYS.bookings, []);
   if (!bookings.length) {
     saveJson(STORAGE_KEYS.bookings, [
       {
         id: crypto.randomUUID(),
+        clientId: clients[0]?.id || '',
         customer: 'Cliente Demo',
         rut: '12.345.678-9',
         phone: '+56911111111',
         email: 'cliente.demo@tacam.cl',
+        address: 'Dirección demo',
         matter: 'Familiar',
         date: new Date().toISOString().slice(0, 10),
         time: '10:30',
         assignedTo: 'KATHERINE SERRANO MARREY',
+        hiredLawyer: true,
         notes: 'Consulta por materia familiar.',
         status: 'nueva',
         createdAt: new Date().toISOString()
       }
     ]);
+  } else {
+    const normalized = bookings.map(booking => ({
+      ...booking,
+      hiredLawyer: typeof booking.hiredLawyer === 'boolean' ? booking.hiredLawyer : Boolean((booking.assignedTo || '').trim())
+    }));
+    saveJson(STORAGE_KEYS.bookings, normalized);
   }
 
   syncLawyersData();
@@ -108,6 +134,14 @@ function syncLawyersData() {
 
 function getBookings() {
   return loadJson(STORAGE_KEYS.bookings, []);
+}
+
+function getClients() {
+  return loadJson(STORAGE_KEYS.clients, []);
+}
+
+function saveClients(clients) {
+  saveJson(STORAGE_KEYS.clients, clients);
 }
 
 function saveBookings(bookings) {
