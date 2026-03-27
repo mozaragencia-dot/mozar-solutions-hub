@@ -108,9 +108,6 @@ function isPrisonVisit(booking) {
   return normalizeMatterLabel(booking?.matter) === PRISON_VISIT_MATTER;
 }
 
-function isContracted(booking) {
-  return Boolean(booking?.contracted);
-}
 
 function tryLogin(username, password) {
   return ALLOWED_CREDENTIALS.some(cred => cred.username === username && cred.password === password);
@@ -802,8 +799,6 @@ function renderAgenda() {
     row.appendChild(cell);
     agendaBody.appendChild(row);
   } else {
-    const lawyers = getLawyers();
-
     bookings.forEach(booking => {
       const row = document.createElement('tr');
       appendCell(row, booking.customer || '');
@@ -837,46 +832,28 @@ function renderAgenda() {
       attendanceCell.appendChild(assistWrap);
       row.appendChild(attendanceCell);
 
-      const contractCell = document.createElement('td');
-      contractCell.className = 'table-switch-cell';
-      const contractWrap = document.createElement('div');
-      contractWrap.className = 'contract-wrap';
+      const confirmationCell = document.createElement('td');
+      confirmationCell.className = 'table-switch-cell';
+      const confirmationWrap = document.createElement('label');
+      confirmationWrap.className = 'switch-toggle';
 
-      const contractLabel = document.createElement('label');
-      contractLabel.className = 'switch-toggle';
-      const contractInput = document.createElement('input');
-      contractInput.type = 'checkbox';
-      contractInput.dataset.contractToggle = booking.id;
-      contractInput.checked = isContracted(booking);
-      const contractSlider = document.createElement('span');
-      contractSlider.className = 'switch-slider';
-      const contractText = document.createElement('span');
-      contractText.className = 'switch-text';
-      contractText.textContent = contractInput.checked ? 'Contrató' : 'No contrató';
-      contractLabel.appendChild(contractInput);
-      contractLabel.appendChild(contractSlider);
-      contractLabel.appendChild(contractText);
+      const confirmationInput = document.createElement('input');
+      confirmationInput.type = 'checkbox';
+      confirmationInput.dataset.confirmSwitch = booking.id;
+      confirmationInput.checked = booking.status === 'confirmada' || booking.status === 'atendida';
 
-      const assignSelect = document.createElement('select');
-      assignSelect.dataset.assignLawyer = booking.id;
-      assignSelect.className = 'assign-lawyer-select';
-      const firstOption = document.createElement('option');
-      firstOption.value = '';
-      firstOption.textContent = 'Asignar abogada';
-      assignSelect.appendChild(firstOption);
-      lawyers.forEach(lawyer => {
-        const option = document.createElement('option');
-        option.value = lawyer.name || '';
-        option.textContent = lawyer.name || '';
-        assignSelect.appendChild(option);
-      });
-      assignSelect.value = booking.assignedTo || '';
-      assignSelect.hidden = !contractInput.checked;
+      const confirmationSlider = document.createElement('span');
+      confirmationSlider.className = 'switch-slider';
 
-      contractWrap.appendChild(contractLabel);
-      contractWrap.appendChild(assignSelect);
-      contractCell.appendChild(contractWrap);
-      row.appendChild(contractCell);
+      const confirmationText = document.createElement('span');
+      confirmationText.className = 'switch-text';
+      confirmationText.textContent = confirmationInput.checked ? 'Confirmada' : 'Cancelada';
+
+      confirmationWrap.appendChild(confirmationInput);
+      confirmationWrap.appendChild(confirmationSlider);
+      confirmationWrap.appendChild(confirmationText);
+      confirmationCell.appendChild(confirmationWrap);
+      row.appendChild(confirmationCell);
 
       agendaBody.appendChild(row);
     });
@@ -888,22 +865,11 @@ function renderAgenda() {
     });
   });
 
-  agendaBody.querySelectorAll('[data-contract-toggle]').forEach(input => {
-    input.onchange = () => updateBooking(input.dataset.contractToggle, booking => {
-      booking.contracted = input.checked;
-      if (!input.checked) {
-        booking.assignedTo = '';
-      }
-    });
-  });
-
-  agendaBody.querySelectorAll('[data-assign-lawyer]').forEach(select => {
-    select.onchange = () => updateBooking(select.dataset.assignLawyer, booking => {
-      booking.assignedTo = String(select.value || '').trim();
-      if (booking.assignedTo) {
-        booking.contracted = true;
-      }
-    });
+  agendaBody.querySelectorAll('[data-confirm-switch]').forEach(input => {
+    input.onchange = async () => {
+      const nextStatus = input.checked ? 'confirmada' : 'cancelada';
+      await updateBookingStatusWithNotification(input.dataset.confirmSwitch, nextStatus);
+    };
   });
 }
 

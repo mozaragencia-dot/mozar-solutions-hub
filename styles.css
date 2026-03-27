@@ -46,8 +46,6 @@ button{background:var(--wine);color:#fff;border-color:var(--wine-dark);cursor:po
 .switch-toggle input:checked + .switch-slider{background:#2a9d8f}
 .switch-toggle input:checked + .switch-slider::after{transform:translateX(18px)}
 .switch-text{min-width:86px;text-align:left}
-.contract-wrap{display:flex;flex-direction:column;gap:8px;align-items:center}
-.assign-lawyer-select{min-width:170px}
 .table-wrap{overflow:auto} table{width:100%;border-collapse:collapse} th,td{padding:8px;border-bottom:1px solid #eee;text-align:left;font-size:14px;vertical-align:top}
 .badge{font-size:12px;font-weight:700;padding:3px 8px;border-radius:999px;display:inline-block;background:#eee}
 .badge.nueva{background:#f5d3dc}.badge.confirmada{background:#ead8fa}.badge.atendida{background:#ceefd8}.badge.cancelada{background:#ffd1d1}
