@@ -1,17 +1,17 @@
 const STORAGE_KEYS = {
-  bookings: 'tacam_bookings',
-  lawyers: 'tacam_lawyers',
-  profiles: 'tacam_profiles',
-  session: 'tacam_session'
+  bookings: 'friolam_bookings',
+  lawyers: 'friolam_lawyers',
+  profiles: 'friolam_profiles',
+  session: 'friolam_session'
 };
 
 const LEGACY_LAWYER_NAMES = new Set(['Daniela Sierra', 'Natalie Gómez', 'Camila Vásquez', 'Carolina Contreras']);
 const OFFICIAL_LAWYERS = [
-  { name: 'KATHERINE SERRANO MARREY', rut: '16.592.789-3', specialty: 'Penal - policía local', email: 'kserrano@tacam.cl', phone: '', photo: 'assets/logo-color.svg' },
-  { name: 'CONSTANZA ROCÍO CLIMENT DEL RÍO', rut: '16.380.148-5', specialty: 'Familia', email: 'ccliment@tacam.cl', phone: '', photo: 'assets/logo-color.svg' },
-  { name: 'VALENTINA BELEN REICHERT GODOY', rut: '20.135.049-2', specialty: 'Penal - Policía local', email: 'vreichert@tacam.cl', phone: '', photo: 'assets/logo-color.svg' },
-  { name: 'SARA BERNARDA TAPIA GONZÁLEZ', rut: '12.836.725-K', specialty: 'Penal - Policía local - Familia', email: 'stapia@tacam.cl', phone: '', photo: 'assets/logo-color.svg' },
-  { name: 'DIANDRA ARACENA MORA', rut: '15.981.484-K', specialty: 'Penal', email: 'daracena@tacam.cl', phone: '', photo: 'assets/logo-color.svg' }
+  { name: 'KATHERINE SERRANO MARREY', rut: '16.592.789-3', specialty: 'Penal - policía local', email: 'kserrano@friolam.cl', phone: '', photo: 'assets/logo-color.svg' },
+  { name: 'CONSTANZA ROCÍO CLIMENT DEL RÍO', rut: '16.380.148-5', specialty: 'Familia', email: 'ccliment@friolam.cl', phone: '', photo: 'assets/logo-color.svg' },
+  { name: 'VALENTINA BELEN REICHERT GODOY', rut: '20.135.049-2', specialty: 'Penal - Policía local', email: 'vreichert@friolam.cl', phone: '', photo: 'assets/logo-color.svg' },
+  { name: 'SARA BERNARDA TAPIA GONZÁLEZ', rut: '12.836.725-K', specialty: 'Penal - Policía local - Familia', email: 'stapia@friolam.cl', phone: '', photo: 'assets/logo-color.svg' },
+  { name: 'DIANDRA ARACENA MORA', rut: '15.981.484-K', specialty: 'Penal', email: 'daracena@friolam.cl', phone: '', photo: 'assets/logo-color.svg' }
 ];
 
 function loadJson(key, fallback) {
@@ -36,7 +36,7 @@ function seedData() {
         customer: 'Cliente Demo',
         rut: '12.345.678-9',
         phone: '+56911111111',
-        email: 'cliente.demo@tacam.cl',
+        email: 'cliente.demo@friolam.cl',
         matter: 'Familiar',
         date: new Date().toISOString().slice(0, 10),
         time: '10:30',
@@ -55,7 +55,7 @@ function seedData() {
     saveJson(STORAGE_KEYS.profiles, [
       {
         id: crypto.randomUUID(),
-        name: 'Administrador TACAM',
+        name: 'Administrador FRIOLAM',
         username: 'admin',
         role: 'Admin',
         permissions: ['Reservas', 'Agenda', 'Abogadas', 'Estadísticas']
@@ -163,10 +163,10 @@ function normalizeMatterLabel(value) {
   return clean;
 }
 
-function buildTacamMessage(booking) {
+function buildFriolamMessage(booking) {
   const appointment = `${booking.date || ''} ${booking.time || ''}`.trim();
   const matter = normalizeMatterLabel(booking.matter) || 'General';
-  return `Desde TACAM, informamos toda la información de su reserva. Persona: ${booking.customer}. Materia: ${matter}. Fecha/Hora: ${appointment}. Abogado: ${booking.assignedTo || 'Por confirmar'}. Estado: ${statusLabel(booking.status)}.`;
+  return `Desde FRIOLAM, informamos toda la información de su reserva. Persona: ${booking.customer}. Materia: ${matter}. Fecha/Hora: ${appointment}. Abogado: ${booking.assignedTo || 'Por confirmar'}. Estado: ${statusLabel(booking.status)}.`;
 }
 
 function fileToDataUrl(file) {

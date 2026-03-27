@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 140" role="img" aria-label="TACAM">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 140" role="img" aria-label="FRIOLAM">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#8f203a"/>
@@ -7,5 +7,5 @@
   </defs>
   <rect width="520" height="140" rx="20" fill="#fff"/>
   <rect x="8" y="8" width="504" height="124" rx="16" fill="url(#g)"/>
-  <text x="260" y="88" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="700" fill="#ffffff" letter-spacing="6">TACAM</text>
+  <text x="260" y="88" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="700" fill="#ffffff" letter-spacing="6">FRIOLAM</text>
 </svg>

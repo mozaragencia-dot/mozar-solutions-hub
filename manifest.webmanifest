@@ -1,12 +1,12 @@
 {
-  "name": "TACAM Sistema de Reservas",
-  "short_name": "TACAM Reservas",
+  "name": "FRIOLAM Sistema de Reservas",
+  "short_name": "FRIOLAM Reservas",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#8f203a",
   "theme_color": "#8f203a",
   "lang": "es",
-  "description": "Sistema de reserva de personas para oficina de abogados TACAM.",
+  "description": "Sistema de reserva de personas para oficina de abogados FRIOLAM.",
   "icons": [
     {
       "src": "assets/logo-color.svg",
