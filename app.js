@@ -9,6 +9,7 @@ const agendaBody = document.getElementById('agenda-body');
 const clientForm = document.getElementById('client-form');
 const clientsBody = document.getElementById('clients-body');
 const clientSearchInput = document.getElementById('client-search');
+const clientSearchResults = document.getElementById('client-search-results');
 const clientEditForm = document.getElementById('client-edit-form');
 const clientEditSelect = document.getElementById('client-edit-select');
 const bookingForm = document.getElementById('booking-form');
@@ -418,6 +419,8 @@ function renderClientOptions() {
     clientSelect.value = current;
   }
 
+  renderClientSearchResults(clients, query);
+
   const selectedPrisonClient = prisonClientSelect.value;
   prisonClientSelect.replaceChildren();
   const firstPrison = document.createElement('option');
@@ -433,6 +436,33 @@ function renderClientOptions() {
   if (clients.some(client => client.id === selectedPrisonClient)) {
     prisonClientSelect.value = selectedPrisonClient;
   }
+}
+
+function renderClientSearchResults(clients, query) {
+  clientSearchResults.replaceChildren();
+  if (!query) return;
+
+  const limited = clients.slice(0, 8);
+  if (!limited.length) {
+    const empty = document.createElement('p');
+    empty.className = 'muted';
+    empty.textContent = 'Sin coincidencias.';
+    clientSearchResults.appendChild(empty);
+    return;
+  }
+
+  limited.forEach(client => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'search-result-item';
+    item.textContent = `${client.name} · ${client.rut} · ${client.phone}`;
+    item.addEventListener('click', () => {
+      clientSelect.value = client.id;
+      clientSearchInput.value = `${client.name} (${client.rut})`;
+      clientSearchResults.replaceChildren();
+    });
+    clientSearchResults.appendChild(item);
+  });
 }
 
 function renderClients() {
@@ -1609,6 +1639,8 @@ bookingForm.addEventListener('submit', async event => {
   saveBookings(bookings);
   await notifyVisitScheduled(bookings[0]);
   bookingForm.reset();
+  clientSearchInput.value = '';
+  clientSearchResults.replaceChildren();
   hiredLawyerInput.checked = true;
   renderAll();
 });

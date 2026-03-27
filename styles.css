@@ -42,6 +42,9 @@ button{background:var(--wine);color:#fff;border-color:var(--wine-dark);cursor:po
 .calendar-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;align-items:end;margin-bottom:10px}
 .checkbox-inline{flex-direction:row;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#5a313d}
 .consent-box{padding:10px 12px;border:1px solid #eadce2;border-radius:10px;background:#fff8fb}
+.search-results{display:grid;gap:6px;margin-top:-4px}
+.search-result-item{padding:8px 10px;border:1px solid #eadce2;border-radius:8px;background:#fff8fb;cursor:pointer;font-size:13px}
+.search-result-item:hover{background:#f7e6ec}
 .section-heading{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:10px}
 .section-heading h3{margin:0 0 4px}
 button:disabled{cursor:not-allowed;opacity:.7}
