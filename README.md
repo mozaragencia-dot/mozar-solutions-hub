@@ -47,6 +47,10 @@ Luego abre `http://127.0.0.1:4173` (en producción usar `https://www.apolo.tacam
 
 > Importante: el remitente configurado en Brevo debe estar verificado en tu cuenta.
 
+### Carpeta local para respaldos
+- Se incluye `data/` para guardar respaldos exportados desde la app.
+- Recomendación: mover ahí cada archivo `respaldo-tacam-YYYY-MM-DD.json` que descargues.
+
 ## Empaquetar para envío
 ```bash
 ./package.sh
