@@ -9,6 +9,7 @@ const bookingForm = document.getElementById('booking-form');
 const lawyerFilter = document.getElementById('lawyer-filter');
 const agendaMonthInput = document.getElementById('agenda-month');
 const agendaCalendar = document.getElementById('agenda-calendar');
+const agendaAttendedOnly = document.getElementById('agenda-attended-only');
 const agendaLegend = document.getElementById('agenda-color-legend');
 const prisonMonthInput = document.getElementById('prison-month');
 const prisonCalendar = document.getElementById('prison-calendar');
@@ -27,11 +28,16 @@ const prisonStatsChart = document.getElementById('prison-stats-chart');
 const downloadGeneralReportBtn = document.getElementById('download-general-report');
 const downloadLawyerReportBtn = document.getElementById('download-lawyer-report');
 const downloadBookingsReportBtn = document.getElementById('download-bookings-report');
+const downloadBackupBtn = document.getElementById('download-backup');
+const uploadBackupInput = document.getElementById('upload-backup');
 const profileForm = document.getElementById('profile-form');
 const profileList = document.getElementById('profile-list');
 const rutInput = bookingForm.elements.rut;
 const phoneInput = bookingForm.elements.phone;
 const chileClock = document.getElementById('chile-clock');
+const currentUserLabel = document.getElementById('current-user');
+const logoutButton = document.getElementById('logout-button');
+const saveToast = document.getElementById('save-toast');
 const assignedToSelect = bookingForm.elements.assignedTo;
 const moduleTabs = document.querySelectorAll('[data-module-tab]');
 const modulePanels = document.querySelectorAll('[data-module-panel]');
@@ -57,6 +63,35 @@ function showLogin() {
   loginError.hidden = true;
 }
 
+function updateCurrentUserLabel(username) {
+  if (!currentUserLabel) return;
+  const clean = String(username || '').trim();
+  currentUserLabel.textContent = `Usuario: ${clean || '--'}`;
+}
+
+function closeSession() {
+  saveSession({ loggedIn: false, username: '' });
+  updateCurrentUserLabel('');
+  loginForm.reset();
+  showLogin();
+}
+
+let saveToastTimer;
+function showSaveToast(message = 'Guardado') {
+  if (!saveToast) return;
+  saveToast.textContent = message;
+  saveToast.hidden = false;
+  saveToast.classList.add('show');
+
+  clearTimeout(saveToastTimer);
+  saveToastTimer = setTimeout(() => {
+    saveToast.classList.remove('show');
+    setTimeout(() => {
+      saveToast.hidden = true;
+    }, 280);
+  }, 1800);
+}
+
 const ALLOWED_CREDENTIALS = [
   { username: 'admin', password: 'admin' }
 ];
@@ -75,6 +110,7 @@ function normalizeMatterLabel(value) {
 function isPrisonVisit(booking) {
   return normalizeMatterLabel(booking?.matter) === PRISON_VISIT_MATTER;
 }
+
 
 function tryLogin(username, password) {
   return ALLOWED_CREDENTIALS.some(cred => cred.username === username && cred.password === password);
@@ -112,13 +148,38 @@ async function sendEmailViaBrevo(booking, subject, message) {
   }
 }
 
+async function sendWhatsAppViaBrevo(contactNumbers, message) {
+  const uniqueNumbers = [...new Set((contactNumbers || []).map(cleanPhone).filter(Boolean))];
+  if (!uniqueNumbers.length || !String(message || '').trim()) return false;
+
+  try {
+    const response = await fetch('brevo-whatsapp.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contactNumbers: uniqueNumbers,
+        text: message
+      })
+    });
+
+    if (!response.ok) {
+      console.warn('Brevo WhatsApp error', await response.text());
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.warn('Brevo WhatsApp request failed', error);
+    return false;
+  }
+}
+
 async function notifyBooking(booking) {
   if (!hasNotificationConsent(booking)) return false;
   const destination = cleanPhone(booking.phone);
   if (!destination) return false;
-  const msg = encodeURIComponent(buildTacamMessage(booking));
-  window.open(`https://wa.me/${destination}?text=${msg}`, '_blank', 'noopener');
-  return true;
+
+  return sendWhatsAppViaBrevo([destination], buildTacamMessage(booking));
 }
 
 function buildRescheduleMessage(booking, fromDate, toDate) {
@@ -160,17 +221,10 @@ function buildVisitScheduledMessage(booking) {
 async function notifyBookingChannels(booking, message, emailSubject) {
   if (!hasNotificationConsent(booking)) return false;
 
-  const encoded = encodeURIComponent(message);
   const targets = [cleanPhone(booking.phone), getLawyerPhone(booking.assignedTo)].filter(Boolean);
-  let sent = false;
-
-  [...new Set(targets)].forEach(target => {
-    window.open(`https://wa.me/${target}?text=${encoded}`, '_blank', 'noopener');
-    sent = true;
-  });
-
+  const whatsappSent = await sendWhatsAppViaBrevo(targets, message);
   const emailSent = await sendEmailViaBrevo(booking, emailSubject, message);
-  return sent || emailSent;
+  return whatsappSent || emailSent;
 }
 
 async function notifyVisitScheduled(booking) {
@@ -235,6 +289,7 @@ function moveBookingDate(bookingId, newDate) {
   booking.reminder1hSentAt = '';
   saveBookings(bookings);
   renderAll();
+  showSaveToast();
   void notifyReschedule(booking, oldDate, newDate);
 }
 
@@ -245,6 +300,7 @@ function updateBooking(bookingId, updater) {
   updater(booking);
   saveBookings(bookings);
   renderAll();
+  showSaveToast();
 }
 
 
@@ -271,6 +327,7 @@ async function updateBookingStatusWithNotification(bookingId, status) {
   booking.status = status;
   saveBookings(bookings);
   renderAll();
+  showSaveToast();
 
   const subject = status === 'confirmada'
     ? 'TACAM: reserva confirmada'
@@ -642,6 +699,48 @@ function downloadCsv(filename, rows) {
   link.remove();
 }
 
+
+function downloadBackup() {
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    bookings: getBookings(),
+    lawyers: getLawyers(),
+    profiles: getProfiles(),
+    session: getSession()
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `respaldo-tacam-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(link);
+  link.click();
+  URL.revokeObjectURL(link.href);
+  link.remove();
+  showSaveToast('Respaldo descargado');
+}
+
+async function restoreBackup(file) {
+  if (!(file instanceof File)) return;
+
+  const text = await file.text();
+  const data = JSON.parse(text);
+
+  if (!data || !Array.isArray(data.bookings) || !Array.isArray(data.lawyers) || !Array.isArray(data.profiles)) {
+    throw new Error('Formato de respaldo inválido');
+  }
+
+  saveBookings(data.bookings);
+  saveLawyers(data.lawyers);
+  saveProfiles(data.profiles);
+  if (data.session && typeof data.session === 'object') {
+    saveSession(data.session);
+  }
+
+  renderAll();
+  showSaveToast('Respaldo restaurado');
+}
+
 function renderReports() {
   const general = getGeneralStatusStats();
   const generalLabels = ['Nueva', 'Confirmada', 'Atendida', 'Cancelada'];
@@ -669,7 +768,7 @@ function renderBookings() {
   if (!bookings.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 9;
+    cell.colSpan = 8;
     cell.textContent = 'Sin reservas registradas';
     row.appendChild(cell);
     bookingsBody.appendChild(row);
@@ -695,53 +794,45 @@ function renderBookings() {
     row.appendChild(statusCell);
 
     const actionsCell = document.createElement('td');
+    actionsCell.className = 'table-switch-cell';
 
-    const confirmBtn = document.createElement('button');
-    confirmBtn.dataset.confirmBtn = booking.id;
-    confirmBtn.textContent = 'Confirmar';
-    actionsCell.appendChild(confirmBtn);
+    const switchWrap = document.createElement('label');
+    switchWrap.className = 'switch-toggle';
 
-    const cancelBtn = document.createElement('button');
-    cancelBtn.dataset.cancelBtn = booking.id;
-    cancelBtn.textContent = 'Cancelar';
-    actionsCell.appendChild(cancelBtn);
+    const switchInput = document.createElement('input');
+    switchInput.type = 'checkbox';
+    switchInput.dataset.contractSwitch = booking.id;
+    switchInput.checked = booking.status === 'confirmada' || booking.status === 'atendida';
 
+    const switchSlider = document.createElement('span');
+    switchSlider.className = 'switch-slider';
+
+    const switchText = document.createElement('span');
+    switchText.className = 'switch-text';
+    switchText.textContent = switchInput.checked ? 'Confirmada' : 'Cancelada';
+
+    switchWrap.appendChild(switchInput);
+    switchWrap.appendChild(switchSlider);
+    switchWrap.appendChild(switchText);
+    actionsCell.appendChild(switchWrap);
     row.appendChild(actionsCell);
-
-    const notifyCell = document.createElement('td');
-    const notifyBtn = document.createElement('button');
-    notifyBtn.dataset.notifyBtn = booking.id;
-    notifyBtn.textContent = 'WhatsApp';
-    notifyCell.appendChild(notifyBtn);
-    row.appendChild(notifyCell);
 
     bookingsBody.appendChild(row);
   });
 
-  bookingsBody.querySelectorAll('[data-confirm-btn]').forEach(btn => {
-    btn.onclick = async () => {
-      await updateBookingStatusWithNotification(btn.dataset.confirmBtn, 'confirmada');
-    };
-  });
-
-  bookingsBody.querySelectorAll('[data-cancel-btn]').forEach(btn => {
-    btn.onclick = async () => {
-      await updateBookingStatusWithNotification(btn.dataset.cancelBtn, 'cancelada');
-    };
-  });
-
-  bookingsBody.querySelectorAll('[data-notify-btn]').forEach(btn => {
-    btn.onclick = async () => {
-      const booking = getBookings().find(item => item.id === btn.dataset.notifyBtn);
-      if (booking) await notifyBooking(booking);
+  bookingsBody.querySelectorAll('[data-contract-switch]').forEach(input => {
+    input.onchange = async () => {
+      const nextStatus = input.checked ? 'confirmada' : 'cancelada';
+      await updateBookingStatusWithNotification(input.dataset.contractSwitch, nextStatus);
     };
   });
 }
 
 function renderAgenda() {
   const selectedLawyer = lawyerFilter.value.trim();
+  const attendedOnly = Boolean(agendaAttendedOnly?.checked);
   const bookings = getBookings().filter(booking =>
-    booking.status !== 'cancelada' && !isPrisonVisit(booking) && (!selectedLawyer || booking.assignedTo === selectedLawyer)
+    booking.status !== 'cancelada' && !isPrisonVisit(booking) && (!selectedLawyer || booking.assignedTo === selectedLawyer) && (!attendedOnly || booking.status === 'atendida')
   );
 
   agendaBody.replaceChildren();
@@ -768,22 +859,40 @@ function renderAgenda() {
       statusCell.appendChild(statusBadge);
       row.appendChild(statusCell);
 
-      const actionCell = document.createElement('td');
-      const attendBtn = document.createElement('button');
-      attendBtn.dataset.attend = booking.id;
-      attendBtn.textContent = 'Marcar atendida';
-      actionCell.appendChild(attendBtn);
-      row.appendChild(actionCell);
+      const confirmationCell = document.createElement('td');
+      confirmationCell.className = 'table-switch-cell';
+      const confirmationWrap = document.createElement('label');
+      confirmationWrap.className = 'switch-toggle';
+
+      const confirmationInput = document.createElement('input');
+      confirmationInput.type = 'checkbox';
+      confirmationInput.dataset.confirmSwitch = booking.id;
+      confirmationInput.checked = booking.status === 'confirmada' || booking.status === 'atendida';
+
+      const confirmationSlider = document.createElement('span');
+      confirmationSlider.className = 'switch-slider';
+
+      const confirmationText = document.createElement('span');
+      confirmationText.className = 'switch-text';
+      confirmationText.textContent = confirmationInput.checked ? 'Confirmada' : 'Cancelada';
+
+      confirmationWrap.appendChild(confirmationInput);
+      confirmationWrap.appendChild(confirmationSlider);
+      confirmationWrap.appendChild(confirmationText);
+      confirmationCell.appendChild(confirmationWrap);
+      row.appendChild(confirmationCell);
 
       agendaBody.appendChild(row);
     });
   }
 
-  agendaBody.querySelectorAll('[data-attend]').forEach(btn => {
-    btn.onclick = () => updateBooking(btn.dataset.attend, booking => { booking.status = 'atendida'; });
+  agendaBody.querySelectorAll('[data-confirm-switch]').forEach(input => {
+    input.onchange = async () => {
+      const nextStatus = input.checked ? 'confirmada' : 'cancelada';
+      await updateBookingStatusWithNotification(input.dataset.confirmSwitch, nextStatus);
+    };
   });
 }
-
 
 function buildPrisonCheckInMessage(booking) {
   return `TACAM: check-in registrado para la visita a la cárcel de ${booking.customer || 'Cliente'}. Fecha/Hora: ${booking.date || '-'} ${booking.time || ''}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
@@ -889,6 +998,9 @@ function renderLawyers() {
     const photo = document.createElement('img');
     photo.src = lawyer.photo;
     photo.alt = `Foto de ${lawyer.name || ''}`;
+    if ((lawyer.photo || '').includes('logo-color.svg')) {
+      photo.classList.add('lawyer-logo-fallback');
+    }
     card.appendChild(photo);
 
     const content = document.createElement('div');
@@ -900,17 +1012,32 @@ function renderLawyers() {
     specialty.textContent = lawyer.specialty || 'Sin especialidad';
     content.appendChild(specialty);
 
+    const infoList = document.createElement('div');
+    infoList.className = 'lawyer-meta';
+
     const rut = document.createElement('small');
     rut.textContent = lawyer.rut ? `Cédula: ${lawyer.rut}` : 'Cédula no registrada';
-    content.appendChild(rut);
+    infoList.appendChild(rut);
 
     const email = document.createElement('small');
-    email.textContent = lawyer.email || 'Sin correo';
-    content.appendChild(email);
+    email.textContent = lawyer.email ? `Correo: ${lawyer.email}` : 'Correo no registrado';
+    infoList.appendChild(email);
 
-    const phone = document.createElement('small');
-    phone.textContent = lawyer.phone || 'Sin WhatsApp';
-    content.appendChild(phone);
+    const whatsappBtn = document.createElement('button');
+    whatsappBtn.type = 'button';
+    whatsappBtn.className = 'lawyer-whatsapp-btn';
+    const phone = (lawyer.phone || '').trim();
+    whatsappBtn.textContent = phone ? `WhatsApp: ${phone}` : 'Sin WhatsApp';
+    whatsappBtn.disabled = !phone;
+    if (phone) {
+      whatsappBtn.onclick = () => {
+        const target = cleanPhone(phone);
+        if (target) window.open(`https://wa.me/${target}`, '_blank', 'noopener');
+      };
+    }
+    infoList.appendChild(whatsappBtn);
+
+    content.appendChild(infoList);
 
     const stats = getLawyerStats(lawyer.name || '');
     const statsList = document.createElement('ul');
@@ -995,6 +1122,7 @@ loginForm.addEventListener('submit', event => {
 
   if (tryLogin(username, password)) {
     saveSession({ loggedIn: true, username });
+    updateCurrentUserLabel(username);
     loginError.hidden = true;
     showApp();
     renderAll();
@@ -1002,6 +1130,8 @@ loginForm.addEventListener('submit', event => {
     loginError.hidden = false;
   }
 });
+
+logoutButton.addEventListener('click', closeSession);
 
 bookingForm.addEventListener('submit', async event => {
   event.preventDefault();
@@ -1041,7 +1171,7 @@ bookingForm.addEventListener('submit', async event => {
     matter: normalizeMatterLabel(data.get('matter')),
     date: String(data.get('date') || '').trim(),
     time: String(data.get('time') || '').trim(),
-    assignedTo: String(data.get('assignedTo') || '').trim(),
+    assignedTo: '',
     notes: String(data.get('notes') || '').trim(),
     notificationsConsent: Boolean(data.get('notificationsConsent')),
     consentAt: data.get('notificationsConsent') ? new Date().toISOString() : '',
@@ -1049,13 +1179,15 @@ bookingForm.addEventListener('submit', async event => {
     createdAt: new Date().toISOString(),
     reminder24hSentAt: '',
     reminder1hSentAt: '',
-    checkedInAt: ''
+    checkedInAt: '',
+    contracted: false
   });
   saveBookings(bookings);
   await notifyVisitScheduled(bookings[0]);
   bookingForm.reset();
   phoneInput.value = '+569';
   renderAll();
+  showSaveToast();
 });
 
 rutInput.addEventListener('input', () => {
@@ -1073,6 +1205,7 @@ lawyerFilter.addEventListener('change', () => {
   renderAgendaCalendar();
 });
 agendaMonthInput.addEventListener('change', renderAgendaCalendar);
+agendaAttendedOnly?.addEventListener('change', renderAgenda);
 prisonMonthInput.addEventListener('change', () => {
   renderPrisonCalendar();
   renderPrisonVisitsList();
@@ -1124,6 +1257,21 @@ downloadBookingsReportBtn.addEventListener('click', () => {
   downloadCsv('reporte-detalle-citas-tacam.csv', rows);
 });
 
+downloadBackupBtn?.addEventListener('click', downloadBackup);
+uploadBackupInput?.addEventListener('change', async event => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  try {
+    await restoreBackup(file);
+  } catch (error) {
+    console.warn('Restore backup failed', error);
+    alert('No se pudo restaurar el respaldo. Verifica que sea un JSON válido de TACAM.');
+  } finally {
+    uploadBackupInput.value = '';
+  }
+});
+
 moduleTabs.forEach(tab => {
   tab.addEventListener('click', () => switchModule(tab.dataset.moduleTab));
 });
@@ -1157,6 +1305,7 @@ lawyerForm.addEventListener('submit', async event => {
   saveLawyers(lawyers);
   lawyerForm.reset();
   renderAll();
+  showSaveToast();
 });
 
 profileForm.addEventListener('submit', event => {
@@ -1194,6 +1343,7 @@ profileForm.addEventListener('submit', event => {
   saveProfiles(profiles);
   profileForm.reset();
   renderProfiles();
+  showSaveToast();
 });
 
 switchModule('create');
@@ -1205,8 +1355,15 @@ lawyerCalendarMonth.value = currentMonth;
 phoneInput.value = '+569';
 updateChileClock();
 
-saveSession({ loggedIn: false });
-showLogin();
+const session = getSession();
+if (session?.loggedIn) {
+  updateCurrentUserLabel(session.username);
+  showApp();
+  renderAll();
+} else {
+  updateCurrentUserLabel('');
+  showLogin();
+}
 
 setInterval(() => {
   updateChileClock();

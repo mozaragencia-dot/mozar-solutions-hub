@@ -28,17 +28,28 @@ La app ahora puede enviar correos mediante `brevo-email.php`, manteniendo la API
 - `BREVO_REPLY_TO_EMAIL` (opcional)
 - `BREVO_REPLY_TO_NAME` (opcional)
 
+### Variables opcionales para WhatsApp con Brevo API
+- `BREVO_WHATSAPP_SENDER_NUMBER` (ejemplo: `+569...` o formato internacional sin símbolos según tu cuenta Brevo)
+- `BREVO_WHATSAPP_TEMPLATE_ID` (opcional, recomendado si tu cuenta exige template aprobado)
+
+Para que el envío por WhatsApp funcione por API debes configurar al menos `BREVO_WHATSAPP_SENDER_NUMBER` (y `BREVO_API_KEY`).
+
 ### Cómo probar localmente con PHP
 ```bash
 BREVO_API_KEY=tu_api_key \
 BREVO_SENDER_EMAIL=tacam@agenciayousay.cl \
 BREVO_SENDER_NAME="tacam" \
+BREVO_WHATSAPP_SENDER_NUMBER=+56912345678 \
 php -S 127.0.0.1:4173
 ```
 
 Luego abre `http://127.0.0.1:4173` (en producción usar `https://www.apolo.tacam.cl`).
 
 > Importante: el remitente configurado en Brevo debe estar verificado en tu cuenta.
+
+### Carpeta local para respaldos
+- Se incluye `data/` para guardar respaldos exportados desde la app.
+- Recomendación: mover ahí cada archivo `respaldo-tacam-YYYY-MM-DD.json` que descargues.
 
 ## Empaquetar para envío
 ```bash
