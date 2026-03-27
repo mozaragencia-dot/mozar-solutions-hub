@@ -82,6 +82,7 @@ const ALLOWED_CREDENTIALS = [
 
 const LAWYER_COLORS = ['#8f203a', '#2166a5', '#2a9d8f', '#e76f51', '#6a4c93', '#e9c46a', '#4f772d'];
 const PRISON_VISIT_MATTER = 'Visita a la Cárcel';
+const UNASSIGNED_LAWYER_LABEL = 'No asignado aún';
 
 function normalizeMatterLabel(value) {
   const clean = String(value || '').trim();
@@ -93,6 +94,11 @@ function normalizeMatterLabel(value) {
 
 function isPrisonVisit(booking) {
   return normalizeMatterLabel(booking?.matter) === PRISON_VISIT_MATTER;
+}
+
+function normalizeAssignedToValue(value) {
+  const clean = String(value || '').trim();
+  return clean === UNASSIGNED_LAWYER_LABEL ? '' : clean;
 }
 
 function tryLogin(username, password) {
@@ -383,8 +389,8 @@ function fillSelectWithNames(select, names, firstLabel) {
 
 function renderLawyerOptions() {
   const names = getLawyerNames();
-  fillSelectWithNames(assignedToSelect, names, 'Seleccione');
-  fillSelectWithNames(prisonAssignedToSelect, names, 'Seleccione');
+  fillSelectWithNames(assignedToSelect, names, UNASSIGNED_LAWYER_LABEL);
+  fillSelectWithNames(prisonAssignedToSelect, names, UNASSIGNED_LAWYER_LABEL);
   fillSelectWithNames(prisonLawyerFilter, names, 'Todas');
   fillSelectWithNames(lawyerFilter, names, 'Todos');
   fillSelectWithNames(lawyerCalendarFilter, names, 'Todas');
@@ -1006,8 +1012,8 @@ function renderBookings() {
       const convertSelect = document.createElement('select');
       convertSelect.dataset.convertLawyer = booking.id;
       const first = document.createElement('option');
-      first.value = '';
-      first.textContent = 'Asignar abogada';
+      first.value = UNASSIGNED_LAWYER_LABEL;
+      first.textContent = UNASSIGNED_LAWYER_LABEL;
       convertSelect.appendChild(first);
       getLawyerNames().forEach(name => {
         const option = document.createElement('option');
@@ -1086,7 +1092,7 @@ function renderBookings() {
   bookingsBody.querySelectorAll('[data-convert-btn]').forEach(btn => {
     btn.onclick = () => {
       const lawyerSelect = bookingsBody.querySelector(`[data-convert-lawyer="${btn.dataset.convertBtn}"]`);
-      const lawyer = String(lawyerSelect?.value || '').trim();
+      const lawyer = normalizeAssignedToValue(lawyerSelect?.value);
       if (!lawyer) return;
       updateBooking(btn.dataset.convertBtn, booking => {
         booking.hiredLawyer = true;
@@ -1149,8 +1155,8 @@ function renderAgenda() {
       const lawyerSelect = document.createElement('select');
       lawyerSelect.dataset.agendaLawyer = booking.id;
       const firstLawyer = document.createElement('option');
-      firstLawyer.value = '';
-      firstLawyer.textContent = 'Seleccione abogada';
+      firstLawyer.value = UNASSIGNED_LAWYER_LABEL;
+      firstLawyer.textContent = UNASSIGNED_LAWYER_LABEL;
       lawyerSelect.appendChild(firstLawyer);
       getLawyerNames().forEach(name => {
         const option = document.createElement('option');
@@ -1158,7 +1164,7 @@ function renderAgenda() {
         option.textContent = name;
         lawyerSelect.appendChild(option);
       });
-      lawyerSelect.value = booking.assignedTo || '';
+      lawyerSelect.value = booking.assignedTo || UNASSIGNED_LAWYER_LABEL;
       actionCell.appendChild(lawyerSelect);
 
       const attendedBtn = document.createElement('button');
@@ -1195,7 +1201,7 @@ function renderAgenda() {
 
   agendaBody.querySelectorAll('[data-agenda-lawyer]').forEach(select => {
     select.onchange = () => updateBooking(select.dataset.agendaLawyer, booking => {
-      booking.assignedTo = String(select.value || '').trim();
+      booking.assignedTo = normalizeAssignedToValue(select.value);
       booking.hiredLawyer = Boolean(booking.assignedTo);
     });
   });
@@ -1243,8 +1249,8 @@ function renderPrisonVisitsList() {
     lawyerSelect.dataset.prisonLawyer = booking.id;
     const lawyerNames = getLawyerNames();
     const emptyOption = document.createElement('option');
-    emptyOption.value = '';
-    emptyOption.textContent = 'Seleccione abogada';
+    emptyOption.value = UNASSIGNED_LAWYER_LABEL;
+    emptyOption.textContent = UNASSIGNED_LAWYER_LABEL;
     lawyerSelect.appendChild(emptyOption);
     lawyerNames.forEach(name => {
       const option = document.createElement('option');
@@ -1252,7 +1258,7 @@ function renderPrisonVisitsList() {
       option.textContent = name;
       lawyerSelect.appendChild(option);
     });
-    lawyerSelect.value = booking.assignedTo || '';
+    lawyerSelect.value = booking.assignedTo || UNASSIGNED_LAWYER_LABEL;
     lawyerCell.appendChild(lawyerSelect);
     row.appendChild(lawyerCell);
     appendCell(row, booking.customer || '');
@@ -1332,7 +1338,7 @@ function renderPrisonVisitsList() {
 
   prisonVisitsBody.querySelectorAll('[data-prison-lawyer]').forEach(select => {
     select.onchange = () => updateBooking(select.dataset.prisonLawyer, booking => {
-      booking.assignedTo = String(select.value || '').trim();
+      booking.assignedTo = normalizeAssignedToValue(select.value);
       if (booking.hiredLawyer && !booking.assignedTo) {
         booking.hiredLawyer = false;
       }
@@ -1604,7 +1610,7 @@ bookingForm.addEventListener('submit', async event => {
   clientSelect.setCustomValidity('');
 
   const hiredLawyer = Boolean(data.get('hiredLawyer'));
-  const assignedTo = String(data.get('assignedTo') || '').trim();
+  const assignedTo = normalizeAssignedToValue(data.get('assignedTo'));
   if (hiredLawyer && !assignedTo) {
     assignedToSelect.setCustomValidity('Si contrató, debes asignar una abogada');
     assignedToSelect.reportValidity();
@@ -1649,7 +1655,7 @@ prisonBookingForm.addEventListener('submit', async event => {
   event.preventDefault();
   const data = new FormData(prisonBookingForm);
   const clientId = String(data.get('clientId') || '').trim();
-  const assignedTo = String(data.get('assignedTo') || '').trim();
+  const assignedTo = normalizeAssignedToValue(data.get('assignedTo'));
   const client = getClients().find(item => item.id === clientId);
   if (!client || !assignedTo) return;
 
