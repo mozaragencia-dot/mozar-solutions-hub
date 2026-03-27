@@ -1104,7 +1104,6 @@ function renderBookings() {
     btn.onclick = () => {
       const lawyerSelect = bookingsBody.querySelector(`[data-convert-lawyer="${btn.dataset.convertBtn}"]`);
       const lawyer = normalizeAssignedToValue(lawyerSelect?.value);
-      if (!lawyer) return;
       updateBooking(btn.dataset.convertBtn, booking => {
         booking.hiredLawyer = true;
         booking.assignedTo = lawyer;
@@ -1605,7 +1604,7 @@ clientEditForm.addEventListener('submit', event => {
     booking.phone = phone;
     booking.email = email;
     booking.address = address;
-    if (hiredLater && assignedTo && !isPrisonVisit(booking)) {
+    if (hiredLater && !isPrisonVisit(booking)) {
       booking.hiredLawyer = true;
       booking.assignedTo = assignedTo;
       booking.status = booking.status === 'cancelada' ? 'confirmada' : booking.status;
@@ -1629,12 +1628,6 @@ bookingForm.addEventListener('submit', async event => {
 
   const hiredLawyer = Boolean(data.get('hiredLawyer'));
   const assignedTo = normalizeAssignedToValue(data.get('assignedTo'));
-  if (hiredLawyer && !assignedTo) {
-    assignedToSelect.setCustomValidity('Si contrató, debes asignar una abogada');
-    assignedToSelect.reportValidity();
-    return;
-  }
-  assignedToSelect.setCustomValidity('');
 
   const bookings = getBookings();
   bookings.unshift({
@@ -1675,7 +1668,7 @@ prisonBookingForm.addEventListener('submit', async event => {
   const clientId = String(data.get('clientId') || '').trim();
   const assignedTo = normalizeAssignedToValue(data.get('assignedTo'));
   const client = getClients().find(item => item.id === clientId);
-  if (!client || !assignedTo) return;
+  if (!client) return;
 
   const bookings = getBookings();
   bookings.unshift({
