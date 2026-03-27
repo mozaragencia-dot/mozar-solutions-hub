@@ -994,11 +994,16 @@ function renderBookings() {
       row.appendChild(actionsCell);
 
       const notifyCell = document.createElement('td');
-      const notifyBtn = document.createElement('button');
-      notifyBtn.className = 'switch-btn';
-      notifyBtn.dataset.notifyBtn = booking.id;
-      notifyBtn.textContent = 'WhatsApp';
-      notifyCell.appendChild(notifyBtn);
+      const waBtn = document.createElement('button');
+      waBtn.className = 'switch-btn primary';
+      waBtn.dataset.remarketWhatsapp = booking.id;
+      waBtn.textContent = 'Remarketing WhatsApp';
+      notifyCell.appendChild(waBtn);
+      const emailBtn = document.createElement('button');
+      emailBtn.className = 'switch-btn';
+      emailBtn.dataset.remarketEmail = booking.id;
+      emailBtn.textContent = 'Remarketing Email';
+      notifyCell.appendChild(emailBtn);
       row.appendChild(notifyCell);
 
       bookingsBody.appendChild(row);
@@ -1008,7 +1013,7 @@ function renderBookings() {
   if (!hiredBookings.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 8;
+    cell.colSpan = 7;
     cell.textContent = 'Sin clientes contratados para remarketing';
     row.appendChild(cell);
     hiredBody.appendChild(row);
@@ -1030,20 +1035,6 @@ function renderBookings() {
     statusCell.appendChild(statusBadge);
     row.appendChild(statusCell);
 
-    const remarketingCell = document.createElement('td');
-    const waBtn = document.createElement('button');
-    waBtn.className = 'switch-btn primary';
-    waBtn.dataset.remarketWhatsapp = booking.id;
-    waBtn.textContent = 'Remarketing WhatsApp';
-    remarketingCell.appendChild(waBtn);
-
-    const emailBtn = document.createElement('button');
-    emailBtn.className = 'switch-btn';
-    emailBtn.dataset.remarketEmail = booking.id;
-    emailBtn.textContent = 'Remarketing Email';
-    remarketingCell.appendChild(emailBtn);
-    row.appendChild(remarketingCell);
-
       hiredBody.appendChild(row);
     });
   }
@@ -1060,13 +1051,6 @@ function renderBookings() {
     };
   });
 
-  bookingsBody.querySelectorAll('[data-notify-btn]').forEach(btn => {
-    btn.onclick = async () => {
-      const booking = getBookings().find(item => item.id === btn.dataset.notifyBtn);
-      if (booking) await notifyBooking(booking);
-    };
-  });
-
   bookingsBody.querySelectorAll('[data-convert-btn]').forEach(btn => {
     btn.onclick = () => {
       const lawyerSelect = bookingsBody.querySelector(`[data-convert-lawyer="${btn.dataset.convertBtn}"]`);
@@ -1080,7 +1064,7 @@ function renderBookings() {
     };
   });
 
-  hiredBody.querySelectorAll('[data-remarket-whatsapp]').forEach(btn => {
+  bookingsBody.querySelectorAll('[data-remarket-whatsapp]').forEach(btn => {
     btn.onclick = async () => {
       const booking = getBookings().find(item => item.id === btn.dataset.remarketWhatsapp);
       if (!booking) return;
@@ -1089,7 +1073,7 @@ function renderBookings() {
     };
   });
 
-  hiredBody.querySelectorAll('[data-remarket-email]').forEach(btn => {
+  bookingsBody.querySelectorAll('[data-remarket-email]').forEach(btn => {
     btn.onclick = async () => {
       const booking = getBookings().find(item => item.id === btn.dataset.remarketEmail);
       if (!booking) return;

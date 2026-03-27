@@ -89,32 +89,7 @@
             </select>
           </label>
           <label>Fecha de reserva <input name="date" type="date" required /></label>
-          <label>Hora de reserva
-            <select name="time" required>
-              <option value="">Seleccione un horario</option>
-              <option value="08:00">08:00</option>
-              <option value="08:30">08:30</option>
-              <option value="09:00">09:00</option>
-              <option value="09:30">09:30</option>
-              <option value="10:00">10:00</option>
-              <option value="10:30">10:30</option>
-              <option value="11:00">11:00</option>
-              <option value="11:30">11:30</option>
-              <option value="12:00">12:00</option>
-              <option value="12:30">12:30</option>
-              <option value="13:00">13:00</option>
-              <option value="13:30">13:30</option>
-              <option value="14:00">14:00</option>
-              <option value="14:30">14:30</option>
-              <option value="15:00">15:00</option>
-              <option value="15:30">15:30</option>
-              <option value="16:00">16:00</option>
-              <option value="16:30">16:30</option>
-              <option value="17:00">17:00</option>
-              <option value="17:30">17:30</option>
-              <option value="18:00">18:00</option>
-            </select>
-          </label>
+          <label>Hora de reserva <input name="time" type="time" required /></label>
           <label>Abogado asignado
             <select name="assignedTo">
               <option value="">Seleccione</option>
@@ -154,14 +129,14 @@
         <h3>No contratados</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Fecha creación</th><th>Persona</th><th>Materia</th><th>Teléfono</th><th>Cita</th><th>Abogado</th><th>Estado</th><th>Gestión</th><th>Notificar</th></tr></thead>
+            <thead><tr><th>Fecha creación</th><th>Persona</th><th>Materia</th><th>Teléfono</th><th>Cita</th><th>Abogado</th><th>Estado</th><th>Gestión</th><th>Remarketing</th></tr></thead>
             <tbody id="bookings-body"></tbody>
           </table>
         </div>
-        <h3>Contratados (Remarketing)</h3>
+        <h3>Contratados</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Fecha creación</th><th>Persona</th><th>Materia</th><th>Teléfono</th><th>Cita</th><th>Abogada</th><th>Estado</th><th>Remarketing</th></tr></thead>
+            <thead><tr><th>Fecha creación</th><th>Persona</th><th>Materia</th><th>Teléfono</th><th>Cita</th><th>Abogada</th><th>Estado</th></tr></thead>
             <tbody id="hired-body"></tbody>
           </table>
         </div>
@@ -189,7 +164,7 @@
 
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Persona</th><th>Materia</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Persona</th><th>Materia</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Selección abogada</th></tr></thead>
             <tbody id="agenda-body"></tbody>
           </table>
         </div>
