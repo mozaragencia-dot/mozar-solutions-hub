@@ -19,6 +19,7 @@ const prisonMonthInput = document.getElementById('prison-month');
 const prisonCalendar = document.getElementById('prison-calendar');
 const prisonCalendarLegend = document.getElementById('prison-calendar-legend');
 const prisonVisitsBody = document.getElementById('prison-visits-body');
+const prisonBookingForm = document.getElementById('prison-booking-form');
 const lawyerForm = document.getElementById('lawyer-form');
 const lawyerList = document.getElementById('lawyer-list');
 const lawyerCalendarFilter = document.getElementById('lawyer-calendar-filter');
@@ -44,6 +45,8 @@ const clientRutInput = clientForm.elements.rut;
 const clientPhoneInput = clientForm.elements.phone;
 const clientEditRutInput = clientEditForm.elements.rut;
 const clientEditPhoneInput = clientEditForm.elements.phone;
+const prisonClientSelect = prisonBookingForm.elements.clientId;
+const prisonAssignedToSelect = prisonBookingForm.elements.assignedTo;
 const chileClock = document.getElementById('chile-clock');
 const assignedToSelect = bookingForm.elements.assignedTo;
 const moduleTabs = document.querySelectorAll('[data-module-tab]');
@@ -378,6 +381,7 @@ function fillSelectWithNames(select, names, firstLabel) {
 function renderLawyerOptions() {
   const names = getLawyerNames();
   fillSelectWithNames(assignedToSelect, names, 'Seleccione');
+  fillSelectWithNames(prisonAssignedToSelect, names, 'Seleccione');
   fillSelectWithNames(lawyerFilter, names, 'Todos');
   fillSelectWithNames(lawyerCalendarFilter, names, 'Todas');
 }
@@ -409,6 +413,22 @@ function renderClientOptions() {
 
   if (clients.some(client => client.id === current)) {
     clientSelect.value = current;
+  }
+
+  const selectedPrisonClient = prisonClientSelect.value;
+  prisonClientSelect.replaceChildren();
+  const firstPrison = document.createElement('option');
+  firstPrison.value = '';
+  firstPrison.textContent = clients.length ? 'Seleccione cliente' : 'No hay clientes guardados';
+  prisonClientSelect.appendChild(firstPrison);
+  clients.forEach(client => {
+    const option = document.createElement('option');
+    option.value = client.id;
+    option.textContent = `${client.name} · ${client.rut}`;
+    prisonClientSelect.appendChild(option);
+  });
+  if (clients.some(client => client.id === selectedPrisonClient)) {
+    prisonClientSelect.value = selectedPrisonClient;
   }
 }
 
@@ -674,7 +694,7 @@ function getLawyerAttentionStats() {
 function getPrisonVisitStats() {
   const map = new Map();
   getBookings()
-    .filter(booking => isPrisonVisit(booking))
+    .filter(booking => isPrisonVisit(booking) && booking.prisonAttendance === 'asistio')
     .forEach(booking => {
       const lawyer = (booking.assignedTo || 'Sin abogada').trim() || 'Sin abogada';
       if (!map.has(lawyer)) map.set(lawyer, 0);
@@ -1071,7 +1091,7 @@ function renderPrisonVisitsList() {
   if (!visits.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 7;
+    cell.colSpan = 8;
     cell.textContent = 'Sin visitas a la cárcel registradas en este mes.';
     row.appendChild(cell);
     prisonVisitsBody.appendChild(row);
@@ -1091,6 +1111,19 @@ function renderPrisonVisitsList() {
     statusBadge.textContent = statusLabel(booking.status);
     statusCell.appendChild(statusBadge);
     row.appendChild(statusCell);
+
+    const attendanceCell = document.createElement('td');
+    const yesBtn = document.createElement('button');
+    yesBtn.className = `switch-btn ${booking.prisonAttendance === 'asistio' ? 'primary' : ''}`.trim();
+    yesBtn.dataset.prisonAttendYes = booking.id;
+    yesBtn.textContent = 'Sí asistió';
+    attendanceCell.appendChild(yesBtn);
+    const noBtn = document.createElement('button');
+    noBtn.className = `switch-btn ${booking.prisonAttendance === 'no-asistio' ? 'primary' : ''}`.trim();
+    noBtn.dataset.prisonAttendNo = booking.id;
+    noBtn.textContent = 'No asistió';
+    attendanceCell.appendChild(noBtn);
+    row.appendChild(attendanceCell);
 
     const checkInCell = document.createElement('td');
     const checkInBtn = document.createElement('button');
@@ -1125,6 +1158,23 @@ function renderPrisonVisitsList() {
         await notifyBookingChannels(updatedBooking, buildPrisonCheckInMessage(updatedBooking), 'TACAM: check-in visita a la cárcel');
       }
     };
+  });
+
+  prisonVisitsBody.querySelectorAll('[data-prison-attend-yes]').forEach(btn => {
+    btn.onclick = () => updateBooking(btn.dataset.prisonAttendYes, booking => {
+      booking.prisonAttendance = 'asistio';
+      booking.status = 'atendida';
+      booking.hiredLawyer = true;
+    });
+  });
+
+  prisonVisitsBody.querySelectorAll('[data-prison-attend-no]').forEach(btn => {
+    btn.onclick = () => updateBooking(btn.dataset.prisonAttendNo, booking => {
+      booking.prisonAttendance = 'no-asistio';
+      booking.status = 'nueva';
+      booking.hiredLawyer = false;
+      booking.assignedTo = '';
+    });
   });
 
   prisonVisitsBody.querySelectorAll('[data-prison-notify]').forEach(btn => {
@@ -1417,6 +1467,7 @@ bookingForm.addEventListener('submit', async event => {
     notes: String(data.get('notes') || '').trim(),
     notificationsConsent: Boolean(data.get('notificationsConsent')),
     consentAt: data.get('notificationsConsent') ? new Date().toISOString() : '',
+    prisonAttendance: '',
     status: 'nueva',
     createdAt: new Date().toISOString(),
     reminder24hSentAt: '',
@@ -1427,6 +1478,44 @@ bookingForm.addEventListener('submit', async event => {
   await notifyVisitScheduled(bookings[0]);
   bookingForm.reset();
   hiredLawyerInput.checked = true;
+  renderAll();
+});
+
+prisonBookingForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const data = new FormData(prisonBookingForm);
+  const clientId = String(data.get('clientId') || '').trim();
+  const assignedTo = String(data.get('assignedTo') || '').trim();
+  const client = getClients().find(item => item.id === clientId);
+  if (!client || !assignedTo) return;
+
+  const bookings = getBookings();
+  bookings.unshift({
+    id: crypto.randomUUID(),
+    clientId: client.id,
+    customer: client.name,
+    rut: client.rut,
+    phone: client.phone,
+    email: client.email,
+    address: client.address,
+    matter: PRISON_VISIT_MATTER,
+    date: String(data.get('date') || '').trim(),
+    time: String(data.get('time') || '').trim().slice(0, 5),
+    assignedTo,
+    hiredLawyer: true,
+    notes: String(data.get('notes') || '').trim(),
+    notificationsConsent: Boolean(data.get('notificationsConsent')),
+    consentAt: data.get('notificationsConsent') ? new Date().toISOString() : '',
+    prisonAttendance: '',
+    status: 'confirmada',
+    createdAt: new Date().toISOString(),
+    reminder24hSentAt: '',
+    reminder1hSentAt: '',
+    checkedInAt: ''
+  });
+  saveBookings(bookings);
+  await notifyVisitScheduled(bookings[0]);
+  prisonBookingForm.reset();
   renderAll();
 });
 

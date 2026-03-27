@@ -44,8 +44,8 @@
       <nav class="module-tabs" aria-label="Módulos TACAM">
         <button type="button" class="module-tab active" data-module-tab="create">Ingreso de Cliente</button>
         <button type="button" class="module-tab" data-module-tab="clients">Editar Clientes</button>
-        <button type="button" class="module-tab" data-module-tab="bookings">Leads</button>
         <button type="button" class="module-tab" data-module-tab="agenda">Agendamiento</button>
+        <button type="button" class="module-tab" data-module-tab="bookings">Leads</button>
         <button type="button" class="module-tab" data-module-tab="prison-visits">Visitas a la Cárcel</button>
         <button type="button" class="module-tab" data-module-tab="lawyers">Perfiles de Abogados</button>
         <button type="button" class="module-tab" data-module-tab="reports">Reportes y Gráficos</button>
@@ -125,7 +125,7 @@
           </label>
           <label class="full">Motivo de consulta <textarea name="notes" rows="3" placeholder="Detalle del caso..."></textarea></label>
           <label class="full checkbox-inline consent-box">
-            <input name="notificationsConsent" type="checkbox" /> La secretaria recibió consentimiento verbal para enviar correo y WhatsApp
+            <input name="notificationsConsent" type="checkbox" /> Cliente consiente el recibir mensajes de WhatsApp y correos.
           </label>
           <button type="submit">Guardar reserva</button>
         </form>
@@ -197,11 +197,30 @@
             <input id="prison-month" type="month" />
           </label>
         </div>
+        <form id="prison-booking-form" class="grid">
+          <label>Cliente
+            <select name="clientId" required>
+              <option value="">Seleccione cliente</option>
+            </select>
+          </label>
+          <label>Abogada
+            <select name="assignedTo" required>
+              <option value="">Seleccione abogada</option>
+            </select>
+          </label>
+          <label>Fecha <input name="date" type="date" required /></label>
+          <label>Hora <input name="time" type="time" required /></label>
+          <label class="full">Detalle <textarea name="notes" rows="2" placeholder="Detalle de la visita..."></textarea></label>
+          <label class="full checkbox-inline consent-box">
+            <input name="notificationsConsent" type="checkbox" checked /> Cliente consiente el recibir mensajes de WhatsApp y correos.
+          </label>
+          <button type="submit">Agendar visita a la cárcel</button>
+        </form>
         <div id="prison-calendar-legend" class="calendar-legend"></div>
         <div id="prison-calendar" class="calendar"></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Abogada</th><th>Persona</th><th>Fecha</th><th>Hora</th><th>Estado</th><th>Check-in secretaria</th><th>Recordatorios</th></tr></thead>
+            <thead><tr><th>Abogada</th><th>Persona</th><th>Fecha</th><th>Hora</th><th>Estado</th><th>Asistencia</th><th>Check-in secretaria</th><th>Recordatorios</th></tr></thead>
             <tbody id="prison-visits-body"></tbody>
           </table>
         </div>
