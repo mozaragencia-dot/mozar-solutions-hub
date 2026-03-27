@@ -1033,6 +1033,21 @@ function renderAgenda() {
       row.appendChild(statusCell);
 
       const actionCell = document.createElement('td');
+      const lawyerSelect = document.createElement('select');
+      lawyerSelect.dataset.agendaLawyer = booking.id;
+      const firstLawyer = document.createElement('option');
+      firstLawyer.value = '';
+      firstLawyer.textContent = 'Seleccione abogada';
+      lawyerSelect.appendChild(firstLawyer);
+      getLawyerNames().forEach(name => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        lawyerSelect.appendChild(option);
+      });
+      lawyerSelect.value = booking.assignedTo || '';
+      actionCell.appendChild(lawyerSelect);
+
       const attendedBtn = document.createElement('button');
       attendedBtn.className = 'switch-btn primary';
       attendedBtn.dataset.attendYes = booking.id;
@@ -1062,6 +1077,13 @@ function renderAgenda() {
       booking.status = 'nueva';
       booking.hiredLawyer = false;
       booking.assignedTo = '';
+    });
+  });
+
+  agendaBody.querySelectorAll('[data-agenda-lawyer]').forEach(select => {
+    select.onchange = () => updateBooking(select.dataset.agendaLawyer, booking => {
+      booking.assignedTo = String(select.value || '').trim();
+      booking.hiredLawyer = Boolean(booking.assignedTo);
     });
   });
 }
