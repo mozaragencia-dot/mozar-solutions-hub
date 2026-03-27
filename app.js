@@ -48,6 +48,8 @@ const clientRutInput = clientForm.elements.rut;
 const clientPhoneInput = clientForm.elements.phone;
 const clientEditRutInput = clientEditForm.elements.rut;
 const clientEditPhoneInput = clientEditForm.elements.phone;
+const clientEditHiredLaterInput = clientEditForm.elements.hiredLater;
+const clientEditAssignedToSelect = clientEditForm.elements.assignedTo;
 const prisonClientSelect = prisonBookingForm.elements.clientId;
 const prisonAssignedToSelect = prisonBookingForm.elements.assignedTo;
 const chileClock = document.getElementById('chile-clock');
@@ -391,6 +393,7 @@ function renderLawyerOptions() {
   const names = getLawyerNames();
   fillSelectWithNames(assignedToSelect, names, UNASSIGNED_LAWYER_LABEL);
   fillSelectWithNames(prisonAssignedToSelect, names, UNASSIGNED_LAWYER_LABEL);
+  fillSelectWithNames(clientEditAssignedToSelect, names, UNASSIGNED_LAWYER_LABEL);
   fillSelectWithNames(prisonLawyerFilter, names, 'Todas');
   fillSelectWithNames(lawyerFilter, names, 'Todos');
   fillSelectWithNames(lawyerCalendarFilter, names, 'Todas');
@@ -518,6 +521,8 @@ function renderClientEditOptions() {
     fillClientEditForm(selected);
   } else {
     clientEditForm.reset();
+    clientEditAssignedToSelect.value = UNASSIGNED_LAWYER_LABEL;
+    clientEditAssignedToSelect.disabled = true;
   }
 }
 
@@ -533,6 +538,12 @@ function fillClientEditForm(clientId) {
   clientEditForm.elements.phone.value = client.phone || '';
   clientEditForm.elements.email.value = client.email || '';
   clientEditForm.elements.address.value = client.address || '';
+
+  const clientBookings = getBookings().filter(booking => booking.clientId === clientId);
+  const hiredBooking = clientBookings.find(booking => booking.hiredLawyer);
+  clientEditHiredLaterInput.checked = Boolean(hiredBooking);
+  clientEditAssignedToSelect.value = hiredBooking?.assignedTo || UNASSIGNED_LAWYER_LABEL;
+  clientEditAssignedToSelect.disabled = !clientEditHiredLaterInput.checked;
 }
 
 function getLawyerStats(lawyerName) {
@@ -1555,6 +1566,8 @@ clientEditForm.addEventListener('submit', event => {
   const name = String(data.get('name') || '').trim();
   const email = String(data.get('email') || '').trim();
   const address = String(data.get('address') || '').trim();
+  const hiredLater = Boolean(data.get('hiredLater'));
+  const assignedTo = normalizeAssignedToValue(data.get('assignedTo'));
 
   if (!clientId || !name || !email || !address) return;
 
@@ -1592,6 +1605,11 @@ clientEditForm.addEventListener('submit', event => {
     booking.phone = phone;
     booking.email = email;
     booking.address = address;
+    if (hiredLater && assignedTo && !isPrisonVisit(booking)) {
+      booking.hiredLawyer = true;
+      booking.assignedTo = assignedTo;
+      booking.status = booking.status === 'cancelada' ? 'confirmada' : booking.status;
+    }
   });
   saveBookings(bookings);
   renderAll();
@@ -1706,6 +1724,12 @@ clientEditRutInput.addEventListener('input', () => {
 });
 clientEditPhoneInput.addEventListener('input', () => {
   clientEditPhoneInput.value = formatPhone(clientEditPhoneInput.value);
+});
+clientEditHiredLaterInput.addEventListener('change', () => {
+  clientEditAssignedToSelect.disabled = !clientEditHiredLaterInput.checked;
+  if (!clientEditHiredLaterInput.checked) {
+    clientEditAssignedToSelect.value = UNASSIGNED_LAWYER_LABEL;
+  }
 });
 hiredLawyerInput.addEventListener('change', () => {
   assignedToSelect.disabled = !hiredLawyerInput.checked;
@@ -1881,6 +1905,10 @@ updateChileClock();
 
 saveSession({ loggedIn: false });
 showLogin();
+
+window.addEventListener('tacam-server-hydrated', () => {
+  if (!appShell.hidden) renderAll();
+});
 
 setInterval(() => {
   updateChileClock();
