@@ -2,7 +2,7 @@
 set -euo pipefail
 
 OUT_DIR="${1:-dist}"
-OUT_FILE="${2:-tacam-static-app.zip}"
+OUT_FILE="${2:-friolam-static-app.zip}"
 
 mkdir -p "$OUT_DIR"
 

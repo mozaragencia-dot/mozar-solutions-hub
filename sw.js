@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tacam-reservas-v3';
+const CACHE_NAME = 'friolam-reservas-v3';
 const ASSETS = [
   './',
   './index.html',

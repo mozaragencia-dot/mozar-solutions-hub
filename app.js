@@ -116,7 +116,7 @@ async function notifyBooking(booking) {
   if (!hasNotificationConsent(booking)) return false;
   const destination = cleanPhone(booking.phone);
   if (!destination) return false;
-  const msg = encodeURIComponent(buildTacamMessage(booking));
+  const msg = encodeURIComponent(buildFriolamMessage(booking));
   window.open(`https://wa.me/${destination}?text=${msg}`, '_blank', 'noopener');
   return true;
 }
@@ -124,7 +124,7 @@ async function notifyBooking(booking) {
 function buildRescheduleMessage(booking, fromDate, toDate) {
   const fromText = `${fromDate || '-'} ${booking.time || ''}`.trim();
   const toText = `${toDate || '-'} ${booking.time || ''}`.trim();
-  return `TACAM: su cita fue reagendada. Cliente: ${booking.customer || 'Cliente'}. Materia: ${normalizeMatterLabel(booking.matter) || 'General'}. Antes: ${fromText}. Nueva fecha: ${toText}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+  return `FRIOLAM: su cita fue reagendada. Cliente: ${booking.customer || 'Cliente'}. Materia: ${normalizeMatterLabel(booking.matter) || 'General'}. Antes: ${fromText}. Nueva fecha: ${toText}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
 }
 
 function getAppointmentDateTime(booking) {
@@ -136,25 +136,25 @@ function getAppointmentDateTime(booking) {
 function buildReminderMessage(booking, minutesLeft) {
   const matter = normalizeMatterLabel(booking.matter) || 'General';
   if (isPrisonVisit(booking)) {
-    return `Recordatorio TACAM: tienes una ${PRISON_VISIT_MATTER.toLowerCase()} en ${minutesLeft} minutos. Fecha/Hora: ${booking.date} ${booking.time}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+    return `Recordatorio FRIOLAM: tienes una ${PRISON_VISIT_MATTER.toLowerCase()} en ${minutesLeft} minutos. Fecha/Hora: ${booking.date} ${booking.time}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
   }
-  return `Recordatorio TACAM: vas a tener una cita en ${minutesLeft} minutos. Fecha/Hora: ${booking.date} ${booking.time}. Materia: ${matter}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+  return `Recordatorio FRIOLAM: vas a tener una cita en ${minutesLeft} minutos. Fecha/Hora: ${booking.date} ${booking.time}. Materia: ${matter}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
 }
 
 function build24hReminderMessage(booking) {
   const matter = normalizeMatterLabel(booking.matter) || 'General';
   if (isPrisonVisit(booking)) {
-    return `Recordatorio TACAM: mañana tienes una ${PRISON_VISIT_MATTER.toLowerCase()}. Fecha/Hora: ${booking.date} ${booking.time}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+    return `Recordatorio FRIOLAM: mañana tienes una ${PRISON_VISIT_MATTER.toLowerCase()}. Fecha/Hora: ${booking.date} ${booking.time}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
   }
-  return `Recordatorio TACAM: tu cita será en 24 horas. Fecha/Hora: ${booking.date} ${booking.time}. Materia: ${matter}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+  return `Recordatorio FRIOLAM: tu cita será en 24 horas. Fecha/Hora: ${booking.date} ${booking.time}. Materia: ${matter}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
 }
 
 function buildVisitScheduledMessage(booking) {
   const matter = normalizeMatterLabel(booking.matter) || 'General';
   if (isPrisonVisit(booking)) {
-    return `TACAM: se agendó una ${PRISON_VISIT_MATTER.toLowerCase()} para ${booking.date} ${booking.time}. Abogada: ${booking.assignedTo || 'Por confirmar'}. Se enviarán recordatorios por WhatsApp y correo.`;
+    return `FRIOLAM: se agendó una ${PRISON_VISIT_MATTER.toLowerCase()} para ${booking.date} ${booking.time}. Abogada: ${booking.assignedTo || 'Por confirmar'}. Se enviarán recordatorios por WhatsApp y correo.`;
   }
-  return `Calendario de visitas TACAM: enviamos correo automático a la persona. Tu cita quedó agendada para ${booking.date} ${booking.time}. Materia: ${matter}. Abogada: ${booking.assignedTo || 'Por confirmar'}. Luego recibirás un recordatorio de que vas a tener una cita.`;
+  return `Calendario de visitas FRIOLAM: enviamos correo automático a la persona. Tu cita quedó agendada para ${booking.date} ${booking.time}. Materia: ${matter}. Abogada: ${booking.assignedTo || 'Por confirmar'}. Luego recibirás un recordatorio de que vas a tener una cita.`;
 }
 
 async function notifyBookingChannels(booking, message, emailSubject) {
@@ -175,7 +175,7 @@ async function notifyBookingChannels(booking, message, emailSubject) {
 
 async function notifyVisitScheduled(booking) {
   const message = buildVisitScheduledMessage(booking);
-  return notifyBookingChannels(booking, message, isPrisonVisit(booking) ? 'TACAM: visita a la cárcel agendada' : 'Calendario de visitas TACAM: cita agendada');
+  return notifyBookingChannels(booking, message, isPrisonVisit(booking) ? 'FRIOLAM: visita a la cárcel agendada' : 'Calendario de visitas FRIOLAM: cita agendada');
 }
 
 function getLawyerPhone(lawyerName) {
@@ -185,7 +185,7 @@ function getLawyerPhone(lawyerName) {
 
 async function notifyReschedule(booking, fromDate, toDate) {
   const message = buildRescheduleMessage(booking, fromDate, toDate);
-  return notifyBookingChannels(booking, message, 'Reagendamiento de cita TACAM');
+  return notifyBookingChannels(booking, message, 'Reagendamiento de cita FRIOLAM');
 }
 
 async function notifyUpcomingAppointments() {
@@ -201,7 +201,7 @@ async function notifyUpcomingAppointments() {
     if (diffMinutes < 0) continue;
 
     if (diffMinutes <= 1440 && !booking.reminder24hSentAt) {
-      const sent24h = await notifyBookingChannels(booking, build24hReminderMessage(booking), 'Recordatorio TACAM: cita en 24 horas');
+      const sent24h = await notifyBookingChannels(booking, build24hReminderMessage(booking), 'Recordatorio FRIOLAM: cita en 24 horas');
       if (sent24h) {
         booking.reminder24hSentAt = now.toISOString();
         hasUpdates = true;
@@ -209,7 +209,7 @@ async function notifyUpcomingAppointments() {
     }
 
     if (diffMinutes <= 60 && !booking.reminder1hSentAt) {
-      const sent1h = await notifyBookingChannels(booking, buildReminderMessage(booking, diffMinutes), 'Recordatorio TACAM: vas a tener una cita');
+      const sent1h = await notifyBookingChannels(booking, buildReminderMessage(booking, diffMinutes), 'Recordatorio FRIOLAM: vas a tener una cita');
       if (sent1h) {
         booking.reminder1hSentAt = now.toISOString();
         hasUpdates = true;
@@ -253,14 +253,14 @@ function buildStatusChangeMessage(booking, status) {
   const matter = normalizeMatterLabel(booking.matter) || 'General';
 
   if (status === 'confirmada') {
-    return `TACAM: tu reserva fue confirmada. Fecha/Hora: ${appointment}. Materia: ${matter}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+    return `FRIOLAM: tu reserva fue confirmada. Fecha/Hora: ${appointment}. Materia: ${matter}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
   }
 
   if (status === 'cancelada') {
-    return `TACAM: tu reserva fue cancelada. Fecha/Hora: ${appointment}. Materia: ${matter}. Si necesitas reprogramar, contáctanos.`;
+    return `FRIOLAM: tu reserva fue cancelada. Fecha/Hora: ${appointment}. Materia: ${matter}. Si necesitas reprogramar, contáctanos.`;
   }
 
-  return `TACAM: el estado de tu reserva cambió a ${statusLabel(status)}. Fecha/Hora: ${appointment}. Materia: ${matter}.`;
+  return `FRIOLAM: el estado de tu reserva cambió a ${statusLabel(status)}. Fecha/Hora: ${appointment}. Materia: ${matter}.`;
 }
 
 async function updateBookingStatusWithNotification(bookingId, status) {
@@ -273,10 +273,10 @@ async function updateBookingStatusWithNotification(bookingId, status) {
   renderAll();
 
   const subject = status === 'confirmada'
-    ? 'TACAM: reserva confirmada'
+    ? 'FRIOLAM: reserva confirmada'
     : status === 'cancelada'
-      ? 'TACAM: reserva cancelada'
-      : `TACAM: estado actualizado (${statusLabel(status)})`;
+      ? 'FRIOLAM: reserva cancelada'
+      : `FRIOLAM: estado actualizado (${statusLabel(status)})`;
 
   await notifyBookingChannels(booking, buildStatusChangeMessage(booking, status), subject);
 }
@@ -786,7 +786,7 @@ function renderAgenda() {
 
 
 function buildPrisonCheckInMessage(booking) {
-  return `TACAM: check-in registrado para la visita a la cárcel de ${booking.customer || 'Cliente'}. Fecha/Hora: ${booking.date || '-'} ${booking.time || ''}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+  return `FRIOLAM: check-in registrado para la visita a la cárcel de ${booking.customer || 'Cliente'}. Fecha/Hora: ${booking.date || '-'} ${booking.time || ''}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
 }
 
 function renderPrisonCalendar() {
@@ -858,7 +858,7 @@ function renderPrisonVisitsList() {
 
       const updatedBooking = getBookings().find(item => item.id === bookingId);
       if (updatedBooking) {
-        await notifyBookingChannels(updatedBooking, buildPrisonCheckInMessage(updatedBooking), 'TACAM: check-in visita a la cárcel');
+        await notifyBookingChannels(updatedBooking, buildPrisonCheckInMessage(updatedBooking), 'FRIOLAM: check-in visita a la cárcel');
       }
     };
   });
@@ -866,7 +866,7 @@ function renderPrisonVisitsList() {
   prisonVisitsBody.querySelectorAll('[data-prison-notify]').forEach(btn => {
     btn.onclick = async () => {
       const booking = getBookings().find(item => item.id === btn.dataset.prisonNotify);
-      if (booking) await notifyBookingChannels(booking, buildVisitScheduledMessage(booking), 'TACAM: recordatorio de visita a la cárcel');
+      if (booking) await notifyBookingChannels(booking, buildVisitScheduledMessage(booking), 'FRIOLAM: recordatorio de visita a la cárcel');
     };
   });
 }
@@ -1083,7 +1083,7 @@ sharedOnlyInput.addEventListener('change', renderLawyerCalendar);
 
 downloadGeneralReportBtn.addEventListener('click', () => {
   const stats = getGeneralStatusStats();
-  downloadCsv('reporte-general-tacam.csv', [
+  downloadCsv('reporte-general-friolam.csv', [
     ['Estado', 'Cantidad'],
     ['Nueva', stats.nueva],
     ['Confirmada', stats.confirmada],
@@ -1097,7 +1097,7 @@ downloadLawyerReportBtn.addEventListener('click', () => {
   getLawyerAttentionStats().forEach(item => {
     rows.push([item.lawyer, item.total, item.atendida]);
   });
-  downloadCsv('reporte-abogadas-tacam.csv', rows);
+  downloadCsv('reporte-abogadas-friolam.csv', rows);
 });
 
 downloadBookingsReportBtn.addEventListener('click', () => {
@@ -1121,7 +1121,7 @@ downloadBookingsReportBtn.addEventListener('click', () => {
       booking.createdAt
     ]);
   });
-  downloadCsv('reporte-detalle-citas-tacam.csv', rows);
+  downloadCsv('reporte-detalle-citas-friolam.csv', rows);
 });
 
 moduleTabs.forEach(tab => {

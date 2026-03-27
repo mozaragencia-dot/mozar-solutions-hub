@@ -10,8 +10,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $apiKey = getenv('BREVO_API_KEY') ?: '';
-$senderEmail = getenv('BREVO_SENDER_EMAIL') ?: 'tacam@agenciayousay.cl';
-$senderName = getenv('BREVO_SENDER_NAME') ?: 'tacam';
+$senderEmail = getenv('BREVO_SENDER_EMAIL') ?: 'friolam@agenciayousay.cl';
+$senderName = getenv('BREVO_SENDER_NAME') ?: 'friolam';
 $replyToEmail = getenv('BREVO_REPLY_TO_EMAIL') ?: '';
 $replyToName = getenv('BREVO_REPLY_TO_NAME') ?: $senderName;
 
