@@ -10,6 +10,7 @@ const clientForm = document.getElementById('client-form');
 const clientsBody = document.getElementById('clients-body');
 const clientSearchInput = document.getElementById('client-search');
 const clientSearchResults = document.getElementById('client-search-results');
+const clientSelectedLabel = document.getElementById('client-selected-label');
 const clientEditForm = document.getElementById('client-edit-form');
 const clientEditSelect = document.getElementById('client-edit-select');
 const bookingForm = document.getElementById('booking-form');
@@ -42,7 +43,7 @@ const restoreBackupJsonBtn = document.getElementById('restore-backup-json');
 const restoreBackupInput = document.getElementById('restore-backup-input');
 const profileForm = document.getElementById('profile-form');
 const profileList = document.getElementById('profile-list');
-const clientSelect = bookingForm.elements.clientId;
+const clientSelect = document.getElementById('client-id-selected');
 const hiredLawyerInput = bookingForm.elements.hiredLawyer;
 const clientRutInput = clientForm.elements.rut;
 const clientPhoneInput = clientForm.elements.phone;
@@ -423,26 +424,11 @@ function renderClientOptions() {
     })
     .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'es'));
 
-  const current = clientSelect.value;
-  clientSelect.replaceChildren();
-
-  const first = document.createElement('option');
-  first.value = '';
-  first.textContent = clients.length ? 'Seleccione un cliente' : 'No hay clientes guardados';
-  clientSelect.appendChild(first);
-
-  clients.forEach(client => {
-    const option = document.createElement('option');
-    option.value = client.id;
-    option.textContent = `${client.name} · ${client.rut} · ${client.phone}`;
-    clientSelect.appendChild(option);
-  });
-
-  if (clients.some(client => client.id === current)) {
-    clientSelect.value = current;
-  }
-
   renderClientSearchResults(clients, query);
+  const selectedClient = getClients().find(client => client.id === clientSelect.value);
+  clientSelectedLabel.textContent = selectedClient
+    ? `Cliente seleccionado: ${selectedClient.name} · ${selectedClient.rut}`
+    : 'Cliente seleccionado: ninguno';
 
   const selectedPrisonClient = prisonClientSelect.value;
   prisonClientSelect.replaceChildren();
@@ -482,6 +468,7 @@ function renderClientSearchResults(clients, query) {
     item.addEventListener('click', () => {
       clientSelect.value = client.id;
       clientSearchInput.value = `${client.name} (${client.rut})`;
+      clientSelectedLabel.textContent = `Cliente seleccionado: ${client.name} · ${client.rut}`;
       clientSearchResults.replaceChildren();
     });
     clientSearchResults.appendChild(item);
@@ -1636,11 +1623,9 @@ bookingForm.addEventListener('submit', async event => {
   const selectedClientId = String(data.get('clientId') || '').trim();
   const selectedClient = getClients().find(client => client.id === selectedClientId);
   if (!selectedClient) {
-    clientSelect.setCustomValidity('Debes seleccionar un cliente guardado');
-    clientSelect.reportValidity();
+    showToast('Debes seleccionar un cliente guardado.');
     return;
   }
-  clientSelect.setCustomValidity('');
 
   const hiredLawyer = Boolean(data.get('hiredLawyer'));
   const assignedTo = normalizeAssignedToValue(data.get('assignedTo'));
@@ -1674,6 +1659,7 @@ bookingForm.addEventListener('submit', async event => {
   bookingForm.reset();
   clientSearchInput.value = '';
   clientSearchResults.replaceChildren();
+  clientSelectedLabel.textContent = 'Cliente seleccionado: ninguno';
   hiredLawyerInput.checked = true;
   renderAll();
   showToast('Reserva guardada correctamente.');

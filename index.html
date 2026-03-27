@@ -76,11 +76,8 @@
             <input id="client-search" placeholder="Buscar por nombre, RUT o teléfono..." />
           </label>
           <div id="client-search-results" class="search-results full" aria-live="polite"></div>
-          <label class="full">Cliente guardado
-            <select name="clientId" required>
-              <option value="">Seleccione un cliente</option>
-            </select>
-          </label>
+          <p id="client-selected-label" class="muted full">Cliente seleccionado: ninguno</p>
+          <input id="client-id-selected" name="clientId" type="hidden" required />
           <label>Materia
             <select name="matter" required>
               <option value="">Seleccione materia</option>

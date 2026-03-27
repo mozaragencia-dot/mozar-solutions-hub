@@ -43,8 +43,8 @@ button{background:var(--wine);color:#fff;border-color:var(--wine-dark);cursor:po
 .checkbox-inline{flex-direction:row;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#5a313d}
 .consent-box{padding:10px 12px;border:1px solid #eadce2;border-radius:10px;background:#fff8fb}
 .search-results{display:grid;gap:6px;margin-top:-4px}
-.search-result-item{padding:8px 10px;border:1px solid #eadce2;border-radius:8px;background:#fff8fb;cursor:pointer;font-size:13px}
-.search-result-item:hover{background:#f7e6ec}
+.search-result-item{padding:8px 10px;border:1px solid #7a1230;border-radius:8px;background:#8f203a;color:#fff;cursor:pointer;font-size:13px;text-align:left}
+.search-result-item:hover{background:#6f1329}
 .section-heading{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:10px}
 .section-heading h3{margin:0 0 4px}
 button:disabled{cursor:not-allowed;opacity:.7}
