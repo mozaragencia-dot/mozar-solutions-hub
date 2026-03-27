@@ -1171,7 +1171,7 @@ function renderAgenda() {
 
 
 function buildPrisonCheckInMessage(booking) {
-  return `TACAM: check-in registrado para la visita a la cárcel de ${booking.customer || 'Cliente'}. Fecha/Hora: ${booking.date || '-'} ${booking.time || ''}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
+  return `TACAM: check-in asistente registrado para la visita a la cárcel de ${booking.customer || 'Cliente'}. Fecha/Hora: ${booking.date || '-'} ${booking.time || ''}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
 }
 
 function renderPrisonCalendar() {
@@ -1248,7 +1248,7 @@ function renderPrisonVisitsList() {
     const checkInBtn = document.createElement('button');
     checkInBtn.className = 'switch-btn primary';
     checkInBtn.dataset.prisonCheckin = booking.id;
-    checkInBtn.textContent = booking.checkedInAt ? `Check-in ${fmtDate(booking.checkedInAt)}` : 'Registrar check-in';
+    checkInBtn.textContent = booking.checkedInAt ? `Check-in asistente ${fmtDate(booking.checkedInAt)}` : 'Registrar check-in asistente';
     checkInBtn.disabled = Boolean(booking.checkedInAt);
     checkInCell.appendChild(checkInBtn);
     row.appendChild(checkInCell);
@@ -1274,7 +1274,7 @@ function renderPrisonVisitsList() {
 
       const updatedBooking = getBookings().find(item => item.id === bookingId);
       if (updatedBooking) {
-        await notifyBookingChannels(updatedBooking, buildPrisonCheckInMessage(updatedBooking), 'TACAM: check-in visita a la cárcel');
+        await notifyBookingChannels(updatedBooking, buildPrisonCheckInMessage(updatedBooking), 'TACAM: check-in asistente visita a la cárcel');
       }
     };
   });
