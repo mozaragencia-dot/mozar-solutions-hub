@@ -24,6 +24,7 @@ const sharedOnlyInput = document.getElementById('shared-only');
 const generalStatsChart = document.getElementById('general-stats-chart');
 const lawyerStatsChart = document.getElementById('lawyer-stats-chart');
 const prisonStatsChart = document.getElementById('prison-stats-chart');
+const lawyerRankingChart = document.getElementById('lawyer-ranking-chart');
 const downloadGeneralReportBtn = document.getElementById('download-general-report');
 const downloadLawyerReportBtn = document.getElementById('download-lawyer-report');
 const downloadBookingsReportBtn = document.getElementById('download-bookings-report');
@@ -579,6 +580,21 @@ function getPrisonVisitStats() {
     .sort((a, b) => a.lawyer.localeCompare(b.lawyer, 'es'));
 }
 
+function getLawyerRankingStats() {
+  return getLawyerAttentionStats()
+    .map(item => ({
+      lawyer: item.lawyer,
+      total: item.total,
+      attended: item.atendida,
+      conversion: item.total ? Math.round((item.atendida / item.total) * 100) : 0
+    }))
+    .sort((a, b) => {
+      if (b.attended !== a.attended) return b.attended - a.attended;
+      if (b.total !== a.total) return b.total - a.total;
+      return a.lawyer.localeCompare(b.lawyer, 'es');
+    });
+}
+
 function drawBarChart(canvas, labels, values, colors, title) {
   if (!(canvas instanceof HTMLCanvasElement)) return;
 
@@ -630,6 +646,61 @@ function drawBarChart(canvas, labels, values, colors, title) {
   });
 }
 
+function drawRankingChart(canvas, ranking) {
+  if (!(canvas instanceof HTMLCanvasElement)) return;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  const width = canvas.width;
+  const height = canvas.height;
+  ctx.clearRect(0, 0, width, height);
+
+  const topItems = ranking.slice(0, 6);
+  const labels = topItems.map(item => item.lawyer);
+  const values = topItems.map(item => item.attended);
+  const maxValue = Math.max(1, ...values);
+
+  const padLeft = 180;
+  const padRight = 24;
+  const padTop = 40;
+  const padBottom = 24;
+  const chartWidth = width - padLeft - padRight;
+  const rowHeight = 40;
+
+  ctx.fillStyle = '#5a313d';
+  ctx.font = 'bold 14px Arial';
+  ctx.fillText('Ranking (atendidas) por abogada', padLeft, 22);
+
+  if (!topItems.length) {
+    ctx.font = '13px Arial';
+    ctx.fillText('Sin datos para construir ranking.', padLeft, padTop + 30);
+    return;
+  }
+
+  topItems.forEach((item, index) => {
+    const y = padTop + index * rowHeight;
+    const barHeight = 22;
+    const barWidth = (item.attended / maxValue) * chartWidth;
+    const color = getLawyerColor(item.lawyer);
+    const rank = index + 1;
+    const shortName = item.lawyer.length > 22 ? `${item.lawyer.slice(0, 22)}…` : item.lawyer;
+
+    ctx.fillStyle = '#5a313d';
+    ctx.font = '12px Arial';
+    ctx.fillText(`${rank}. ${shortName}`, 14, y + 16);
+
+    ctx.fillStyle = '#f3e4e9';
+    ctx.fillRect(padLeft, y, chartWidth, barHeight);
+
+    ctx.fillStyle = color;
+    ctx.fillRect(padLeft, y, Math.max(4, barWidth), barHeight);
+
+    ctx.fillStyle = '#2f1a21';
+    ctx.fillText(`${item.attended} atendidas · ${item.conversion}% conversión`, padLeft + 8, y + 16);
+  });
+}
+
 function downloadCsv(filename, rows) {
   const csv = rows.map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -660,6 +731,9 @@ function renderReports() {
   const prisonValues = prisonStats.map(item => item.total);
   const prisonColors = prisonLabels.map(getLawyerColor);
   drawBarChart(prisonStatsChart, prisonLabels, prisonValues, prisonColors, 'Visitas a la cárcel por abogada');
+
+  const ranking = getLawyerRankingStats();
+  drawRankingChart(lawyerRankingChart, ranking);
 }
 
 function renderBookings() {
