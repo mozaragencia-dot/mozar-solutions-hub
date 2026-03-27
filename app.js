@@ -1100,7 +1100,23 @@ function renderPrisonVisitsList() {
 
   visits.forEach(booking => {
     const row = document.createElement('tr');
-    appendCell(row, booking.assignedTo || 'Sin abogada');
+    const lawyerCell = document.createElement('td');
+    const lawyerSelect = document.createElement('select');
+    lawyerSelect.dataset.prisonLawyer = booking.id;
+    const lawyerNames = getLawyerNames();
+    const emptyOption = document.createElement('option');
+    emptyOption.value = '';
+    emptyOption.textContent = 'Seleccione abogada';
+    lawyerSelect.appendChild(emptyOption);
+    lawyerNames.forEach(name => {
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      lawyerSelect.appendChild(option);
+    });
+    lawyerSelect.value = booking.assignedTo || '';
+    lawyerCell.appendChild(lawyerSelect);
+    row.appendChild(lawyerCell);
     appendCell(row, booking.customer || '');
     appendCell(row, booking.date || '-');
     appendCell(row, booking.time || '--:--');
@@ -1174,6 +1190,15 @@ function renderPrisonVisitsList() {
       booking.status = 'nueva';
       booking.hiredLawyer = false;
       booking.assignedTo = '';
+    });
+  });
+
+  prisonVisitsBody.querySelectorAll('[data-prison-lawyer]').forEach(select => {
+    select.onchange = () => updateBooking(select.dataset.prisonLawyer, booking => {
+      booking.assignedTo = String(select.value || '').trim();
+      if (booking.hiredLawyer && !booking.assignedTo) {
+        booking.hiredLawyer = false;
+      }
     });
   });
 
