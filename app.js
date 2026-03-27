@@ -908,7 +908,6 @@ function renderAgenda() {
   });
 }
 
-
 function buildPrisonCheckInMessage(booking) {
   return `TACAM: check-in registrado para la visita a la cárcel de ${booking.customer || 'Cliente'}. Fecha/Hora: ${booking.date || '-'} ${booking.time || ''}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
 }
@@ -1013,6 +1012,9 @@ function renderLawyers() {
     const photo = document.createElement('img');
     photo.src = lawyer.photo;
     photo.alt = `Foto de ${lawyer.name || ''}`;
+    if ((lawyer.photo || '').includes('logo-color.svg')) {
+      photo.classList.add('lawyer-logo-fallback');
+    }
     card.appendChild(photo);
 
     const content = document.createElement('div');
@@ -1024,17 +1026,32 @@ function renderLawyers() {
     specialty.textContent = lawyer.specialty || 'Sin especialidad';
     content.appendChild(specialty);
 
+    const infoList = document.createElement('div');
+    infoList.className = 'lawyer-meta';
+
     const rut = document.createElement('small');
     rut.textContent = lawyer.rut ? `Cédula: ${lawyer.rut}` : 'Cédula no registrada';
-    content.appendChild(rut);
+    infoList.appendChild(rut);
 
     const email = document.createElement('small');
-    email.textContent = lawyer.email || 'Sin correo';
-    content.appendChild(email);
+    email.textContent = lawyer.email ? `Correo: ${lawyer.email}` : 'Correo no registrado';
+    infoList.appendChild(email);
 
-    const phone = document.createElement('small');
-    phone.textContent = lawyer.phone || 'Sin WhatsApp';
-    content.appendChild(phone);
+    const whatsappBtn = document.createElement('button');
+    whatsappBtn.type = 'button';
+    whatsappBtn.className = 'lawyer-whatsapp-btn';
+    const phone = (lawyer.phone || '').trim();
+    whatsappBtn.textContent = phone ? `WhatsApp: ${phone}` : 'Sin WhatsApp';
+    whatsappBtn.disabled = !phone;
+    if (phone) {
+      whatsappBtn.onclick = () => {
+        const target = cleanPhone(phone);
+        if (target) window.open(`https://wa.me/${target}`, '_blank', 'noopener');
+      };
+    }
+    infoList.appendChild(whatsappBtn);
+
+    content.appendChild(infoList);
 
     const stats = getLawyerStats(lawyer.name || '');
     const statsList = document.createElement('ul');
