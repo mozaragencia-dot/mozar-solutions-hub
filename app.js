@@ -1260,7 +1260,7 @@ function renderPrisonVisitsList() {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
     cell.colSpan = 8;
-    cell.textContent = 'Sin visitas a la cárcel registradas en este mes.';
+    cell.textContent = 'Sin clientes visitados en este mes.';
     row.appendChild(cell);
     prisonVisitsBody.appendChild(row);
     return;
