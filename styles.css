@@ -1,12 +1,12 @@
 :root { --wine:#b21f3a; --wine-dark:#86142a; --bg:#fbf0f2; --surface:#fff; --line:#e6d1d6; --accent-red:#d63a55; }
 *{box-sizing:border-box} [hidden]{display:none !important} body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:#2f1a21}
 .topbar{background:linear-gradient(135deg,#c92d4d,var(--wine) 58%,var(--wine-dark));color:#fff;padding:14px;display:flex;gap:12px;align-items:center}
-.topbar img{width:170px}.topbar h1{margin:0}.topbar p{margin:4px 0 0}
+.topbar img{width:170px}.topbar img.logo-bg{box-sizing:content-box}.topbar h1{margin:0}.topbar p{margin:4px 0 0}
 .brand-title{display:flex;align-items:center;gap:10px}
-.brand-title img{height:32px;width:auto;display:block}
+.brand-title img{height:32px;width:auto;display:block}.brand-title img.logo-bg{box-sizing:content-box}
 .brand-title.white img{height:36px}
 .brand-title span{display:block}
-.logo-bg{background:var(--wine);border-radius:10px;padding:6px}
+.logo-bg{background:var(--wine);border-radius:12px;padding:8px;display:block;object-fit:contain;max-width:100%;height:auto}
 .version-badge{display:inline-block;margin-top:8px;padding:4px 10px;border-radius:999px;background:#fff1f4;color:var(--wine-dark);font-size:12px;font-weight:700;border:1px solid rgba(255,255,255,.28)}
 .header-clock{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px;text-align:right}
 .header-clock small{font-size:11px;opacity:.9}
