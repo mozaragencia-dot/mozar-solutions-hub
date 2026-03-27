@@ -4,6 +4,7 @@ const loginForm = document.getElementById('login-form');
 const loginError = document.getElementById('login-error');
 
 const bookingsBody = document.getElementById('bookings-body');
+const hiredBody = document.getElementById('hired-body');
 const agendaBody = document.getElementById('agenda-body');
 const clientForm = document.getElementById('client-form');
 const clientsBody = document.getElementById('clients-body');
@@ -924,8 +925,11 @@ function renderReports() {
 }
 
 function renderBookings() {
-  const bookings = getBookings().filter(booking => !booking.hiredLawyer);
+  const allBookings = getBookings();
+  const bookings = allBookings.filter(booking => !booking.hiredLawyer);
+  const hiredBookings = allBookings.filter(booking => booking.hiredLawyer);
   bookingsBody.replaceChildren();
+  hiredBody.replaceChildren();
 
   if (!bookings.length) {
     const row = document.createElement('tr');
@@ -934,18 +938,89 @@ function renderBookings() {
     cell.textContent = 'Sin leads registrados';
     row.appendChild(cell);
     bookingsBody.appendChild(row);
-    return;
+  } else {
+    bookings.forEach(booking => {
+      const row = document.createElement('tr');
+
+      appendCell(row, fmtDate(booking.createdAt));
+      appendCell(row, booking.customer || '');
+      appendCell(row, normalizeMatterLabel(booking.matter) || 'General');
+      appendCell(row, booking.phone || '');
+      appendCell(row, formatAppointment(booking));
+
+      appendCell(row, booking.assignedTo || 'Sin abogada');
+
+      const statusCell = document.createElement('td');
+      const statusBadge = document.createElement('span');
+      statusBadge.className = `badge ${booking.status}`;
+      statusBadge.textContent = statusLabel(booking.status);
+      statusCell.appendChild(statusBadge);
+      row.appendChild(statusCell);
+
+      const actionsCell = document.createElement('td');
+
+      const confirmBtn = document.createElement('button');
+      confirmBtn.className = `switch-btn ${booking.status === 'confirmada' ? 'primary' : ''}`.trim();
+      confirmBtn.dataset.confirmBtn = booking.id;
+      confirmBtn.textContent = 'Confirmar';
+      actionsCell.appendChild(confirmBtn);
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = `switch-btn ${booking.status === 'cancelada' ? 'primary' : ''}`.trim();
+      cancelBtn.dataset.cancelBtn = booking.id;
+      cancelBtn.textContent = 'Cancelar';
+      actionsCell.appendChild(cancelBtn);
+
+      const convertSelect = document.createElement('select');
+      convertSelect.dataset.convertLawyer = booking.id;
+      const first = document.createElement('option');
+      first.value = '';
+      first.textContent = 'Asignar abogada';
+      convertSelect.appendChild(first);
+      getLawyerNames().forEach(name => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        convertSelect.appendChild(option);
+      });
+      actionsCell.appendChild(convertSelect);
+
+      const convertBtn = document.createElement('button');
+      convertBtn.className = 'switch-btn primary';
+      convertBtn.dataset.convertBtn = booking.id;
+      convertBtn.textContent = 'Contrató después';
+      actionsCell.appendChild(convertBtn);
+
+      row.appendChild(actionsCell);
+
+      const notifyCell = document.createElement('td');
+      const notifyBtn = document.createElement('button');
+      notifyBtn.className = 'switch-btn';
+      notifyBtn.dataset.notifyBtn = booking.id;
+      notifyBtn.textContent = 'WhatsApp';
+      notifyCell.appendChild(notifyBtn);
+      row.appendChild(notifyCell);
+
+      bookingsBody.appendChild(row);
+    });
   }
 
-  bookings.forEach(booking => {
+  if (!hiredBookings.length) {
     const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 8;
+    cell.textContent = 'Sin clientes contratados para remarketing';
+    row.appendChild(cell);
+    hiredBody.appendChild(row);
+  } else {
+    hiredBookings.forEach(booking => {
+      const row = document.createElement('tr');
 
     appendCell(row, fmtDate(booking.createdAt));
     appendCell(row, booking.customer || '');
     appendCell(row, normalizeMatterLabel(booking.matter) || 'General');
     appendCell(row, booking.phone || '');
     appendCell(row, formatAppointment(booking));
-
     appendCell(row, booking.assignedTo || 'Sin abogada');
 
     const statusCell = document.createElement('td');
@@ -955,32 +1030,23 @@ function renderBookings() {
     statusCell.appendChild(statusBadge);
     row.appendChild(statusCell);
 
-    const actionsCell = document.createElement('td');
+    const remarketingCell = document.createElement('td');
+    const waBtn = document.createElement('button');
+    waBtn.className = 'switch-btn primary';
+    waBtn.dataset.remarketWhatsapp = booking.id;
+    waBtn.textContent = 'Remarketing WhatsApp';
+    remarketingCell.appendChild(waBtn);
 
-    const confirmBtn = document.createElement('button');
-    confirmBtn.className = `switch-btn ${booking.status === 'confirmada' ? 'primary' : ''}`.trim();
-    confirmBtn.dataset.confirmBtn = booking.id;
-    confirmBtn.textContent = 'Confirmar';
-    actionsCell.appendChild(confirmBtn);
+    const emailBtn = document.createElement('button');
+    emailBtn.className = 'switch-btn';
+    emailBtn.dataset.remarketEmail = booking.id;
+    emailBtn.textContent = 'Remarketing Email';
+    remarketingCell.appendChild(emailBtn);
+    row.appendChild(remarketingCell);
 
-    const cancelBtn = document.createElement('button');
-    cancelBtn.className = `switch-btn ${booking.status === 'cancelada' ? 'primary' : ''}`.trim();
-    cancelBtn.dataset.cancelBtn = booking.id;
-    cancelBtn.textContent = 'Cancelar';
-    actionsCell.appendChild(cancelBtn);
-
-    row.appendChild(actionsCell);
-
-    const notifyCell = document.createElement('td');
-    const notifyBtn = document.createElement('button');
-    notifyBtn.className = 'switch-btn';
-    notifyBtn.dataset.notifyBtn = booking.id;
-    notifyBtn.textContent = 'WhatsApp';
-    notifyCell.appendChild(notifyBtn);
-    row.appendChild(notifyCell);
-
-    bookingsBody.appendChild(row);
-  });
+      hiredBody.appendChild(row);
+    });
+  }
 
   bookingsBody.querySelectorAll('[data-confirm-btn]').forEach(btn => {
     btn.onclick = async () => {
@@ -998,6 +1064,37 @@ function renderBookings() {
     btn.onclick = async () => {
       const booking = getBookings().find(item => item.id === btn.dataset.notifyBtn);
       if (booking) await notifyBooking(booking);
+    };
+  });
+
+  bookingsBody.querySelectorAll('[data-convert-btn]').forEach(btn => {
+    btn.onclick = () => {
+      const lawyerSelect = bookingsBody.querySelector(`[data-convert-lawyer="${btn.dataset.convertBtn}"]`);
+      const lawyer = String(lawyerSelect?.value || '').trim();
+      if (!lawyer) return;
+      updateBooking(btn.dataset.convertBtn, booking => {
+        booking.hiredLawyer = true;
+        booking.assignedTo = lawyer;
+        booking.status = 'confirmada';
+      });
+    };
+  });
+
+  hiredBody.querySelectorAll('[data-remarket-whatsapp]').forEach(btn => {
+    btn.onclick = async () => {
+      const booking = getBookings().find(item => item.id === btn.dataset.remarketWhatsapp);
+      if (!booking) return;
+      const msg = `TACAM: Hola ${booking.customer || 'cliente'}, tenemos nuevas opciones legales para tu caso. ¿Te gustaría una nueva reunión?`;
+      await notifyBookingChannels(booking, msg, 'TACAM: campaña de seguimiento');
+    };
+  });
+
+  hiredBody.querySelectorAll('[data-remarket-email]').forEach(btn => {
+    btn.onclick = async () => {
+      const booking = getBookings().find(item => item.id === btn.dataset.remarketEmail);
+      if (!booking) return;
+      const msg = `TACAM: seguimiento de tu caso. Tenemos novedades y opciones de apoyo legal para ${normalizeMatterLabel(booking.matter) || 'tu consulta'}.`;
+      await sendEmailViaBrevo(booking, 'TACAM: seguimiento y remarketing', msg);
     };
   });
 }
