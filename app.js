@@ -595,6 +595,13 @@ function getLawyerRankingStats() {
     });
 }
 
+function getAttentionPerformanceColor(attended) {
+  const value = Number(attended) || 0;
+  if (value <= 2) return '#d63a55';
+  if (value <= 3) return '#e9c46a';
+  return '#2a9d8f';
+}
+
 function drawBarChart(canvas, labels, values, colors, title) {
   if (!(canvas instanceof HTMLCanvasElement)) return;
 
@@ -682,7 +689,7 @@ function drawRankingChart(canvas, ranking) {
     const y = padTop + index * rowHeight;
     const barHeight = 22;
     const barWidth = (item.attended / maxValue) * chartWidth;
-    const color = getLawyerColor(item.lawyer);
+    const color = getAttentionPerformanceColor(item.attended);
     const rank = index + 1;
     const shortName = item.lawyer.length > 22 ? `${item.lawyer.slice(0, 22)}…` : item.lawyer;
 
@@ -723,7 +730,7 @@ function renderReports() {
   const lawyerStats = getLawyerAttentionStats();
   const lawyerLabels = lawyerStats.map(item => item.lawyer);
   const lawyerValues = lawyerStats.map(item => item.atendida);
-  const lawyerColors = lawyerLabels.map(getLawyerColor);
+  const lawyerColors = lawyerStats.map(item => getAttentionPerformanceColor(item.atendida));
   drawBarChart(lawyerStatsChart, lawyerLabels, lawyerValues, lawyerColors, 'Atenciones (estado atendida) por abogada');
 
   const prisonStats = getPrisonVisitStats();
