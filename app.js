@@ -56,6 +56,8 @@ const chileClock = document.getElementById('chile-clock');
 const assignedToSelect = bookingForm.elements.assignedTo;
 const moduleTabs = document.querySelectorAll('[data-module-tab]');
 const modulePanels = document.querySelectorAll('[data-module-panel]');
+const toast = document.getElementById('toast');
+let toastTimer = null;
 
 function switchModule(moduleName) {
   moduleTabs.forEach(tab => {
@@ -65,6 +67,16 @@ function switchModule(moduleName) {
   modulePanels.forEach(panel => {
     panel.classList.toggle('active', panel.dataset.modulePanel === moduleName);
   });
+}
+
+function showToast(message) {
+  if (!toast) return;
+  toast.textContent = String(message || 'Acción realizada');
+  toast.hidden = false;
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.hidden = true;
+  }, 2400);
 }
 
 function showApp() {
@@ -272,6 +284,7 @@ function updateBooking(bookingId, updater) {
   updater(booking);
   saveBookings(bookings);
   renderAll();
+  showToast('Cambios guardados correctamente.');
 }
 
 
@@ -298,6 +311,7 @@ async function updateBookingStatusWithNotification(bookingId, status) {
   booking.status = status;
   saveBookings(bookings);
   renderAll();
+  showToast(`Estado actualizado a ${statusLabel(status)}.`);
 
   const subject = status === 'confirmada'
     ? 'TACAM: reserva confirmada'
@@ -1554,6 +1568,7 @@ clientForm.addEventListener('submit', event => {
   clientForm.reset();
   clientPhoneInput.value = '+569';
   renderAll();
+  showToast('Cliente guardado correctamente.');
 });
 
 clientEditForm.addEventListener('submit', event => {
@@ -1612,6 +1627,7 @@ clientEditForm.addEventListener('submit', event => {
   });
   saveBookings(bookings);
   renderAll();
+  showToast('Cliente actualizado correctamente.');
 });
 
 bookingForm.addEventListener('submit', async event => {
@@ -1660,6 +1676,7 @@ bookingForm.addEventListener('submit', async event => {
   clientSearchResults.replaceChildren();
   hiredLawyerInput.checked = true;
   renderAll();
+  showToast('Reserva guardada correctamente.');
 });
 
 prisonBookingForm.addEventListener('submit', async event => {
@@ -1698,6 +1715,7 @@ prisonBookingForm.addEventListener('submit', async event => {
   await notifyVisitScheduled(bookings[0]);
   prisonBookingForm.reset();
   renderAll();
+  showToast('Visita a la cárcel agendada correctamente.');
 });
 
 clientRutInput.addEventListener('input', () => {
@@ -1755,6 +1773,7 @@ downloadGeneralReportBtn.addEventListener('click', () => {
     ['Atendida', stats.atendida],
     ['Cancelada', stats.cancelada]
   ]);
+  showToast('Reporte general descargado.');
 });
 
 downloadLawyerReportBtn.addEventListener('click', () => {
@@ -1763,6 +1782,7 @@ downloadLawyerReportBtn.addEventListener('click', () => {
     rows.push([item.lawyer, item.total, item.atendida]);
   });
   downloadCsv('reporte-abogadas-tacam.csv', rows);
+  showToast('Reporte por abogada descargado.');
 });
 
 downloadBookingsReportBtn.addEventListener('click', () => {
@@ -1787,10 +1807,12 @@ downloadBookingsReportBtn.addEventListener('click', () => {
     ]);
   });
   downloadCsv('reporte-detalle-citas-tacam.csv', rows);
+  showToast('Detalle de leads descargado.');
 });
 
 downloadBackupJsonBtn.addEventListener('click', () => {
   downloadJson(`respaldo-tacam-${new Date().toISOString().slice(0, 10)}.json`, createBackupPayload());
+  showToast('Respaldo JSON descargado.');
 });
 
 restoreBackupJsonBtn.addEventListener('click', () => {
@@ -1805,10 +1827,10 @@ restoreBackupInput.addEventListener('change', async event => {
     const content = await file.text();
     const payload = JSON.parse(content);
     restoreBackupPayload(payload);
-    alert('Respaldo cargado correctamente.');
+    showToast('Respaldo cargado correctamente.');
   } catch (error) {
     console.error('No se pudo restaurar el respaldo', error);
-    alert('No se pudo cargar el respaldo JSON. Verifica el archivo.');
+    showToast('No se pudo cargar el respaldo JSON.');
   } finally {
     restoreBackupInput.value = '';
   }
@@ -1847,6 +1869,7 @@ lawyerForm.addEventListener('submit', async event => {
   saveLawyers(lawyers);
   lawyerForm.reset();
   renderAll();
+  showToast('Perfil de abogada guardado.');
 });
 
 profileForm.addEventListener('submit', event => {
@@ -1884,6 +1907,7 @@ profileForm.addEventListener('submit', event => {
   saveProfiles(profiles);
   profileForm.reset();
   renderProfiles();
+  showToast('Perfil de usuario guardado.');
 });
 
 switchModule('create');

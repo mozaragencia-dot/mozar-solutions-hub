@@ -72,3 +72,4 @@ button:disabled{cursor:not-allowed;opacity:.7}
 .switch-btn{border-radius:999px;padding:6px 10px;font-size:12px;margin:2px;background:#fff;color:var(--wine-dark);border:1px solid #d8c7ce}
 .switch-btn:hover{background:#fff1f4}
 .switch-btn.primary{background:linear-gradient(135deg,var(--accent-red),var(--wine));color:#fff;border-color:var(--wine-dark)}
+.toast{position:fixed;right:14px;bottom:14px;z-index:3000;background:#2a9d8f;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,.2);font-size:13px;max-width:min(92vw,380px)}
