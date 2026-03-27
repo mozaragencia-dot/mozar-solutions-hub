@@ -9,6 +9,7 @@ const bookingForm = document.getElementById('booking-form');
 const lawyerFilter = document.getElementById('lawyer-filter');
 const agendaMonthInput = document.getElementById('agenda-month');
 const agendaCalendar = document.getElementById('agenda-calendar');
+const agendaAttendedOnly = document.getElementById('agenda-attended-only');
 const agendaLegend = document.getElementById('agenda-color-legend');
 const prisonMonthInput = document.getElementById('prison-month');
 const prisonCalendar = document.getElementById('prison-calendar');
@@ -785,8 +786,9 @@ function renderBookings() {
 
 function renderAgenda() {
   const selectedLawyer = lawyerFilter.value.trim();
+  const attendedOnly = Boolean(agendaAttendedOnly?.checked);
   const bookings = getBookings().filter(booking =>
-    booking.status !== 'cancelada' && !isPrisonVisit(booking) && (!selectedLawyer || booking.assignedTo === selectedLawyer)
+    booking.status !== 'cancelada' && !isPrisonVisit(booking) && (!selectedLawyer || booking.assignedTo === selectedLawyer) && (!attendedOnly || booking.status === 'atendida')
   );
 
   agendaBody.replaceChildren();
@@ -794,7 +796,7 @@ function renderAgenda() {
   if (!bookings.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 7;
+    cell.colSpan = 6;
     cell.textContent = 'Sin citas para mostrar';
     row.appendChild(cell);
     agendaBody.appendChild(row);
@@ -812,25 +814,6 @@ function renderAgenda() {
       statusBadge.textContent = statusLabel(booking.status);
       statusCell.appendChild(statusBadge);
       row.appendChild(statusCell);
-
-      const attendanceCell = document.createElement('td');
-      attendanceCell.className = 'table-switch-cell';
-      const assistWrap = document.createElement('label');
-      assistWrap.className = 'switch-toggle';
-      const assistInput = document.createElement('input');
-      assistInput.type = 'checkbox';
-      assistInput.dataset.attendSwitch = booking.id;
-      assistInput.checked = booking.status === 'atendida';
-      const assistSlider = document.createElement('span');
-      assistSlider.className = 'switch-slider';
-      const assistText = document.createElement('span');
-      assistText.className = 'switch-text';
-      assistText.textContent = assistInput.checked ? 'Asistió' : 'No asistió';
-      assistWrap.appendChild(assistInput);
-      assistWrap.appendChild(assistSlider);
-      assistWrap.appendChild(assistText);
-      attendanceCell.appendChild(assistWrap);
-      row.appendChild(attendanceCell);
 
       const confirmationCell = document.createElement('td');
       confirmationCell.className = 'table-switch-cell';
@@ -858,12 +841,6 @@ function renderAgenda() {
       agendaBody.appendChild(row);
     });
   }
-
-  agendaBody.querySelectorAll('[data-attend-switch]').forEach(input => {
-    input.onchange = () => updateBooking(input.dataset.attendSwitch, booking => {
-      booking.status = input.checked ? 'atendida' : 'confirmada';
-    });
-  });
 
   agendaBody.querySelectorAll('[data-confirm-switch]').forEach(input => {
     input.onchange = async () => {
@@ -1184,6 +1161,7 @@ lawyerFilter.addEventListener('change', () => {
   renderAgendaCalendar();
 });
 agendaMonthInput.addEventListener('change', renderAgendaCalendar);
+agendaAttendedOnly?.addEventListener('change', renderAgenda);
 prisonMonthInput.addEventListener('change', () => {
   renderPrisonCalendar();
   renderPrisonVisitsList();

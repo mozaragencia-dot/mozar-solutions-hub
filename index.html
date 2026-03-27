@@ -140,9 +140,17 @@
         <p class="muted">Tip: puedes arrastrar y soltar una cita a otro día para contrato.</p>
         <div id="agenda-calendar" class="calendar"></div>
 
+        <div class="agenda-attention-filter">
+          <label class="switch-toggle">
+            <input id="agenda-attended-only" type="checkbox" />
+            <span class="switch-slider"></span>
+            <span class="switch-text">Atenciones (Asistió)</span>
+          </label>
+        </div>
+
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Persona</th><th>Materia</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Asistencia</th><th>Confirmación</th></tr></thead>
+            <thead><tr><th>Persona</th><th>Materia</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Confirmación</th></tr></thead>
             <tbody id="agenda-body"></tbody>
           </table>
         </div>
