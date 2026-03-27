@@ -17,6 +17,7 @@ const agendaMonthInput = document.getElementById('agenda-month');
 const agendaCalendar = document.getElementById('agenda-calendar');
 const agendaLegend = document.getElementById('agenda-color-legend');
 const prisonMonthInput = document.getElementById('prison-month');
+const prisonLawyerFilter = document.getElementById('prison-lawyer-filter');
 const prisonCalendar = document.getElementById('prison-calendar');
 const prisonCalendarLegend = document.getElementById('prison-calendar-legend');
 const prisonVisitsBody = document.getElementById('prison-visits-body');
@@ -383,6 +384,7 @@ function renderLawyerOptions() {
   const names = getLawyerNames();
   fillSelectWithNames(assignedToSelect, names, 'Seleccione');
   fillSelectWithNames(prisonAssignedToSelect, names, 'Seleccione');
+  fillSelectWithNames(prisonLawyerFilter, names, 'Todas');
   fillSelectWithNames(lawyerFilter, names, 'Todos');
   fillSelectWithNames(lawyerCalendarFilter, names, 'Todas');
 }
@@ -926,7 +928,7 @@ function renderReports() {
 
 function renderBookings() {
   const allBookings = getBookings();
-  const bookings = allBookings.filter(booking => !booking.hiredLawyer);
+  const bookings = allBookings.filter(booking => !booking.hiredLawyer && !isPrisonVisit(booking));
   const hiredBookings = allBookings.filter(booking => booking.hiredLawyer);
   bookingsBody.replaceChildren();
   hiredBody.replaceChildren();
@@ -1176,7 +1178,8 @@ function buildPrisonCheckInMessage(booking) {
 
 function renderPrisonCalendar() {
   const selectedMonth = prisonMonthInput.value;
-  const bookings = getCalendarBookings('', selectedMonth, false, booking => isPrisonVisit(booking));
+  const selectedLawyer = String(prisonLawyerFilter.value || '').trim();
+  const bookings = getCalendarBookings(selectedLawyer, selectedMonth, false, booking => isPrisonVisit(booking));
   const names = [...new Set(bookings.map(booking => booking.assignedTo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
   renderCalendarLegend(prisonCalendarLegend, names);
   renderCalendar(prisonCalendar, bookings, selectedMonth);
@@ -1184,8 +1187,10 @@ function renderPrisonCalendar() {
 
 function renderPrisonVisitsList() {
   const selectedMonth = prisonMonthInput.value;
+  const selectedLawyer = String(prisonLawyerFilter.value || '').trim();
   const visits = getBookings()
     .filter(booking => booking.hiredLawyer && booking.status !== 'cancelada' && isPrisonVisit(booking))
+    .filter(booking => !selectedLawyer || booking.assignedTo === selectedLawyer)
     .filter(booking => !selectedMonth || booking.date.slice(0, 7) === selectedMonth)
     .sort((a, b) => `${a.date || ''} ${a.time || ''}`.localeCompare(`${b.date || ''} ${b.time || ''}`));
 
@@ -1290,9 +1295,8 @@ function renderPrisonVisitsList() {
   prisonVisitsBody.querySelectorAll('[data-prison-attend-no]').forEach(btn => {
     btn.onclick = () => updateBooking(btn.dataset.prisonAttendNo, booking => {
       booking.prisonAttendance = 'no-asistio';
-      booking.status = 'nueva';
-      booking.hiredLawyer = false;
-      booking.assignedTo = '';
+      booking.status = 'confirmada';
+      booking.hiredLawyer = true;
     });
   });
 
@@ -1676,6 +1680,10 @@ lawyerFilter.addEventListener('change', () => {
 });
 agendaMonthInput.addEventListener('change', renderAgendaCalendar);
 prisonMonthInput.addEventListener('change', () => {
+  renderPrisonCalendar();
+  renderPrisonVisitsList();
+});
+prisonLawyerFilter.addEventListener('change', () => {
   renderPrisonCalendar();
   renderPrisonVisitsList();
 });
