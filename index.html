@@ -14,8 +14,8 @@
 <body>
   <section id="login-screen" class="login-screen">
     <div class="login-panel">
-      <img src="assets/logo-color.svg" alt="Logo TACAM" />
-      <h2 class="brand-title"><img src="assets/logo-color.svg" alt="Logo TACAM" /> <span>Ingreso Administrador</span></h2>
+      <img src="assets/logo-color.svg" alt="Logo TACAM" class="logo-bg" />
+      <h2 class="brand-title"><img src="assets/logo-color.svg" alt="Logo TACAM" class="logo-bg" /> <span>Ingreso Administrador</span></h2>
       <p>Acceso restringido al sistema TACAM.</p>
       <form id="login-form" class="grid">
         <label>Usuario <input name="username" required placeholder="admin" /></label>
@@ -28,24 +28,29 @@
 
   <div id="app-shell" hidden>
     <header class="topbar">
-      <img src="assets/logo-color.svg" alt="Logo TACAM" />
+      <img src="assets/logo-color.svg" alt="Logo TACAM" class="logo-bg" />
       <div>
-        <h1 class="brand-title white"><img src="assets/logo-white.svg" alt="Logo TACAM" /> <span>Sistema de Reservas</span></h1>
+        <h1 class="brand-title white"><img src="assets/logo-white.svg" alt="Logo TACAM" class="logo-bg" /> <span>Sistema de Reservas</span></h1>
         <p>Reserva de personas para atención en oficina de abogados</p>
-        <span class="version-badge">Versión 1</span>
+        <span class="version-badge">Versión 2</span>
       </div>
       <div class="header-clock" aria-live="polite">
         <small>Hora local Chile</small>
         <strong id="chile-clock">--:--:--</strong>
+      </div>
+      <div class="session-box">
+        <small id="current-user">Usuario: --</small>
+        <button type="button" id="logout-button" class="ghost-button">Cerrar sesión</button>
       </div>
     </header>
 
     <main>
       <nav class="module-tabs" aria-label="Módulos TACAM">
         <button type="button" class="module-tab active" data-module-tab="create">Ingreso de Cliente</button>
-        <button type="button" class="module-tab" data-module-tab="bookings">No Contrataron / Contratados</button>
-        <button type="button" class="module-tab" data-module-tab="agenda">Agendamiento</button>
         <button type="button" class="module-tab" data-module-tab="prison-visits">Visitas a la Cárcel</button>
+        <button type="button" class="module-tab" data-module-tab="agenda">Agendamiento</button>
+        <button type="button" class="module-tab" data-module-tab="bookings">Prospectos</button>
+        <button type="button" class="module-tab" data-module-tab="clients">Clientes</button>
         <button type="button" class="module-tab" data-module-tab="lawyers">Perfiles de Abogados</button>
         <button type="button" class="module-tab" data-module-tab="reports">Reportes y Gráficos</button>
       </nav>
@@ -93,7 +98,7 @@
             </select>
           </label>
           <label>Abogado asignado
-            <select name="assignedTo" required>
+            <select name="assignedTo">
               <option value="">Seleccione</option>
             </select>
           </label>
@@ -101,16 +106,16 @@
           <label class="full checkbox-inline consent-box">
             <input name="notificationsConsent" type="checkbox" /> La secretaria recibió consentimiento verbal para enviar correo y WhatsApp
           </label>
-          <button type="submit">Guardar reserva</button>
+          <button type="submit" class="save-btn">Guardar reserva</button>
         </form>
       </section>
 
       <section class="card module-panel" data-module-panel="bookings">
-        <h2>Reservas y Confirmación</h2>
+        <h2>Prospectos</h2>
         <p class="muted">WhatsApp de notificación TACAM: <strong>+56987591312</strong></p>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Fecha creación</th><th>Persona</th><th>Materia</th><th>Teléfono</th><th>Cita</th><th>Abogado</th><th>Estado</th><th>Gestión</th><th>Notificar</th></tr></thead>
+            <thead><tr><th>Fecha creación</th><th>Persona</th><th>Materia</th><th>Teléfono</th><th>Cita</th><th>Abogado</th><th>Estado</th><th>Gestión</th></tr></thead>
             <tbody id="bookings-body"></tbody>
           </table>
         </div>
@@ -133,12 +138,12 @@
           </label>
         </div>
         <div id="agenda-color-legend" class="calendar-legend"></div>
-        <p class="muted">Tip: puedes arrastrar y soltar una cita a otro día para reagendar.</p>
+        <p class="muted">Tip: puedes arrastrar y soltar una cita a otro día para contrato.</p>
         <div id="agenda-calendar" class="calendar"></div>
 
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Persona</th><th>Materia</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Persona</th><th>Materia</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Asistencia</th><th>Contrato</th></tr></thead>
             <tbody id="agenda-body"></tbody>
           </table>
         </div>
@@ -162,6 +167,12 @@
             <tbody id="prison-visits-body"></tbody>
           </table>
         </div>
+      </section>
+
+      <section class="card module-panel" data-module-panel="clients">
+        <h2>Clientes</h2>
+        <p class="muted">Listado general de fichas creadas en el sistema.</p>
+        <div id="client-list" class="client-grid"></div>
       </section>
 
       <section class="card module-panel" data-module-panel="lawyers">
@@ -244,11 +255,14 @@
       </section>
 
       <footer class="footer-sign">
-        <img src="assets/logo-color.svg" alt="Logo TACAM" />
+        <img src="assets/logo-color.svg" alt="Logo TACAM" class="logo-bg" />
         <span><strong>TACAM</strong> · Desarrollo por <strong>Agencia Digital</strong></span>
       </footer>
     </main>
   </div>
+
+
+  <div id="save-toast" class="save-toast" role="status" aria-live="polite" hidden>Guardado</div>
 
   <script src="delivery-core.js"></script>
   <script src="app.js"></script>

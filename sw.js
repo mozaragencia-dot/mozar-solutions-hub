@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tacam-reservas-v3';
+const CACHE_NAME = 'tacam-reservas-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -26,5 +26,29 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request)));
+  const request = event.request;
+
+  if (request.method !== 'GET') return;
+
+  const url = new URL(request.url);
+  const isSameOrigin = url.origin === self.location.origin;
+  const isCriticalAsset = request.mode === 'navigate' || ['script', 'style', 'document'].includes(request.destination);
+
+  if (isSameOrigin && isCriticalAsset) {
+    event.respondWith((async () => {
+      try {
+        const networkResponse = await fetch(request);
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(request, networkResponse.clone());
+        return networkResponse;
+      } catch {
+        const cached = await caches.match(request);
+        if (cached) return cached;
+        throw new Error('Network unavailable and cache miss');
+      }
+    })());
+    return;
+  }
+
+  event.respondWith(caches.match(request).then(cached => cached || fetch(request)));
 });
