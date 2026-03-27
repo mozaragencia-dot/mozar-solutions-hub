@@ -28,6 +28,9 @@ const lawyerRankingChart = document.getElementById('lawyer-ranking-chart');
 const downloadGeneralReportBtn = document.getElementById('download-general-report');
 const downloadLawyerReportBtn = document.getElementById('download-lawyer-report');
 const downloadBookingsReportBtn = document.getElementById('download-bookings-report');
+const downloadBackupJsonBtn = document.getElementById('download-backup-json');
+const restoreBackupJsonBtn = document.getElementById('restore-backup-json');
+const restoreBackupInput = document.getElementById('restore-backup-input');
 const profileForm = document.getElementById('profile-form');
 const profileList = document.getElementById('profile-list');
 const rutInput = bookingForm.elements.rut;
@@ -645,11 +648,13 @@ function drawBarChart(canvas, labels, values, colors, title) {
 
     ctx.fillStyle = '#2f1a21';
     ctx.font = '12px Arial';
-    ctx.fillText(String(value), x + barWidth / 2 - 5, y - 6);
+    ctx.textAlign = 'center';
+    ctx.fillText(String(value), x + barWidth / 2, y - 6);
 
     ctx.fillStyle = '#5a313d';
     const label = labels[index].length > 16 ? `${labels[index].slice(0, 16)}…` : labels[index];
-    ctx.fillText(label, x, padTop + chartHeight + 18);
+    ctx.fillText(label, x + barWidth / 2, padTop + chartHeight + 18);
+    ctx.textAlign = 'start';
   });
 }
 
@@ -720,6 +725,39 @@ function downloadCsv(filename, rows) {
   link.remove();
 }
 
+function downloadJson(filename, payload) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  URL.revokeObjectURL(link.href);
+  link.remove();
+}
+
+function createBackupPayload() {
+  return {
+    exportedAt: new Date().toISOString(),
+    version: 1,
+    bookings: getBookings(),
+    lawyers: getLawyers(),
+    profiles: getProfiles()
+  };
+}
+
+function restoreBackupPayload(payload) {
+  if (!payload || typeof payload !== 'object') throw new Error('Formato inválido');
+  if (!Array.isArray(payload.bookings) || !Array.isArray(payload.lawyers) || !Array.isArray(payload.profiles)) {
+    throw new Error('El respaldo no contiene la estructura esperada');
+  }
+
+  saveBookings(payload.bookings);
+  saveLawyers(payload.lawyers);
+  saveProfiles(payload.profiles);
+  renderAll();
+}
+
 function renderReports() {
   const general = getGeneralStatusStats();
   const generalLabels = ['Nueva', 'Confirmada', 'Atendida', 'Cancelada'];
@@ -778,11 +816,13 @@ function renderBookings() {
     const actionsCell = document.createElement('td');
 
     const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'switch-btn primary';
     confirmBtn.dataset.confirmBtn = booking.id;
     confirmBtn.textContent = 'Confirmar';
     actionsCell.appendChild(confirmBtn);
 
     const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'switch-btn';
     cancelBtn.dataset.cancelBtn = booking.id;
     cancelBtn.textContent = 'Cancelar';
     actionsCell.appendChild(cancelBtn);
@@ -791,6 +831,7 @@ function renderBookings() {
 
     const notifyCell = document.createElement('td');
     const notifyBtn = document.createElement('button');
+    notifyBtn.className = 'switch-btn';
     notifyBtn.dataset.notifyBtn = booking.id;
     notifyBtn.textContent = 'WhatsApp';
     notifyCell.appendChild(notifyBtn);
@@ -851,6 +892,7 @@ function renderAgenda() {
 
       const actionCell = document.createElement('td');
       const attendBtn = document.createElement('button');
+      attendBtn.className = 'switch-btn primary';
       attendBtn.dataset.attend = booking.id;
       attendBtn.textContent = 'Marcar atendida';
       actionCell.appendChild(attendBtn);
@@ -913,6 +955,7 @@ function renderPrisonVisitsList() {
 
     const checkInCell = document.createElement('td');
     const checkInBtn = document.createElement('button');
+    checkInBtn.className = 'switch-btn primary';
     checkInBtn.dataset.prisonCheckin = booking.id;
     checkInBtn.textContent = booking.checkedInAt ? `Check-in ${fmtDate(booking.checkedInAt)}` : 'Registrar check-in';
     checkInBtn.disabled = Boolean(booking.checkedInAt);
@@ -921,6 +964,7 @@ function renderPrisonVisitsList() {
 
     const reminderCell = document.createElement('td');
     const reminderBtn = document.createElement('button');
+    reminderBtn.className = 'switch-btn';
     reminderBtn.dataset.prisonNotify = booking.id;
     reminderBtn.textContent = 'WhatsApp y email';
     reminderCell.appendChild(reminderBtn);
@@ -1203,6 +1247,31 @@ downloadBookingsReportBtn.addEventListener('click', () => {
     ]);
   });
   downloadCsv('reporte-detalle-citas-tacam.csv', rows);
+});
+
+downloadBackupJsonBtn.addEventListener('click', () => {
+  downloadJson(`respaldo-tacam-${new Date().toISOString().slice(0, 10)}.json`, createBackupPayload());
+});
+
+restoreBackupJsonBtn.addEventListener('click', () => {
+  restoreBackupInput.click();
+});
+
+restoreBackupInput.addEventListener('change', async event => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  try {
+    const content = await file.text();
+    const payload = JSON.parse(content);
+    restoreBackupPayload(payload);
+    alert('Respaldo cargado correctamente.');
+  } catch (error) {
+    console.error('No se pudo restaurar el respaldo', error);
+    alert('No se pudo cargar el respaldo JSON. Verifica el archivo.');
+  } finally {
+    restoreBackupInput.value = '';
+  }
 });
 
 moduleTabs.forEach(tab => {

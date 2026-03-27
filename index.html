@@ -224,19 +224,19 @@
         <div class="report-grid">
           <article class="report-card">
             <h3>General por estado</h3>
-            <canvas id="general-stats-chart" width="800" height="320"></canvas>
+            <canvas id="general-stats-chart" width="1200" height="420"></canvas>
           </article>
           <article class="report-card">
             <h3>Atenciones por abogada</h3>
-            <canvas id="lawyer-stats-chart" width="800" height="320"></canvas>
+            <canvas id="lawyer-stats-chart" width="1200" height="420"></canvas>
           </article>
           <article class="report-card">
             <h3>Visitas a la Cárcel por abogada</h3>
-            <canvas id="prison-stats-chart" width="800" height="320"></canvas>
+            <canvas id="prison-stats-chart" width="1200" height="420"></canvas>
           </article>
           <article class="report-card">
             <h3>Ranking de abogadas</h3>
-            <canvas id="lawyer-ranking-chart" width="800" height="320"></canvas>
+            <canvas id="lawyer-ranking-chart" width="1200" height="420"></canvas>
           </article>
         </div>
 
@@ -244,6 +244,9 @@
           <button type="button" id="download-general-report">Descargar reporte general (Excel/CSV)</button>
           <button type="button" id="download-lawyer-report">Descargar reporte por abogada (Excel/CSV)</button>
           <button type="button" id="download-bookings-report">Descargar detalle completo de leads (Excel/CSV)</button>
+          <button type="button" id="download-backup-json">Guardar respaldo completo (JSON)</button>
+          <button type="button" id="restore-backup-json">Cargar respaldo (JSON)</button>
+          <input id="restore-backup-input" type="file" accept="application/json" hidden />
         </div>
       </section>
 
