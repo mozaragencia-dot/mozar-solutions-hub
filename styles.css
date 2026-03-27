@@ -6,10 +6,17 @@
 .brand-title img{height:32px;width:auto;display:block}
 .brand-title.white img{height:36px}
 .brand-title span{display:block}
+.logo-bg{background:var(--wine);border-radius:10px;padding:6px}
 .version-badge{display:inline-block;margin-top:8px;padding:4px 10px;border-radius:999px;background:#fff1f4;color:var(--wine-dark);font-size:12px;font-weight:700;border:1px solid rgba(255,255,255,.28)}
 .header-clock{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px;text-align:right}
 .header-clock small{font-size:11px;opacity:.9}
 .header-clock strong{font-size:20px;letter-spacing:.5px}
+.session-box{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.session-box small{font-size:12px;opacity:.95}
+.ghost-button{background:transparent;border:1px solid rgba(255,255,255,.55);color:#fff;padding:7px 10px}
+.ghost-button:hover{background:rgba(255,255,255,.16)}
+.save-toast{position:fixed;right:18px;bottom:18px;background:#1f9d55;color:#fff;padding:12px 16px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);font-weight:700;z-index:1200;transform:translateY(120px);opacity:0;transition:transform .28s ease,opacity .28s ease}
+.save-toast.show{transform:translateY(0);opacity:1}
 
 .login-screen{position:fixed;inset:0;z-index:1000;min-height:100vh;display:grid;place-items:center;padding:16px;background:radial-gradient(circle at top,rgba(255,120,120,.20),transparent 32%),linear-gradient(rgba(134,20,42,.78),rgba(178,31,58,.9)),url('assets/logo-color.svg') center/40% no-repeat,#b21f3a}
 .login-panel{width:min(460px,100%);background:#fff7f8;border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 12px 30px rgba(92,10,24,.28)}
@@ -30,12 +37,27 @@ h2{margin:0 0 10px}
 label{display:flex;flex-direction:column;gap:4px;font-size:14px}.full{grid-column:1/-1}
 input,textarea,select,button{font:inherit;padding:9px;border-radius:8px;border:1px solid #c9bdc1}
 button{background:var(--wine);color:#fff;border-color:var(--wine-dark);cursor:pointer;font-weight:700}
+.save-btn{margin-top:10px}
+.table-switch-cell{text-align:center}
+.switch-toggle{display:inline-flex;align-items:center;gap:8px;justify-content:center;font-size:12px;font-weight:700;color:#5a313d}
+.switch-toggle input{position:absolute;opacity:0;pointer-events:none}
+.switch-slider{position:relative;width:42px;height:24px;background:#d8c7ce;border-radius:999px;display:inline-block;transition:background .2s ease}
+.switch-slider::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .2s ease}
+.switch-toggle input:checked + .switch-slider{background:#2a9d8f}
+.switch-toggle input:checked + .switch-slider::after{transform:translateX(18px)}
+.switch-text{min-width:86px;text-align:left}
+.contract-wrap{display:flex;flex-direction:column;gap:8px;align-items:center}
+.assign-lawyer-select{min-width:170px}
 .table-wrap{overflow:auto} table{width:100%;border-collapse:collapse} th,td{padding:8px;border-bottom:1px solid #eee;text-align:left;font-size:14px;vertical-align:top}
 .badge{font-size:12px;font-weight:700;padding:3px 8px;border-radius:999px;display:inline-block;background:#eee}
 .badge.nueva{background:#f5d3dc}.badge.confirmada{background:#ead8fa}.badge.atendida{background:#ceefd8}.badge.cancelada{background:#ffd1d1}
 .lawyer-grid,.profile-grid{margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
 .lawyer-card,.profile-card{border:1px solid #eadce2;border-radius:10px;background:#fff8fb;padding:10px;display:flex;gap:10px;align-items:center}
 .lawyer-card img{width:74px;height:74px;border-radius:10px;object-fit:cover;border:1px solid #d8c7ce}
+.lawyer-logo-fallback{background:var(--wine);padding:6px}
+.lawyer-meta{display:grid;gap:4px;margin-top:6px}
+.lawyer-meta small{display:block;color:#5a313d}
+.lawyer-whatsapp-btn{background:#1f9d55;border-color:#157a41;font-size:12px;padding:6px 8px;justify-self:start}
 .lawyer-stats,.profile-perms{margin:8px 0 0;padding-left:18px;color:#5a313d;font-size:13px;display:grid;gap:2px}
 .permissions-box{border:1px solid #d9c8ce;border-radius:8px;padding:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
 .permissions-box label{flex-direction:row;align-items:center;gap:6px}
@@ -64,4 +86,4 @@ button:disabled{cursor:not-allowed;opacity:.7}
 .report-card canvas{width:100%;height:auto;display:block;background:#fff8fb;border:1px solid #f0e4e8;border-radius:8px}
 .report-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .muted{color:#6f1329}.footer-sign{margin-top:10px;color:#6f1329;font-size:14px;display:flex;align-items:center;gap:8px}.footer-sign img{width:120px}
-@media (max-width:768px){.topbar{flex-direction:column;align-items:flex-start}.topbar img{width:140px}.header-clock{margin-left:0;align-items:flex-start}.grid{grid-template-columns:1fr}.calendar{grid-template-columns:repeat(2,minmax(0,1fr))}.calendar-head{display:none}.calendar-day{min-height:90px}.footer-sign{flex-direction:column;align-items:flex-start}}
+@media (max-width:768px){.topbar{flex-direction:column;align-items:flex-start}.topbar img{width:140px}.header-clock{margin-left:0;align-items:flex-start}.session-box{align-items:flex-start}.grid{grid-template-columns:1fr}.calendar{grid-template-columns:repeat(2,minmax(0,1fr))}.calendar-head{display:none}.calendar-day{min-height:90px}.footer-sign{flex-direction:column;align-items:flex-start}.save-toast{left:12px;right:12px;bottom:12px;text-align:center}}
