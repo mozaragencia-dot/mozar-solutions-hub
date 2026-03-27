@@ -1,9 +1,11 @@
 const STORAGE_KEYS = {
+  clients: 'tacam_clients',
   bookings: 'tacam_bookings',
   lawyers: 'tacam_lawyers',
   profiles: 'tacam_profiles',
   session: 'tacam_session'
 };
+const SERVER_SYNC_ENDPOINT = 'storage-sync.php';
 
 const LEGACY_LAWYER_NAMES = new Set(['Daniela Sierra', 'Natalie Gómez', 'Camila Vásquez', 'Carolina Contreras']);
 const OFFICIAL_LAWYERS = [
@@ -25,27 +27,99 @@ function loadJson(key, fallback) {
 
 function saveJson(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
+  queueServerSync();
+}
+
+let syncTimer = null;
+function queueServerSync() {
+  if (typeof fetch !== 'function') return;
+  if (syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    syncTimer = null;
+    const payload = {
+      clients: loadJson(STORAGE_KEYS.clients, []),
+      bookings: loadJson(STORAGE_KEYS.bookings, []),
+      lawyers: loadJson(STORAGE_KEYS.lawyers, []),
+      profiles: loadJson(STORAGE_KEYS.profiles, []),
+    };
+    fetch(SERVER_SYNC_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(() => {
+      // no-op: localStorage remains source of truth offline
+    });
+  }, 250);
+}
+
+function hydrateFromServer() {
+  if (typeof fetch !== 'function') return;
+  fetch(SERVER_SYNC_ENDPOINT, { method: 'GET' })
+    .then(response => response.ok ? response.json() : null)
+    .then(data => {
+      const payload = data?.data;
+      if (!payload || typeof payload !== 'object') return;
+
+      const clients = Array.isArray(payload.clients) ? payload.clients : [];
+      const bookings = Array.isArray(payload.bookings) ? payload.bookings : [];
+      const lawyers = Array.isArray(payload.lawyers) ? payload.lawyers : [];
+      const profiles = Array.isArray(payload.profiles) ? payload.profiles : [];
+
+      if (clients.length) localStorage.setItem(STORAGE_KEYS.clients, JSON.stringify(clients));
+      if (bookings.length) localStorage.setItem(STORAGE_KEYS.bookings, JSON.stringify(bookings));
+      if (lawyers.length) localStorage.setItem(STORAGE_KEYS.lawyers, JSON.stringify(lawyers));
+      if (profiles.length) localStorage.setItem(STORAGE_KEYS.profiles, JSON.stringify(profiles));
+      window.dispatchEvent(new Event('tacam-server-hydrated'));
+    })
+    .catch(() => {
+      // no-op
+    });
 }
 
 function seedData() {
+  const existingClients = loadJson(STORAGE_KEYS.clients, []);
+  if (!existingClients.length) {
+    saveJson(STORAGE_KEYS.clients, [
+      {
+        id: crypto.randomUUID(),
+        name: 'Cliente Demo',
+        rut: '12.345.678-9',
+        phone: '+56911111111',
+        email: 'cliente.demo@tacam.cl',
+        address: 'Dirección demo',
+        createdAt: new Date().toISOString()
+      }
+    ]);
+  }
+  const clients = loadJson(STORAGE_KEYS.clients, []);
+
   const bookings = loadJson(STORAGE_KEYS.bookings, []);
   if (!bookings.length) {
     saveJson(STORAGE_KEYS.bookings, [
       {
         id: crypto.randomUUID(),
+        clientId: clients[0]?.id || '',
         customer: 'Cliente Demo',
         rut: '12.345.678-9',
         phone: '+56911111111',
         email: 'cliente.demo@tacam.cl',
+        address: 'Dirección demo',
         matter: 'Familiar',
         date: new Date().toISOString().slice(0, 10),
         time: '10:30',
         assignedTo: 'KATHERINE SERRANO MARREY',
+        hiredLawyer: true,
         notes: 'Consulta por materia familiar.',
         status: 'nueva',
         createdAt: new Date().toISOString()
       }
     ]);
+  } else {
+    const normalized = bookings.map(booking => ({
+      ...booking,
+      hiredLawyer: typeof booking.hiredLawyer === 'boolean' ? booking.hiredLawyer : Boolean((booking.assignedTo || '').trim())
+    }));
+    saveJson(STORAGE_KEYS.bookings, normalized);
   }
 
   syncLawyersData();
@@ -108,6 +182,14 @@ function syncLawyersData() {
 
 function getBookings() {
   return loadJson(STORAGE_KEYS.bookings, []);
+}
+
+function getClients() {
+  return loadJson(STORAGE_KEYS.clients, []);
+}
+
+function saveClients(clients) {
+  saveJson(STORAGE_KEYS.clients, clients);
 }
 
 function saveBookings(bookings) {
@@ -179,3 +261,4 @@ function fileToDataUrl(file) {
 }
 
 seedData();
+hydrateFromServer();
