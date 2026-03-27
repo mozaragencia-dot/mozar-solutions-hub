@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tacam-reservas-v4';
+const CACHE_NAME = 'tacam-reservas-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -56,4 +56,10 @@ self.addEventListener('fetch', event => {
       });
     })
   );
+});
+
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
