@@ -977,7 +977,7 @@ function renderReports() {
 function renderBookings() {
   const allBookings = getBookings();
   const bookings = allBookings.filter(booking => !booking.hiredLawyer && !isPrisonVisit(booking));
-  const hiredBookings = allBookings.filter(booking => booking.hiredLawyer);
+  const hiredBookings = allBookings.filter(booking => booking.hiredLawyer && !isPrisonVisit(booking));
   bookingsBody.replaceChildren();
   hiredBody.replaceChildren();
 
