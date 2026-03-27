@@ -241,7 +241,7 @@ function normalizeMatterLabel(value) {
   const clean = String(value || '').trim();
   if (!clean) return '';
   const normalized = clean.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  if (normalized.includes('cartel') || normalized.includes('carcel')) return 'Visita a la Cárcel';
+  if (normalized.includes('cartel') || normalized.includes('carcel') || normalized.includes('carce')) return 'Visita a la Cárcel';
   return clean;
 }
 
