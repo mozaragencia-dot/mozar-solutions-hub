@@ -53,6 +53,8 @@ const bookingClientOptions = document.getElementById('booking-client-options');
 const prisonClientOptions = document.getElementById('prison-client-options');
 const moduleTabs = document.querySelectorAll('[data-module-tab]');
 const modulePanels = document.querySelectorAll('[data-module-panel]');
+const froilanKpis = document.getElementById('froilan-kpis');
+const froilanActivity = document.getElementById('froilan-activity');
 let clientOptionMap = new Map();
 
 function switchModule(moduleName) {
@@ -1490,6 +1492,77 @@ function renderLawyers() {
   });
 }
 
+function formatIsoAsLocal(isoDate) {
+  const parsed = new Date(isoDate || '');
+  if (Number.isNaN(parsed.getTime())) return 'Sin fecha';
+  return parsed.toLocaleString('es-CL', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function renderFroilanStatus() {
+  if (!froilanKpis || !froilanActivity) return;
+
+  const clients = getClients();
+  const bookings = getBookings();
+  const lawyers = getLawyers();
+  const profiles = getProfiles();
+  const attended = bookings.filter(booking => booking.status === 'asistio' || booking.status === 'atendida').length;
+  const pending = bookings.filter(booking => booking.status === 'nueva' || booking.status === 'confirmada').length;
+
+  const cards = [
+    { label: 'Clientes activos', value: clients.length },
+    { label: 'Reservas totales', value: bookings.length },
+    { label: 'Reservas pendientes', value: pending },
+    { label: 'Atenciones cerradas', value: attended },
+    { label: 'Abogadas registradas', value: lawyers.length },
+    { label: 'Perfiles con permisos', value: profiles.length }
+  ];
+
+  froilanKpis.replaceChildren();
+  cards.forEach(cardData => {
+    const card = document.createElement('article');
+    card.className = 'froilan-kpi-card';
+
+    const value = document.createElement('strong');
+    value.textContent = String(cardData.value);
+    card.appendChild(value);
+
+    const label = document.createElement('span');
+    label.textContent = cardData.label;
+    card.appendChild(label);
+
+    froilanKpis.appendChild(card);
+  });
+
+  const latestClient = clients[0];
+  const latestBooking = bookings[0];
+  const latestLawyer = lawyers[0];
+
+  const activityRows = [
+    latestClient
+      ? `Último cliente ingresado: ${latestClient.customer || 'Sin nombre'} (${formatIsoAsLocal(latestClient.createdAt)})`
+      : 'No hay clientes cargados aún.',
+    latestBooking
+      ? `Última reserva: ${latestBooking.customer || 'Cliente'} · ${latestBooking.date || '-'} ${latestBooking.time || ''} (${latestBooking.status || 'sin estado'})`
+      : 'No hay reservas cargadas aún.',
+    latestLawyer
+      ? `Última abogada registrada: ${latestLawyer.name || 'Sin nombre'}`
+      : 'No hay abogadas registradas aún.'
+  ];
+
+  froilanActivity.replaceChildren();
+  activityRows.forEach(text => {
+    const item = document.createElement('li');
+    item.textContent = text;
+    froilanActivity.appendChild(item);
+  });
+}
+
 function renderProfiles() {
   const profiles = getProfiles();
   profileList.replaceChildren();
@@ -1542,6 +1615,7 @@ function renderAll() {
   renderLawyerCalendar();
   renderProfiles();
   renderReports();
+  renderFroilanStatus();
 }
 
 loginForm.addEventListener('submit', event => {
