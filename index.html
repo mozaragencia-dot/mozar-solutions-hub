@@ -49,6 +49,7 @@
         <button type="button" class="module-tab" data-module-tab="outcomes">Contratados / No contratados</button>
         <button type="button" class="module-tab" data-module-tab="lawyers">Perfiles de Abogados</button>
         <button type="button" class="module-tab" data-module-tab="reports">Reportes y Gráficos</button>
+        <button type="button" class="module-tab" data-module-tab="froilan">Estado Froilán</button>
       </nav>
 
       <section class="card module-panel active" data-module-panel="create">
@@ -305,6 +306,17 @@
           <button type="button" id="restore-backup-json">Restaurar respaldo JSON</button>
           <input id="restore-backup-input" type="file" accept="application/json" hidden />
         </div>
+      </section>
+
+
+      <section class="card module-panel" data-module-panel="froilan">
+        <h2>Main Froilán · Estado del proyecto</h2>
+        <p class="muted">Resumen automático de avance basado en todos los registros existentes del sistema.</p>
+
+        <div id="froilan-kpis" class="froilan-kpi-grid"></div>
+
+        <h3>Última actividad registrada</h3>
+        <ul id="froilan-activity" class="froilan-activity"></ul>
       </section>
 
       <footer class="footer-sign">
