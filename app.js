@@ -11,6 +11,11 @@ const clientsBody = document.getElementById('clients-body');
 const clientSearchInput = document.getElementById('client-search');
 const clientSearchResults = document.getElementById('client-search-results');
 const clientSelectedLabel = document.getElementById('client-selected-label');
+const selectedClientNameInput = document.getElementById('selected-client-name');
+const selectedClientRutInput = document.getElementById('selected-client-rut');
+const selectedClientPhoneInput = document.getElementById('selected-client-phone');
+const selectedClientEmailInput = document.getElementById('selected-client-email');
+const selectedClientAddressInput = document.getElementById('selected-client-address');
 const clientEditForm = document.getElementById('client-edit-form');
 const clientEditSelect = document.getElementById('client-edit-select');
 const bookingForm = document.getElementById('booking-form');
@@ -78,6 +83,14 @@ function showToast(message) {
   toastTimer = setTimeout(() => {
     toast.hidden = true;
   }, 2400);
+}
+
+function fillSelectedClientPreview(client) {
+  selectedClientNameInput.value = client?.name || '';
+  selectedClientRutInput.value = client?.rut || '';
+  selectedClientPhoneInput.value = client?.phone || '';
+  selectedClientEmailInput.value = client?.email || '';
+  selectedClientAddressInput.value = client?.address || '';
 }
 
 function showApp() {
@@ -429,6 +442,7 @@ function renderClientOptions() {
   clientSelectedLabel.textContent = selectedClient
     ? `Cliente seleccionado: ${selectedClient.name} · ${selectedClient.rut}`
     : 'Cliente seleccionado: ninguno';
+  fillSelectedClientPreview(selectedClient || null);
 
   const selectedPrisonClient = prisonClientSelect.value;
   prisonClientSelect.replaceChildren();
@@ -469,6 +483,7 @@ function renderClientSearchResults(clients, query) {
       clientSelect.value = client.id;
       clientSearchInput.value = `${client.name} (${client.rut})`;
       clientSelectedLabel.textContent = `Cliente seleccionado: ${client.name} · ${client.rut}`;
+      fillSelectedClientPreview(client);
       clientSearchResults.replaceChildren();
     });
     clientSearchResults.appendChild(item);
@@ -1660,6 +1675,7 @@ bookingForm.addEventListener('submit', async event => {
   clientSearchInput.value = '';
   clientSearchResults.replaceChildren();
   clientSelectedLabel.textContent = 'Cliente seleccionado: ninguno';
+  fillSelectedClientPreview(null);
   hiredLawyerInput.checked = true;
   renderAll();
   showToast('Reserva guardada correctamente.');

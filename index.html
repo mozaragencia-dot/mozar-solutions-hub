@@ -78,6 +78,11 @@
           <div id="client-search-results" class="search-results full" aria-live="polite"></div>
           <p id="client-selected-label" class="muted full">Cliente seleccionado: ninguno</p>
           <input id="client-id-selected" name="clientId" type="hidden" required />
+          <label>Nombre cliente <input id="selected-client-name" readonly placeholder="Se completa al seleccionar cliente" /></label>
+          <label>RUT cliente <input id="selected-client-rut" readonly /></label>
+          <label>Teléfono cliente <input id="selected-client-phone" readonly /></label>
+          <label>Correo cliente <input id="selected-client-email" readonly /></label>
+          <label class="full">Dirección cliente <input id="selected-client-address" readonly /></label>
           <label>Materia
             <select name="matter" required>
               <option value="">Seleccione materia</option>
