@@ -466,13 +466,7 @@ function renderClientSearchResults(clients, query) {
   if (!query) return;
 
   const limited = clients.slice(0, 8);
-  if (!limited.length) {
-    const empty = document.createElement('p');
-    empty.className = 'muted';
-    empty.textContent = 'Sin coincidencias.';
-    clientSearchResults.appendChild(empty);
-    return;
-  }
+  if (!limited.length) return;
 
   limited.forEach(client => {
     const item = document.createElement('button');
@@ -1400,25 +1394,28 @@ function renderLawyers() {
     card.appendChild(photo);
 
     const content = document.createElement('div');
+    content.className = 'lawyer-card-content';
     const name = document.createElement('h3');
     name.textContent = lawyer.name || '';
     content.appendChild(name);
 
-    const specialty = document.createElement('p');
-    specialty.textContent = lawyer.specialty || 'Sin especialidad';
-    content.appendChild(specialty);
-
-    const rut = document.createElement('small');
-    rut.textContent = lawyer.rut ? `Cédula: ${lawyer.rut}` : 'Cédula no registrada';
-    content.appendChild(rut);
-
-    const email = document.createElement('small');
-    email.textContent = lawyer.email || 'Sin correo';
-    content.appendChild(email);
-
-    const phone = document.createElement('small');
-    phone.textContent = lawyer.phone || 'Sin WhatsApp';
-    content.appendChild(phone);
+    const info = document.createElement('div');
+    info.className = 'lawyer-info';
+    const infoRows = [
+      ['Especialidad', lawyer.specialty || 'Sin especialidad'],
+      ['Cédula', lawyer.rut || 'No registrada'],
+      ['Correo', lawyer.email || 'Sin correo'],
+      ['WhatsApp', lawyer.phone || 'Sin WhatsApp']
+    ];
+    infoRows.forEach(([label, value]) => {
+      const row = document.createElement('p');
+      const strong = document.createElement('strong');
+      strong.textContent = `${label}: `;
+      row.appendChild(strong);
+      row.appendChild(document.createTextNode(String(value)));
+      info.appendChild(row);
+    });
+    content.appendChild(info);
 
     const stats = getLawyerStats(lawyer.name || '');
     const statsList = document.createElement('ul');
