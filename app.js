@@ -52,6 +52,9 @@ const clientSelect = document.getElementById('client-id-selected');
 const hiredLawyerInput = bookingForm.elements.hiredLawyer;
 const clientRutInput = clientForm.elements.rut;
 const clientPhoneInput = clientForm.elements.phone;
+const imputadoStatusInput = clientForm.elements.imputadoStatus;
+const representativeInput = clientForm.elements.representative;
+const representativeField = document.getElementById('representative-field');
 const clientEditRutInput = clientEditForm.elements.rut;
 const clientEditPhoneInput = clientEditForm.elements.phone;
 const clientEditHiredLaterInput = clientEditForm.elements.hiredLater;
@@ -91,6 +94,20 @@ function fillSelectedClientPreview(client) {
   selectedClientPhoneInput.value = client?.phone || '';
   selectedClientEmailInput.value = client?.email || '';
   selectedClientAddressInput.value = client?.address || '';
+}
+
+function updateRepresentativeVisibility() {
+  const isImputado = imputadoStatusInput.value === 'imputado';
+  representativeField.hidden = !isImputado;
+  representativeInput.required = isImputado;
+  if (!isImputado) representativeInput.value = '';
+}
+
+function getBookingRepresentative(booking) {
+  if ((booking.representative || '').trim()) return booking.representative;
+  if (!booking.clientId) return '';
+  const client = getClients().find(item => item.id === booking.clientId);
+  return client?.representative || '';
 }
 
 function showApp() {
@@ -440,15 +457,15 @@ function renderClientOptions() {
   renderClientSearchResults(clients, query);
   const selectedClient = getClients().find(client => client.id === clientSelect.value);
   clientSelectedLabel.textContent = selectedClient
-    ? `Cliente seleccionado: ${selectedClient.name} · ${selectedClient.rut}`
-    : 'Cliente seleccionado: ninguno';
+    ? `Contacto seleccionado: ${selectedClient.name} · ${selectedClient.rut}`
+    : 'Contacto seleccionado: ninguno';
   fillSelectedClientPreview(selectedClient || null);
 
   const selectedPrisonClient = prisonClientSelect.value;
   prisonClientSelect.replaceChildren();
   const firstPrison = document.createElement('option');
   firstPrison.value = '';
-  firstPrison.textContent = clients.length ? 'Seleccione cliente' : 'No hay clientes guardados';
+  firstPrison.textContent = clients.length ? 'Seleccione contacto' : 'No hay contactos guardados';
   prisonClientSelect.appendChild(firstPrison);
   clients.forEach(client => {
     const option = document.createElement('option');
@@ -476,7 +493,7 @@ function renderClientSearchResults(clients, query) {
     item.addEventListener('click', () => {
       clientSelect.value = client.id;
       clientSearchInput.value = `${client.name} (${client.rut})`;
-      clientSelectedLabel.textContent = `Cliente seleccionado: ${client.name} · ${client.rut}`;
+      clientSelectedLabel.textContent = `Contacto seleccionado: ${client.name} · ${client.rut}`;
       fillSelectedClientPreview(client);
       clientSearchResults.replaceChildren();
     });
@@ -491,8 +508,8 @@ function renderClients() {
   if (!clients.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 5;
-    cell.textContent = 'Sin clientes guardados.';
+    cell.colSpan = 7;
+    cell.textContent = 'Sin contactos guardados.';
     row.appendChild(cell);
     clientsBody.appendChild(row);
     return;
@@ -505,6 +522,8 @@ function renderClients() {
     appendCell(row, client.phone || '');
     appendCell(row, client.email || '');
     appendCell(row, client.address || '');
+    appendCell(row, client.imputadoStatus === 'imputado' ? 'Imputado' : 'No imputado');
+    appendCell(row, client.representative || '-');
     clientsBody.appendChild(row);
   });
 }
@@ -516,7 +535,7 @@ function renderClientEditOptions() {
 
   const first = document.createElement('option');
   first.value = '';
-  first.textContent = clients.length ? 'Seleccione un cliente' : 'No hay clientes guardados';
+  first.textContent = clients.length ? 'Seleccione un contacto' : 'No hay contactos guardados';
   clientEditSelect.appendChild(first);
 
   clients.forEach(client => {
@@ -993,7 +1012,7 @@ function renderBookings() {
   if (!bookings.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 9;
+    cell.colSpan = 10;
     cell.textContent = 'Sin leads registrados';
     row.appendChild(cell);
     bookingsBody.appendChild(row);
@@ -1003,6 +1022,7 @@ function renderBookings() {
 
       appendCell(row, fmtDate(booking.createdAt));
       appendCell(row, booking.customer || '');
+      appendCell(row, getBookingRepresentative(booking) || '-');
       appendCell(row, normalizeMatterLabel(booking.matter) || 'General');
       appendCell(row, booking.phone || '');
       appendCell(row, formatAppointment(booking));
@@ -1073,7 +1093,7 @@ function renderBookings() {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
     cell.colSpan = 7;
-    cell.textContent = 'Sin clientes contratados para remarketing';
+    cell.textContent = 'Sin contactos contratados para remarketing';
     row.appendChild(cell);
     hiredBody.appendChild(row);
   } else {
@@ -1256,7 +1276,7 @@ function renderPrisonVisitsList() {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
     cell.colSpan = 8;
-    cell.textContent = 'Sin clientes visitados en este mes.';
+    cell.textContent = 'Sin contactos visitados en este mes.';
     row.appendChild(cell);
     prisonVisitsBody.appendChild(row);
     return;
@@ -1519,6 +1539,8 @@ clientForm.addEventListener('submit', event => {
   const email = String(data.get('email') || '').trim();
   const name = String(data.get('name') || '').trim();
   const address = String(data.get('address') || '').trim();
+  const imputadoStatus = String(data.get('imputadoStatus') || 'no_imputado').trim() === 'imputado' ? 'imputado' : 'no_imputado';
+  const representative = String(data.get('representative') || '').trim();
 
   if (!isValidRut(rut)) {
     clientRutInput.setCustomValidity('El RUT debe tener formato xx.xxx.xxx-x');
@@ -1541,6 +1563,12 @@ clientForm.addEventListener('submit', event => {
   }
   clientForm.elements.email.setCustomValidity('');
   if (!name || !address) return;
+  if (imputadoStatus === 'imputado' && !representative) {
+    representativeInput.setCustomValidity('Debes indicar la información del representante.');
+    representativeInput.reportValidity();
+    return;
+  }
+  representativeInput.setCustomValidity('');
 
   const clients = getClients();
   const existing = clients.find(client => (client.rut || '').trim() === rut);
@@ -1550,6 +1578,8 @@ clientForm.addEventListener('submit', event => {
     existing.phone = phone;
     existing.email = email;
     existing.address = address;
+    existing.imputadoStatus = imputadoStatus;
+    existing.representative = imputadoStatus === 'imputado' ? representative : '';
     existing.updatedAt = new Date().toISOString();
   } else {
     clients.unshift({
@@ -1559,6 +1589,8 @@ clientForm.addEventListener('submit', event => {
       phone,
       email,
       address,
+      imputadoStatus,
+      representative: imputadoStatus === 'imputado' ? representative : '',
       createdAt: new Date().toISOString()
     });
   }
@@ -1566,8 +1598,10 @@ clientForm.addEventListener('submit', event => {
   saveClients(clients);
   clientForm.reset();
   clientPhoneInput.value = '+569';
+  imputadoStatusInput.value = 'no_imputado';
+  updateRepresentativeVisibility();
   renderAll();
-  showToast('Cliente guardado correctamente.');
+  showToast('Datos guardados correctamente.');
 });
 
 clientEditForm.addEventListener('submit', event => {
@@ -1626,7 +1660,7 @@ clientEditForm.addEventListener('submit', event => {
   });
   saveBookings(bookings);
   renderAll();
-  showToast('Cliente actualizado correctamente.');
+  showToast('Contacto actualizado correctamente.');
 });
 
 bookingForm.addEventListener('submit', async event => {
@@ -1635,7 +1669,7 @@ bookingForm.addEventListener('submit', async event => {
   const selectedClientId = String(data.get('clientId') || '').trim();
   const selectedClient = getClients().find(client => client.id === selectedClientId);
   if (!selectedClient) {
-    showToast('Debes seleccionar un cliente guardado.');
+    showToast('Debes seleccionar un contacto guardado.');
     return;
   }
 
@@ -1651,6 +1685,8 @@ bookingForm.addEventListener('submit', async event => {
     phone: selectedClient.phone,
     email: selectedClient.email,
     address: selectedClient.address,
+    imputadoStatus: selectedClient.imputadoStatus || 'no_imputado',
+    representative: selectedClient.representative || '',
     matter: normalizeMatterLabel(data.get('matter')),
     date: String(data.get('date') || '').trim(),
     time: String(data.get('time') || '').trim(),
@@ -1671,7 +1707,7 @@ bookingForm.addEventListener('submit', async event => {
   bookingForm.reset();
   clientSearchInput.value = '';
   clientSearchResults.replaceChildren();
-  clientSelectedLabel.textContent = 'Cliente seleccionado: ninguno';
+  clientSelectedLabel.textContent = 'Contacto seleccionado: ninguno';
   fillSelectedClientPreview(null);
   hiredLawyerInput.checked = true;
   renderAll();
@@ -1726,6 +1762,7 @@ clientRutInput.addEventListener('input', () => {
 clientPhoneInput.addEventListener('input', () => {
   clientPhoneInput.value = formatPhone(clientPhoneInput.value);
 });
+imputadoStatusInput.addEventListener('change', updateRepresentativeVisibility);
 
 clientSearchInput.addEventListener('input', renderClientOptions);
 clientEditSelect.addEventListener('change', () => fillClientEditForm(clientEditSelect.value));
@@ -1786,12 +1823,13 @@ downloadLawyerReportBtn.addEventListener('click', () => {
 
 downloadBookingsReportBtn.addEventListener('click', () => {
   const rows = [[
-    'ID', 'Cliente', 'RUT', 'Materia', 'Telefono', 'Correo', 'Fecha', 'Hora', 'Abogada', 'Estado', 'Consentimiento', 'Motivo', 'Creada en'
+    'ID', 'Contacto', 'Representante', 'RUT', 'Materia', 'Telefono', 'Correo', 'Fecha', 'Hora', 'Abogada', 'Estado', 'Consentimiento', 'Motivo', 'Creada en'
   ]];
   getBookings().forEach(booking => {
     rows.push([
       booking.id,
       booking.customer,
+      getBookingRepresentative(booking),
       booking.rut,
       normalizeMatterLabel(booking.matter),
       booking.phone,
@@ -1917,6 +1955,7 @@ prisonMonthInput.value = currentMonth;
 lawyerCalendarMonth.value = currentMonth;
 clientPhoneInput.value = '+569';
 assignedToSelect.disabled = !hiredLawyerInput.checked;
+updateRepresentativeVisibility();
 updateChileClock();
 
 saveSession({ loggedIn: false });

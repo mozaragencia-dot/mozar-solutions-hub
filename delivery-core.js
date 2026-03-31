@@ -87,9 +87,18 @@ function seedData() {
         phone: '+56911111111',
         email: 'cliente.demo@tacam.cl',
         address: 'Dirección demo',
+        imputadoStatus: 'no_imputado',
+        representative: '',
         createdAt: new Date().toISOString()
       }
     ]);
+  } else {
+    const normalizedClients = existingClients.map(client => ({
+      ...client,
+      imputadoStatus: client.imputadoStatus === 'imputado' ? 'imputado' : 'no_imputado',
+      representative: client.imputadoStatus === 'imputado' ? String(client.representative || '').trim() : ''
+    }));
+    saveJson(STORAGE_KEYS.clients, normalizedClients);
   }
   const clients = loadJson(STORAGE_KEYS.clients, []);
 
@@ -104,6 +113,8 @@ function seedData() {
         phone: '+56911111111',
         email: 'cliente.demo@tacam.cl',
         address: 'Dirección demo',
+        imputadoStatus: 'no_imputado',
+        representative: '',
         matter: 'Familiar',
         date: new Date().toISOString().slice(0, 10),
         time: '10:30',
@@ -117,7 +128,9 @@ function seedData() {
   } else {
     const normalized = bookings.map(booking => ({
       ...booking,
-      hiredLawyer: typeof booking.hiredLawyer === 'boolean' ? booking.hiredLawyer : Boolean((booking.assignedTo || '').trim())
+      hiredLawyer: typeof booking.hiredLawyer === 'boolean' ? booking.hiredLawyer : Boolean((booking.assignedTo || '').trim()),
+      imputadoStatus: booking.imputadoStatus === 'imputado' ? 'imputado' : 'no_imputado',
+      representative: booking.imputadoStatus === 'imputado' ? String(booking.representative || '').trim() : ''
     }));
     saveJson(STORAGE_KEYS.bookings, normalized);
   }
