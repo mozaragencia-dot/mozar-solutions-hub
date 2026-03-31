@@ -5,6 +5,11 @@ const loginError = document.getElementById('login-error');
 
 const bookingsBody = document.getElementById('bookings-body');
 const agendaBody = document.getElementById('agenda-body');
+const clientForm = document.getElementById('client-form');
+const clientsBody = document.getElementById('clients-body');
+const clientSearchInput = document.getElementById('client-search');
+const clientEditForm = document.getElementById('client-edit-form');
+const clientEditSelect = document.getElementById('client-edit-select');
 const bookingForm = document.getElementById('booking-form');
 const lawyerFilter = document.getElementById('lawyer-filter');
 const agendaMonthInput = document.getElementById('agenda-month');
@@ -24,13 +29,21 @@ const sharedOnlyInput = document.getElementById('shared-only');
 const generalStatsChart = document.getElementById('general-stats-chart');
 const lawyerStatsChart = document.getElementById('lawyer-stats-chart');
 const prisonStatsChart = document.getElementById('prison-stats-chart');
+const lawyerRankingChart = document.getElementById('lawyer-ranking-chart');
 const downloadGeneralReportBtn = document.getElementById('download-general-report');
 const downloadLawyerReportBtn = document.getElementById('download-lawyer-report');
 const downloadBookingsReportBtn = document.getElementById('download-bookings-report');
+const downloadBackupJsonBtn = document.getElementById('download-backup-json');
+const restoreBackupJsonBtn = document.getElementById('restore-backup-json');
+const restoreBackupInput = document.getElementById('restore-backup-input');
 const profileForm = document.getElementById('profile-form');
 const profileList = document.getElementById('profile-list');
-const rutInput = bookingForm.elements.rut;
-const phoneInput = bookingForm.elements.phone;
+const clientSelect = bookingForm.elements.clientId;
+const hiredLawyerInput = bookingForm.elements.hiredLawyer;
+const clientRutInput = clientForm.elements.rut;
+const clientPhoneInput = clientForm.elements.phone;
+const clientEditRutInput = clientEditForm.elements.rut;
+const clientEditPhoneInput = clientEditForm.elements.phone;
 const chileClock = document.getElementById('chile-clock');
 const assignedToSelect = bookingForm.elements.assignedTo;
 const moduleTabs = document.querySelectorAll('[data-module-tab]');
@@ -369,6 +382,100 @@ function renderLawyerOptions() {
   fillSelectWithNames(lawyerCalendarFilter, names, 'Todas');
 }
 
+function renderClientOptions() {
+  const query = String(clientSearchInput.value || '').trim().toLowerCase();
+  const clients = getClients()
+    .filter(client => {
+      if (!query) return true;
+      const haystack = `${client.name || ''} ${client.rut || ''} ${client.phone || ''}`.toLowerCase();
+      return haystack.includes(query);
+    })
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'es'));
+
+  const current = clientSelect.value;
+  clientSelect.replaceChildren();
+
+  const first = document.createElement('option');
+  first.value = '';
+  first.textContent = clients.length ? 'Seleccione un cliente' : 'No hay clientes guardados';
+  clientSelect.appendChild(first);
+
+  clients.forEach(client => {
+    const option = document.createElement('option');
+    option.value = client.id;
+    option.textContent = `${client.name} · ${client.rut} · ${client.phone}`;
+    clientSelect.appendChild(option);
+  });
+
+  if (clients.some(client => client.id === current)) {
+    clientSelect.value = current;
+  }
+}
+
+function renderClients() {
+  const clients = getClients().sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'es'));
+  clientsBody.replaceChildren();
+
+  if (!clients.length) {
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 5;
+    cell.textContent = 'Sin clientes guardados.';
+    row.appendChild(cell);
+    clientsBody.appendChild(row);
+    return;
+  }
+
+  clients.forEach(client => {
+    const row = document.createElement('tr');
+    appendCell(row, client.name || '');
+    appendCell(row, client.rut || '');
+    appendCell(row, client.phone || '');
+    appendCell(row, client.email || '');
+    appendCell(row, client.address || '');
+    clientsBody.appendChild(row);
+  });
+}
+
+function renderClientEditOptions() {
+  const clients = getClients().sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'es'));
+  const selected = clientEditSelect.value;
+  clientEditSelect.replaceChildren();
+
+  const first = document.createElement('option');
+  first.value = '';
+  first.textContent = clients.length ? 'Seleccione un cliente' : 'No hay clientes guardados';
+  clientEditSelect.appendChild(first);
+
+  clients.forEach(client => {
+    const option = document.createElement('option');
+    option.value = client.id;
+    option.textContent = `${client.name} · ${client.rut}`;
+    clientEditSelect.appendChild(option);
+  });
+
+  if (clients.some(client => client.id === selected)) {
+    clientEditSelect.value = selected;
+    fillClientEditForm(selected);
+  } else {
+    clientEditForm.reset();
+  }
+}
+
+function fillClientEditForm(clientId) {
+  const client = getClients().find(item => item.id === clientId);
+  if (!client) {
+    clientEditForm.reset();
+    return;
+  }
+
+  clientEditForm.elements.name.value = client.name || '';
+  clientEditForm.elements.rut.value = client.rut || '';
+  clientEditForm.elements.phone.value = client.phone || '';
+  clientEditForm.elements.email.value = client.email || '';
+  clientEditForm.elements.address.value = client.address || '';
+}
+
 function getLawyerStats(lawyerName) {
   const stats = { total: 0, nueva: 0, confirmada: 0, atendida: 0, cancelada: 0 };
 
@@ -397,7 +504,7 @@ function getLawyerColor(name) {
 }
 
 function getCalendarBookings(selectedLawyer, selectedMonth, onlyShared = false, predicate = null) {
-  const allBookings = getBookings().filter(booking => booking.status !== 'cancelada' && booking.date);
+  const allBookings = getBookings().filter(booking => booking.hiredLawyer && booking.status !== 'cancelada' && booking.date);
   const filteredBookings = typeof predicate === 'function' ? allBookings.filter(predicate) : allBookings;
   const byMonth = filteredBookings.filter(booking => !selectedMonth || booking.date.slice(0, 7) === selectedMonth);
   const byLawyer = byMonth.filter(booking => !selectedLawyer || booking.assignedTo === selectedLawyer);
@@ -579,6 +686,28 @@ function getPrisonVisitStats() {
     .sort((a, b) => a.lawyer.localeCompare(b.lawyer, 'es'));
 }
 
+function getLawyerRankingStats() {
+  return getLawyerAttentionStats()
+    .map(item => ({
+      lawyer: item.lawyer,
+      total: item.total,
+      attended: item.atendida,
+      conversion: item.total ? Math.round((item.atendida / item.total) * 100) : 0
+    }))
+    .sort((a, b) => {
+      if (b.attended !== a.attended) return b.attended - a.attended;
+      if (b.total !== a.total) return b.total - a.total;
+      return a.lawyer.localeCompare(b.lawyer, 'es');
+    });
+}
+
+function getAttentionPerformanceColor(attended) {
+  const value = Number(attended) || 0;
+  if (value <= 2) return '#d63a55';
+  if (value <= 3) return '#e9c46a';
+  return '#2a9d8f';
+}
+
 function drawBarChart(canvas, labels, values, colors, title) {
   if (!(canvas instanceof HTMLCanvasElement)) return;
 
@@ -622,11 +751,68 @@ function drawBarChart(canvas, labels, values, colors, title) {
 
     ctx.fillStyle = '#2f1a21';
     ctx.font = '12px Arial';
-    ctx.fillText(String(value), x + barWidth / 2 - 5, y - 6);
+    ctx.textAlign = 'center';
+    ctx.fillText(String(value), x + barWidth / 2, y - 6);
 
     ctx.fillStyle = '#5a313d';
     const label = labels[index].length > 16 ? `${labels[index].slice(0, 16)}…` : labels[index];
-    ctx.fillText(label, x, padTop + chartHeight + 18);
+    ctx.fillText(label, x + barWidth / 2, padTop + chartHeight + 18);
+    ctx.textAlign = 'start';
+  });
+}
+
+function drawRankingChart(canvas, ranking) {
+  if (!(canvas instanceof HTMLCanvasElement)) return;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  const width = canvas.width;
+  const height = canvas.height;
+  ctx.clearRect(0, 0, width, height);
+
+  const topItems = ranking.slice(0, 6);
+  const labels = topItems.map(item => item.lawyer);
+  const values = topItems.map(item => item.attended);
+  const maxValue = Math.max(1, ...values);
+
+  const padLeft = 180;
+  const padRight = 24;
+  const padTop = 40;
+  const padBottom = 24;
+  const chartWidth = width - padLeft - padRight;
+  const rowHeight = 40;
+
+  ctx.fillStyle = '#5a313d';
+  ctx.font = 'bold 14px Arial';
+  ctx.fillText('Ranking (atendidas) por abogada', padLeft, 22);
+
+  if (!topItems.length) {
+    ctx.font = '13px Arial';
+    ctx.fillText('Sin datos para construir ranking.', padLeft, padTop + 30);
+    return;
+  }
+
+  topItems.forEach((item, index) => {
+    const y = padTop + index * rowHeight;
+    const barHeight = 22;
+    const barWidth = (item.attended / maxValue) * chartWidth;
+    const color = getAttentionPerformanceColor(item.attended);
+    const rank = index + 1;
+    const shortName = item.lawyer.length > 22 ? `${item.lawyer.slice(0, 22)}…` : item.lawyer;
+
+    ctx.fillStyle = '#5a313d';
+    ctx.font = '12px Arial';
+    ctx.fillText(`${rank}. ${shortName}`, 14, y + 16);
+
+    ctx.fillStyle = '#f3e4e9';
+    ctx.fillRect(padLeft, y, chartWidth, barHeight);
+
+    ctx.fillStyle = color;
+    ctx.fillRect(padLeft, y, Math.max(4, barWidth), barHeight);
+
+    ctx.fillStyle = '#2f1a21';
+    ctx.fillText(`${item.attended} atendidas · ${item.conversion}% conversión`, padLeft + 8, y + 16);
   });
 }
 
@@ -642,6 +828,58 @@ function downloadCsv(filename, rows) {
   link.remove();
 }
 
+function downloadJson(filename, payload) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  URL.revokeObjectURL(link.href);
+  link.remove();
+}
+
+function createBackupPayload() {
+  return {
+    exportedAt: new Date().toISOString(),
+    version: 1,
+    clients: getClients(),
+    bookings: getBookings(),
+    lawyers: getLawyers(),
+    profiles: getProfiles()
+  };
+}
+
+function restoreBackupPayload(payload) {
+  if (!payload || typeof payload !== 'object') throw new Error('Formato inválido');
+  if (!Array.isArray(payload.bookings) || !Array.isArray(payload.lawyers) || !Array.isArray(payload.profiles)) {
+    throw new Error('El respaldo no contiene la estructura esperada');
+  }
+
+  const backupClients = Array.isArray(payload.clients) ? payload.clients : [];
+  const inferredClients = payload.bookings.map(booking => ({
+    id: booking.clientId || crypto.randomUUID(),
+    name: booking.customer || 'Cliente',
+    rut: booking.rut || '',
+    phone: booking.phone || '',
+    email: booking.email || '',
+    address: booking.address || '',
+    createdAt: booking.createdAt || new Date().toISOString()
+  }));
+  const mergedByRut = new Map();
+  [...backupClients, ...inferredClients].forEach(client => {
+    const key = String(client.rut || client.id || '').trim();
+    if (!key) return;
+    if (!mergedByRut.has(key)) mergedByRut.set(key, client);
+  });
+
+  saveClients([...mergedByRut.values()]);
+  saveBookings(payload.bookings);
+  saveLawyers(payload.lawyers);
+  saveProfiles(payload.profiles);
+  renderAll();
+}
+
 function renderReports() {
   const general = getGeneralStatusStats();
   const generalLabels = ['Nueva', 'Confirmada', 'Atendida', 'Cancelada'];
@@ -652,7 +890,7 @@ function renderReports() {
   const lawyerStats = getLawyerAttentionStats();
   const lawyerLabels = lawyerStats.map(item => item.lawyer);
   const lawyerValues = lawyerStats.map(item => item.atendida);
-  const lawyerColors = lawyerLabels.map(getLawyerColor);
+  const lawyerColors = lawyerStats.map(item => getAttentionPerformanceColor(item.atendida));
   drawBarChart(lawyerStatsChart, lawyerLabels, lawyerValues, lawyerColors, 'Atenciones (estado atendida) por abogada');
 
   const prisonStats = getPrisonVisitStats();
@@ -660,17 +898,20 @@ function renderReports() {
   const prisonValues = prisonStats.map(item => item.total);
   const prisonColors = prisonLabels.map(getLawyerColor);
   drawBarChart(prisonStatsChart, prisonLabels, prisonValues, prisonColors, 'Visitas a la cárcel por abogada');
+
+  const ranking = getLawyerRankingStats();
+  drawRankingChart(lawyerRankingChart, ranking);
 }
 
 function renderBookings() {
-  const bookings = getBookings();
+  const bookings = getBookings().filter(booking => !booking.hiredLawyer);
   bookingsBody.replaceChildren();
 
   if (!bookings.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
     cell.colSpan = 9;
-    cell.textContent = 'Sin reservas registradas';
+    cell.textContent = 'Sin leads registrados';
     row.appendChild(cell);
     bookingsBody.appendChild(row);
     return;
@@ -697,11 +938,13 @@ function renderBookings() {
     const actionsCell = document.createElement('td');
 
     const confirmBtn = document.createElement('button');
+    confirmBtn.className = `switch-btn ${booking.status === 'confirmada' ? 'primary' : ''}`.trim();
     confirmBtn.dataset.confirmBtn = booking.id;
     confirmBtn.textContent = 'Confirmar';
     actionsCell.appendChild(confirmBtn);
 
     const cancelBtn = document.createElement('button');
+    cancelBtn.className = `switch-btn ${booking.status === 'cancelada' ? 'primary' : ''}`.trim();
     cancelBtn.dataset.cancelBtn = booking.id;
     cancelBtn.textContent = 'Cancelar';
     actionsCell.appendChild(cancelBtn);
@@ -710,6 +953,7 @@ function renderBookings() {
 
     const notifyCell = document.createElement('td');
     const notifyBtn = document.createElement('button');
+    notifyBtn.className = 'switch-btn';
     notifyBtn.dataset.notifyBtn = booking.id;
     notifyBtn.textContent = 'WhatsApp';
     notifyCell.appendChild(notifyBtn);
@@ -741,7 +985,7 @@ function renderBookings() {
 function renderAgenda() {
   const selectedLawyer = lawyerFilter.value.trim();
   const bookings = getBookings().filter(booking =>
-    booking.status !== 'cancelada' && !isPrisonVisit(booking) && (!selectedLawyer || booking.assignedTo === selectedLawyer)
+    booking.hiredLawyer && booking.status !== 'cancelada' && !isPrisonVisit(booking) && (!selectedLawyer || booking.assignedTo === selectedLawyer)
   );
 
   agendaBody.replaceChildren();
@@ -769,18 +1013,36 @@ function renderAgenda() {
       row.appendChild(statusCell);
 
       const actionCell = document.createElement('td');
-      const attendBtn = document.createElement('button');
-      attendBtn.dataset.attend = booking.id;
-      attendBtn.textContent = 'Marcar atendida';
-      actionCell.appendChild(attendBtn);
+      const attendedBtn = document.createElement('button');
+      attendedBtn.className = 'switch-btn primary';
+      attendedBtn.dataset.attendYes = booking.id;
+      attendedBtn.textContent = 'Sí asistió';
+      actionCell.appendChild(attendedBtn);
+
+      const missedBtn = document.createElement('button');
+      missedBtn.className = 'switch-btn';
+      missedBtn.dataset.attendNo = booking.id;
+      missedBtn.textContent = 'No asistió';
+      actionCell.appendChild(missedBtn);
       row.appendChild(actionCell);
 
       agendaBody.appendChild(row);
     });
   }
 
-  agendaBody.querySelectorAll('[data-attend]').forEach(btn => {
-    btn.onclick = () => updateBooking(btn.dataset.attend, booking => { booking.status = 'atendida'; });
+  agendaBody.querySelectorAll('[data-attend-yes]').forEach(btn => {
+    btn.onclick = () => updateBooking(btn.dataset.attendYes, booking => {
+      booking.status = 'atendida';
+      booking.hiredLawyer = true;
+    });
+  });
+
+  agendaBody.querySelectorAll('[data-attend-no]').forEach(btn => {
+    btn.onclick = () => updateBooking(btn.dataset.attendNo, booking => {
+      booking.status = 'nueva';
+      booking.hiredLawyer = false;
+      booking.assignedTo = '';
+    });
   });
 }
 
@@ -800,7 +1062,7 @@ function renderPrisonCalendar() {
 function renderPrisonVisitsList() {
   const selectedMonth = prisonMonthInput.value;
   const visits = getBookings()
-    .filter(booking => booking.status !== 'cancelada' && isPrisonVisit(booking))
+    .filter(booking => booking.hiredLawyer && booking.status !== 'cancelada' && isPrisonVisit(booking))
     .filter(booking => !selectedMonth || booking.date.slice(0, 7) === selectedMonth)
     .sort((a, b) => `${a.date || ''} ${a.time || ''}`.localeCompare(`${b.date || ''} ${b.time || ''}`));
 
@@ -832,6 +1094,7 @@ function renderPrisonVisitsList() {
 
     const checkInCell = document.createElement('td');
     const checkInBtn = document.createElement('button');
+    checkInBtn.className = 'switch-btn primary';
     checkInBtn.dataset.prisonCheckin = booking.id;
     checkInBtn.textContent = booking.checkedInAt ? `Check-in ${fmtDate(booking.checkedInAt)}` : 'Registrar check-in';
     checkInBtn.disabled = Boolean(booking.checkedInAt);
@@ -840,6 +1103,7 @@ function renderPrisonVisitsList() {
 
     const reminderCell = document.createElement('td');
     const reminderBtn = document.createElement('button');
+    reminderBtn.className = 'switch-btn';
     reminderBtn.dataset.prisonNotify = booking.id;
     reminderBtn.textContent = 'WhatsApp y email';
     reminderCell.appendChild(reminderBtn);
@@ -976,6 +1240,9 @@ function renderProfiles() {
 
 function renderAll() {
   renderLawyerOptions();
+  renderClientOptions();
+  renderClients();
+  renderClientEditOptions();
   renderBookings();
   renderAgenda();
   renderAgendaCalendar();
@@ -1003,45 +1270,150 @@ loginForm.addEventListener('submit', event => {
   }
 });
 
-bookingForm.addEventListener('submit', async event => {
+clientForm.addEventListener('submit', event => {
   event.preventDefault();
-  const data = new FormData(bookingForm);
+  const data = new FormData(clientForm);
   const rut = formatRut(data.get('rut'));
   const phone = formatPhone(data.get('phone'));
   const email = String(data.get('email') || '').trim();
+  const name = String(data.get('name') || '').trim();
+  const address = String(data.get('address') || '').trim();
 
   if (!isValidRut(rut)) {
-    rutInput.setCustomValidity('El RUT debe tener formato xx.xxx.xxx-x');
-    rutInput.reportValidity();
+    clientRutInput.setCustomValidity('El RUT debe tener formato xx.xxx.xxx-x');
+    clientRutInput.reportValidity();
     return;
   }
-  rutInput.setCustomValidity('');
+  clientRutInput.setCustomValidity('');
 
   if (!isValidPhone(phone)) {
-    phoneInput.setCustomValidity('El teléfono debe tener formato +5691111111');
-    phoneInput.reportValidity();
+    clientPhoneInput.setCustomValidity('El teléfono debe tener formato +5691111111');
+    clientPhoneInput.reportValidity();
     return;
   }
-  phoneInput.setCustomValidity('');
+  clientPhoneInput.setCustomValidity('');
 
   if (!email) {
-    bookingForm.elements.email.setCustomValidity('El correo es obligatorio');
-    bookingForm.elements.email.reportValidity();
+    clientForm.elements.email.setCustomValidity('El correo es obligatorio');
+    clientForm.elements.email.reportValidity();
     return;
   }
-  bookingForm.elements.email.setCustomValidity('');
+  clientForm.elements.email.setCustomValidity('');
+  if (!name || !address) return;
+
+  const clients = getClients();
+  const existing = clients.find(client => (client.rut || '').trim() === rut);
+
+  if (existing) {
+    existing.name = name;
+    existing.phone = phone;
+    existing.email = email;
+    existing.address = address;
+    existing.updatedAt = new Date().toISOString();
+  } else {
+    clients.unshift({
+      id: crypto.randomUUID(),
+      name,
+      rut,
+      phone,
+      email,
+      address,
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  saveClients(clients);
+  clientForm.reset();
+  clientPhoneInput.value = '+569';
+  renderAll();
+});
+
+clientEditForm.addEventListener('submit', event => {
+  event.preventDefault();
+  const data = new FormData(clientEditForm);
+  const clientId = String(data.get('clientId') || '').trim();
+  const rut = formatRut(data.get('rut'));
+  const phone = formatPhone(data.get('phone'));
+  const name = String(data.get('name') || '').trim();
+  const email = String(data.get('email') || '').trim();
+  const address = String(data.get('address') || '').trim();
+
+  if (!clientId || !name || !email || !address) return;
+
+  if (!isValidRut(rut)) {
+    clientEditRutInput.setCustomValidity('RUT inválido');
+    clientEditRutInput.reportValidity();
+    return;
+  }
+  clientEditRutInput.setCustomValidity('');
+
+  if (!isValidPhone(phone)) {
+    clientEditPhoneInput.setCustomValidity('Teléfono inválido');
+    clientEditPhoneInput.reportValidity();
+    return;
+  }
+  clientEditPhoneInput.setCustomValidity('');
+
+  const clients = getClients();
+  const client = clients.find(item => item.id === clientId);
+  if (!client) return;
+
+  client.name = name;
+  client.rut = rut;
+  client.phone = phone;
+  client.email = email;
+  client.address = address;
+  client.updatedAt = new Date().toISOString();
+  saveClients(clients);
+
+  const bookings = getBookings();
+  bookings.forEach(booking => {
+    if (booking.clientId !== clientId) return;
+    booking.customer = name;
+    booking.rut = rut;
+    booking.phone = phone;
+    booking.email = email;
+    booking.address = address;
+  });
+  saveBookings(bookings);
+  renderAll();
+});
+
+bookingForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const data = new FormData(bookingForm);
+  const selectedClientId = String(data.get('clientId') || '').trim();
+  const selectedClient = getClients().find(client => client.id === selectedClientId);
+  if (!selectedClient) {
+    clientSelect.setCustomValidity('Debes seleccionar un cliente guardado');
+    clientSelect.reportValidity();
+    return;
+  }
+  clientSelect.setCustomValidity('');
+
+  const hiredLawyer = Boolean(data.get('hiredLawyer'));
+  const assignedTo = String(data.get('assignedTo') || '').trim();
+  if (hiredLawyer && !assignedTo) {
+    assignedToSelect.setCustomValidity('Si contrató, debes asignar una abogada');
+    assignedToSelect.reportValidity();
+    return;
+  }
+  assignedToSelect.setCustomValidity('');
 
   const bookings = getBookings();
   bookings.unshift({
     id: crypto.randomUUID(),
-    customer: String(data.get('customer') || '').trim(),
-    rut,
-    phone,
-    email,
+    clientId: selectedClient.id,
+    customer: selectedClient.name,
+    rut: selectedClient.rut,
+    phone: selectedClient.phone,
+    email: selectedClient.email,
+    address: selectedClient.address,
     matter: normalizeMatterLabel(data.get('matter')),
     date: String(data.get('date') || '').trim(),
     time: String(data.get('time') || '').trim(),
-    assignedTo: String(data.get('assignedTo') || '').trim(),
+    assignedTo: hiredLawyer ? assignedTo : '',
+    hiredLawyer,
     notes: String(data.get('notes') || '').trim(),
     notificationsConsent: Boolean(data.get('notificationsConsent')),
     consentAt: data.get('notificationsConsent') ? new Date().toISOString() : '',
@@ -1054,18 +1426,31 @@ bookingForm.addEventListener('submit', async event => {
   saveBookings(bookings);
   await notifyVisitScheduled(bookings[0]);
   bookingForm.reset();
-  phoneInput.value = '+569';
+  hiredLawyerInput.checked = true;
   renderAll();
 });
 
-rutInput.addEventListener('input', () => {
-  const cursorAtEnd = rutInput.selectionStart === rutInput.value.length;
-  rutInput.value = formatRut(rutInput.value);
-  if (cursorAtEnd) rutInput.setSelectionRange(rutInput.value.length, rutInput.value.length);
+clientRutInput.addEventListener('input', () => {
+  const cursorAtEnd = clientRutInput.selectionStart === clientRutInput.value.length;
+  clientRutInput.value = formatRut(clientRutInput.value);
+  if (cursorAtEnd) clientRutInput.setSelectionRange(clientRutInput.value.length, clientRutInput.value.length);
 });
 
-phoneInput.addEventListener('input', () => {
-  phoneInput.value = formatPhone(phoneInput.value);
+clientPhoneInput.addEventListener('input', () => {
+  clientPhoneInput.value = formatPhone(clientPhoneInput.value);
+});
+
+clientSearchInput.addEventListener('input', renderClientOptions);
+clientEditSelect.addEventListener('change', () => fillClientEditForm(clientEditSelect.value));
+clientEditRutInput.addEventListener('input', () => {
+  clientEditRutInput.value = formatRut(clientEditRutInput.value);
+});
+clientEditPhoneInput.addEventListener('input', () => {
+  clientEditPhoneInput.value = formatPhone(clientEditPhoneInput.value);
+});
+hiredLawyerInput.addEventListener('change', () => {
+  assignedToSelect.disabled = !hiredLawyerInput.checked;
+  if (!hiredLawyerInput.checked) assignedToSelect.value = '';
 });
 
 lawyerFilter.addEventListener('change', () => {
@@ -1122,6 +1507,31 @@ downloadBookingsReportBtn.addEventListener('click', () => {
     ]);
   });
   downloadCsv('reporte-detalle-citas-tacam.csv', rows);
+});
+
+downloadBackupJsonBtn.addEventListener('click', () => {
+  downloadJson(`respaldo-tacam-${new Date().toISOString().slice(0, 10)}.json`, createBackupPayload());
+});
+
+restoreBackupJsonBtn.addEventListener('click', () => {
+  restoreBackupInput.click();
+});
+
+restoreBackupInput.addEventListener('change', async event => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  try {
+    const content = await file.text();
+    const payload = JSON.parse(content);
+    restoreBackupPayload(payload);
+    alert('Respaldo cargado correctamente.');
+  } catch (error) {
+    console.error('No se pudo restaurar el respaldo', error);
+    alert('No se pudo cargar el respaldo JSON. Verifica el archivo.');
+  } finally {
+    restoreBackupInput.value = '';
+  }
 });
 
 moduleTabs.forEach(tab => {
@@ -1202,7 +1612,8 @@ const currentMonth = monthValueFromDate(new Date());
 agendaMonthInput.value = currentMonth;
 prisonMonthInput.value = currentMonth;
 lawyerCalendarMonth.value = currentMonth;
-phoneInput.value = '+569';
+clientPhoneInput.value = '+569';
+assignedToSelect.disabled = !hiredLawyerInput.checked;
 updateChileClock();
 
 saveSession({ loggedIn: false });
