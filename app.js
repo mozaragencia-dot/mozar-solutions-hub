@@ -47,6 +47,7 @@ const downloadBookingsReportBtn = document.getElementById('download-bookings-rep
 const downloadBackupJsonBtn = document.getElementById('download-backup-json');
 const restoreBackupJsonBtn = document.getElementById('restore-backup-json');
 const restoreBackupInput = document.getElementById('restore-backup-input');
+const printChartButtons = document.querySelectorAll('[data-print-chart]');
 const profileForm = document.getElementById('profile-form');
 const profileList = document.getElementById('profile-list');
 const clientSelect = document.getElementById('client-id-selected');
@@ -98,6 +99,22 @@ function showToast(message) {
   toastTimer = setTimeout(() => {
     toast.hidden = true;
   }, 2400);
+}
+
+function printChartByCanvasId(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  if (!(canvas instanceof HTMLCanvasElement)) {
+    showToast('No se encontró el gráfico para imprimir.');
+    return;
+  }
+  const dataUrl = canvas.toDataURL('image/png');
+  const popup = window.open('', '_blank', 'width=1100,height=800');
+  if (!popup) {
+    showToast('Habilita ventanas emergentes para imprimir.');
+    return;
+  }
+  popup.document.write(`<html><head><title>Imprimir gráfico</title></head><body style="margin:0;display:flex;justify-content:center"><img src="${dataUrl}" style="width:100%;max-width:1024px" onload="window.print();window.close();" /></body></html>`);
+  popup.document.close();
 }
 
 function fillSelectedClientPreview(client) {
@@ -917,10 +934,15 @@ function getLawyerAttentionStats() {
 }
 
 function getPrisonVisitStats() {
-  const visits = getBookings().filter(booking => isPrisonVisit(booking));
-  const visited = visits.filter(booking => booking.prisonAttendance === 'asistio').length;
-  const pending = visits.filter(booking => booking.prisonAttendance !== 'asistio').length;
-  return { visited, pending };
+  const map = new Map();
+  getBookings()
+    .filter(booking => isPrisonVisit(booking) && booking.prisonAttendance === 'asistio')
+    .forEach(booking => {
+      const lawyer = (booking.assignedTo || 'Sin abogada').trim() || 'Sin abogada';
+      if (!map.has(lawyer)) map.set(lawyer, 0);
+      map.set(lawyer, map.get(lawyer) + 1);
+    });
+  return [...map.entries()].map(([lawyer, total]) => ({ lawyer, total }));
 }
 
 function getLawyerRankingStats() {
@@ -942,6 +964,12 @@ function getAttentionPerformanceColor(attended) {
   const value = Number(attended) || 0;
   if (value <= 2) return '#d63a55';
   if (value <= 3) return '#e9c46a';
+  return '#2a9d8f';
+}
+
+function getVisitRangeColor(total) {
+  if (total <= 1) return '#e63946';
+  if (total <= 3) return '#f4a261';
   return '#2a9d8f';
 }
 
@@ -1053,6 +1081,50 @@ function drawRankingChart(canvas, ranking) {
   });
 }
 
+function drawHorizontalBarChart(canvas, labels, values, colors, title) {
+  if (!(canvas instanceof HTMLCanvasElement)) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  const width = canvas.width;
+  const height = canvas.height;
+  ctx.clearRect(0, 0, width, height);
+
+  const padLeft = 220;
+  const padRight = 30;
+  const padTop = 34;
+  const padBottom = 26;
+  const chartWidth = width - padLeft - padRight;
+  const rowHeight = 28;
+  const gap = 16;
+  const maxValue = Math.max(...values, 1);
+
+  ctx.fillStyle = '#4d1930';
+  ctx.font = 'bold 18px Arial';
+  ctx.fillText(title, 12, 22);
+
+  labels.forEach((label, index) => {
+    const y = padTop + (rowHeight + gap) * index;
+    const value = values[index] || 0;
+    const barWidth = (value / maxValue) * chartWidth;
+
+    ctx.fillStyle = '#f7eef1';
+    ctx.fillRect(padLeft, y, chartWidth, rowHeight);
+
+    ctx.fillStyle = colors[index] || '#8f203a';
+    ctx.fillRect(padLeft, y, barWidth, rowHeight);
+
+    ctx.fillStyle = '#4d1930';
+    ctx.font = '13px Arial';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, padLeft - 10, y + rowHeight / 2);
+
+    ctx.textAlign = 'left';
+    ctx.fillText(String(value), padLeft + barWidth + 8, y + rowHeight / 2);
+  });
+}
+
 function downloadCsv(filename, rows) {
   const csv = rows.map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -1130,17 +1202,23 @@ function renderReports() {
   const lawyerColors = lawyerStats.map(item => getAttentionPerformanceColor(item.atendida));
   drawBarChart(lawyerStatsChart, lawyerLabels, lawyerValues, lawyerColors, 'Atenciones (estado atendida) por abogada');
 
-  const prisonStats = getPrisonVisitStats();
-  drawBarChart(
+  const prisonStats = getPrisonVisitStats().sort((a, b) => b.total - a.total);
+  drawHorizontalBarChart(
     prisonStatsChart,
-    ['Visitadas', 'Pendientes'],
-    [prisonStats.visited, prisonStats.pending],
-    ['#2a9d8f', '#f4a261'],
-    'Visitas a la cárcel: visitadas y pendientes'
+    prisonStats.map(item => item.lawyer),
+    prisonStats.map(item => item.total),
+    prisonStats.map(item => getVisitRangeColor(item.total)),
+    'Visitas a la cárcel por abogada'
   );
 
   const ranking = getLawyerRankingStats();
-  drawRankingChart(lawyerRankingChart, ranking);
+  drawHorizontalBarChart(
+    lawyerRankingChart,
+    ranking.map(item => item.lawyer),
+    ranking.map(item => item.attended),
+    ranking.map(item => getVisitRangeColor(item.attended)),
+    'Ranking por atenciones (abogadas)'
+  );
 }
 
 function renderBookings() {
@@ -2090,6 +2168,11 @@ restoreBackupInput.addEventListener('change', async event => {
 
 moduleTabs.forEach(tab => {
   tab.addEventListener('click', () => switchModule(tab.dataset.moduleTab));
+});
+printChartButtons.forEach(button => {
+  button.addEventListener('click', () => {
+    printChartByCanvasId(button.dataset.printChart);
+  });
 });
 
 lawyerForm.addEventListener('submit', async event => {
