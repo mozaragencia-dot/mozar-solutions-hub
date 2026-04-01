@@ -917,18 +917,10 @@ function getLawyerAttentionStats() {
 }
 
 function getPrisonVisitStats() {
-  const map = new Map();
-  getBookings()
-    .filter(booking => isPrisonVisit(booking) && booking.prisonAttendance === 'asistio')
-    .forEach(booking => {
-      const lawyer = (booking.assignedTo || 'Sin abogada').trim() || 'Sin abogada';
-      if (!map.has(lawyer)) map.set(lawyer, 0);
-      map.set(lawyer, map.get(lawyer) + 1);
-    });
-
-  return [...map.entries()]
-    .map(([lawyer, total]) => ({ lawyer, total }))
-    .sort((a, b) => a.lawyer.localeCompare(b.lawyer, 'es'));
+  const visits = getBookings().filter(booking => isPrisonVisit(booking));
+  const visited = visits.filter(booking => booking.prisonAttendance === 'asistio').length;
+  const pending = visits.filter(booking => booking.prisonAttendance !== 'asistio').length;
+  return { visited, pending };
 }
 
 function getLawyerRankingStats() {
@@ -1139,10 +1131,13 @@ function renderReports() {
   drawBarChart(lawyerStatsChart, lawyerLabels, lawyerValues, lawyerColors, 'Atenciones (estado atendida) por abogada');
 
   const prisonStats = getPrisonVisitStats();
-  const prisonLabels = prisonStats.map(item => item.lawyer);
-  const prisonValues = prisonStats.map(item => item.total);
-  const prisonColors = prisonLabels.map(getLawyerColor);
-  drawBarChart(prisonStatsChart, prisonLabels, prisonValues, prisonColors, 'Visitas a la cárcel por abogada');
+  drawBarChart(
+    prisonStatsChart,
+    ['Visitadas', 'Pendientes'],
+    [prisonStats.visited, prisonStats.pending],
+    ['#2a9d8f', '#f4a261'],
+    'Visitas a la cárcel: visitadas y pendientes'
+  );
 
   const ranking = getLawyerRankingStats();
   drawRankingChart(lawyerRankingChart, ranking);
