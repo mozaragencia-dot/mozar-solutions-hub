@@ -6,6 +6,7 @@ const loginError = document.getElementById('login-error');
 const bookingsBody = document.getElementById('bookings-body');
 const hiredBody = document.getElementById('hired-body');
 const agendaBody = document.getElementById('agenda-body');
+const imputadosBody = document.getElementById('imputados-body');
 const clientForm = document.getElementById('client-form');
 const clientsBody = document.getElementById('clients-body');
 const clientSearchInput = document.getElementById('client-search');
@@ -572,6 +573,90 @@ function renderClients() {
     const representativeName = client.representative?.name || '';
     appendCell(row, representativeName ? `${representativeName} (representa a ${client.name || '-'})` : '-');
     clientsBody.appendChild(row);
+  });
+}
+
+function getLastBookingForClient(clientId, predicate = null) {
+  const bookings = getBookings()
+    .filter(booking => booking.clientId === clientId)
+    .filter(booking => typeof predicate === 'function' ? predicate(booking) : true)
+    .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+  return bookings[0] || null;
+}
+
+function renderImputadosModule() {
+  const clients = getClients().sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'es'));
+  imputadosBody.replaceChildren();
+
+  if (!clients.length) {
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 8;
+    cell.textContent = 'Sin contactos registrados.';
+    row.appendChild(cell);
+    imputadosBody.appendChild(row);
+    return;
+  }
+
+  clients.forEach(client => {
+    const latestGeneral = getLastBookingForClient(client.id, booking => !isPrisonVisit(booking));
+    const latestPrison = getLastBookingForClient(client.id, booking => isPrisonVisit(booking));
+    const targetBooking = latestPrison || latestGeneral;
+
+    const row = document.createElement('tr');
+    appendCell(row, client.name || '');
+    appendCell(row, client.imputadoStatus === 'imputado' ? 'Imputado' : 'No imputado');
+    appendCell(row, client.representative?.name ? `${client.representative.name} (representa a ${client.name || '-'})` : '-');
+    appendCell(row, latestGeneral?.hiredLawyer ? 'Sí contrató' : 'No contrató');
+    appendCell(row, latestPrison ? 'Sí' : 'No');
+
+    const lawyerCell = document.createElement('td');
+    const lawyerSelect = document.createElement('select');
+    lawyerSelect.dataset.imputadoLawyer = client.id;
+    const firstLawyer = document.createElement('option');
+    firstLawyer.value = '';
+    firstLawyer.textContent = UNASSIGNED_LAWYER_LABEL;
+    lawyerSelect.appendChild(firstLawyer);
+    getLawyerNames().forEach(name => {
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      lawyerSelect.appendChild(option);
+    });
+    lawyerSelect.value = targetBooking?.assignedTo || '';
+    lawyerCell.appendChild(lawyerSelect);
+    row.appendChild(lawyerCell);
+
+    const statusCell = document.createElement('td');
+    const statusSelect = document.createElement('select');
+    statusSelect.dataset.imputadoStatusBooking = client.id;
+    ['nueva', 'confirmada', 'atendida', 'cancelada'].forEach(status => {
+      const option = document.createElement('option');
+      option.value = status;
+      option.textContent = statusLabel(status);
+      statusSelect.appendChild(option);
+    });
+    statusSelect.value = targetBooking?.status || 'nueva';
+    statusCell.appendChild(statusSelect);
+    row.appendChild(statusCell);
+
+    const actionsCell = document.createElement('td');
+    const visitBtn = document.createElement('button');
+    visitBtn.className = 'switch-btn';
+    visitBtn.type = 'button';
+    visitBtn.dataset.imputadoVisit = client.id;
+    visitBtn.textContent = 'Agendar visita';
+    actionsCell.appendChild(visitBtn);
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'switch-btn';
+    editBtn.type = 'button';
+    editBtn.dataset.imputadoEdit = client.id;
+    editBtn.textContent = 'Editar datos';
+    actionsCell.appendChild(editBtn);
+    row.appendChild(actionsCell);
+
+    imputadosBody.appendChild(row);
   });
 }
 
@@ -1564,6 +1649,7 @@ function renderAll() {
   renderLawyerOptions();
   renderClientOptions();
   renderClients();
+  renderImputadosModule();
   renderClientEditOptions();
   renderBookings();
   renderAgenda();
@@ -1885,6 +1971,54 @@ prisonLawyerFilter.addEventListener('change', () => {
 lawyerCalendarFilter.addEventListener('change', renderLawyerCalendar);
 lawyerCalendarMonth.addEventListener('change', renderLawyerCalendar);
 sharedOnlyInput.addEventListener('change', renderLawyerCalendar);
+
+imputadosBody.addEventListener('click', event => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+
+  const visitClientId = target.dataset.imputadoVisit;
+  if (visitClientId) {
+    switchModule('prison-visits');
+    prisonBookingForm.elements.clientId.value = visitClientId;
+    showToast('Contacto cargado para agendar visita.');
+    return;
+  }
+
+  const editClientId = target.dataset.imputadoEdit;
+  if (editClientId) {
+    switchModule('clients');
+    clientEditSelect.value = editClientId;
+    fillClientEditForm(editClientId);
+    showToast('Contacto cargado para edición.');
+  }
+});
+
+imputadosBody.addEventListener('change', event => {
+  const target = event.target;
+  if (!(target instanceof HTMLSelectElement)) return;
+  const clientId = target.dataset.imputadoLawyer || target.dataset.imputadoStatusBooking;
+  if (!clientId) return;
+
+  const bookings = getBookings();
+  const booking = bookings
+    .filter(item => item.clientId === clientId)
+    .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))[0];
+  if (!booking) {
+    showToast('Este contacto aún no tiene reservas.');
+    return;
+  }
+
+  if (target.dataset.imputadoLawyer) {
+    booking.assignedTo = normalizeAssignedToValue(target.value);
+    if (!isPrisonVisit(booking)) booking.hiredLawyer = Boolean(booking.assignedTo);
+    showToast('Abogada actualizada.');
+  } else if (target.dataset.imputadoStatusBooking) {
+    booking.status = target.value;
+    showToast('Estado actualizado.');
+  }
+  saveBookings(bookings);
+  renderAll();
+});
 
 downloadGeneralReportBtn.addEventListener('click', () => {
   const stats = getGeneralStatusStats();

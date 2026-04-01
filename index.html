@@ -44,6 +44,7 @@
       <nav class="module-tabs" aria-label="Módulos TACAM">
         <button type="button" class="module-tab active" data-module-tab="create">Ingreso de Contacto</button>
         <button type="button" class="module-tab" data-module-tab="clients">Editar Contactos</button>
+        <button type="button" class="module-tab" data-module-tab="imputados">Imputados / No imputados</button>
         <button type="button" class="module-tab" data-module-tab="agenda">Agendamiento</button>
         <button type="button" class="module-tab" data-module-tab="bookings">Contratos / No contratados</button>
         <button type="button" class="module-tab" data-module-tab="prison-visits">Visitas a la Cárcel</button>
@@ -118,6 +119,17 @@
           </label>
           <button type="submit">Guardar reserva</button>
         </form>
+      </section>
+
+      <section class="card module-panel" data-module-panel="imputados">
+        <h2>Módulo de Imputados y No imputados</h2>
+        <p class="muted">Gestiona imputado/no imputado, representante, cambio de abogada/estado y acceso rápido para agendar visita.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Contacto</th><th>Tipo</th><th>Representante</th><th>Contrató</th><th>Visita cárcel</th><th>Abogada</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody id="imputados-body"></tbody>
+          </table>
+        </div>
       </section>
 
       <section class="card module-panel" data-module-panel="clients">
