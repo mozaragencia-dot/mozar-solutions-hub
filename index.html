@@ -45,14 +45,14 @@
         <button type="button" class="module-tab active" data-module-tab="create">Ingreso de Contacto</button>
         <button type="button" class="module-tab" data-module-tab="clients">Editar Contactos</button>
         <button type="button" class="module-tab" data-module-tab="agenda">Agendamiento</button>
-        <button type="button" class="module-tab" data-module-tab="bookings">Leads</button>
+        <button type="button" class="module-tab" data-module-tab="bookings">Contratos / No contratados</button>
         <button type="button" class="module-tab" data-module-tab="prison-visits">Visitas a la Cárcel</button>
         <button type="button" class="module-tab" data-module-tab="lawyers">Perfiles de Abogados</button>
         <button type="button" class="module-tab" data-module-tab="reports">Reportes y Gráficos</button>
       </nav>
 
       <section class="card module-panel active" data-module-panel="create">
-        <h2>Contactos y Agendamiento</h2>
+        <h2>Asentamientos</h2>
         <h3>1) Guardar datos</h3>
         <form id="client-form" class="grid">
           <label>Nombre de la persona <input name="name" required /></label>
@@ -66,9 +66,11 @@
               <option value="imputado">Imputado</option>
             </select>
           </label>
-          <label id="representative-field" hidden>Representante
-            <input name="representative" placeholder="Nombre y datos del representante" />
-          </label>
+          <label class="representative-create-field" hidden>Nombre representante <input name="representativeName" /></label>
+          <label class="representative-create-field" hidden>RUT representante <input name="representativeRut" maxlength="12" placeholder="12.345.678-9" /></label>
+          <label class="representative-create-field" hidden>Teléfono representante <input name="representativePhone" maxlength="12" placeholder="+56912345678" /></label>
+          <label class="representative-create-field" hidden>Correo representante <input name="representativeEmail" type="email" placeholder="representante@correo.com" /></label>
+          <label class="full representative-create-field" hidden>Dirección representante <input name="representativeAddress" /></label>
           <button type="submit">Guardar datos</button>
         </form>
 
@@ -108,7 +110,7 @@
             </select>
           </label>
           <label class="full checkbox-inline consent-box">
-            <input name="hiredLawyer" type="checkbox" checked /> Contrató abogada (si se desmarca, pasa a Leads)
+            <input name="hiredLawyer" type="checkbox" checked /> Contrató abogada (si se desmarca, pasa a no contratados)
           </label>
           <label class="full">Motivo de consulta <textarea name="notes" rows="3" placeholder="Detalle del caso..."></textarea></label>
           <label class="full checkbox-inline consent-box">
@@ -131,6 +133,17 @@
           <label>Teléfono <input name="phone" required maxlength="12" /></label>
           <label>Correo <input name="email" type="email" required /></label>
           <label class="full">Dirección <input name="address" required /></label>
+          <label>Situación
+            <select name="imputadoStatus" required>
+              <option value="no_imputado">No imputado</option>
+              <option value="imputado">Imputado</option>
+            </select>
+          </label>
+          <label class="representative-edit-field" hidden>Nombre representante <input name="representativeName" /></label>
+          <label class="representative-edit-field" hidden>RUT representante <input name="representativeRut" maxlength="12" placeholder="12.345.678-9" /></label>
+          <label class="representative-edit-field" hidden>Teléfono representante <input name="representativePhone" maxlength="12" placeholder="+56912345678" /></label>
+          <label class="representative-edit-field" hidden>Correo representante <input name="representativeEmail" type="email" placeholder="representante@correo.com" /></label>
+          <label class="full representative-edit-field" hidden>Dirección representante <input name="representativeAddress" /></label>
           <label class="full checkbox-inline consent-box">
             <input name="hiredLater" type="checkbox" /> Este contacto no contrató al inicio y ahora sí contrató
           </label>
@@ -144,7 +157,7 @@
       </section>
 
       <section class="card module-panel" data-module-panel="bookings">
-        <h2>Leads</h2>
+        <h2>Contratos / No contratados</h2>
         <p class="muted">WhatsApp de notificación TACAM: <strong>+56987591312</strong></p>
         <h3>No contratados</h3>
         <div class="table-wrap">
@@ -184,7 +197,7 @@
 
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Persona</th><th>Materia</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Selección abogada</th></tr></thead>
+            <thead><tr><th>Persona</th><th>Materia</th><th>Cita</th><th>Motivo</th><th>Estado</th><th>Contrato servicio</th></tr></thead>
             <tbody id="agenda-body"></tbody>
           </table>
         </div>

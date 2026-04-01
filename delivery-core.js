@@ -88,7 +88,7 @@ function seedData() {
         email: 'cliente.demo@tacam.cl',
         address: 'Dirección demo',
         imputadoStatus: 'no_imputado',
-        representative: '',
+        representative: null,
         createdAt: new Date().toISOString()
       }
     ]);
@@ -96,7 +96,25 @@ function seedData() {
     const normalizedClients = existingClients.map(client => ({
       ...client,
       imputadoStatus: client.imputadoStatus === 'imputado' ? 'imputado' : 'no_imputado',
-      representative: client.imputadoStatus === 'imputado' ? String(client.representative || '').trim() : ''
+      representative: client.imputadoStatus === 'imputado'
+        ? (typeof client.representative === 'object' && client.representative
+          ? {
+            name: String(client.representative.name || '').trim(),
+            rut: String(client.representative.rut || '').trim(),
+            phone: String(client.representative.phone || '').trim(),
+            email: String(client.representative.email || '').trim(),
+            address: String(client.representative.address || '').trim(),
+            represents: String(client.representative.represents || client.name || '').trim()
+          }
+          : {
+            name: String(client.representative || '').trim(),
+            rut: '',
+            phone: '',
+            email: '',
+            address: '',
+            represents: String(client.name || '').trim()
+          })
+        : null
     }));
     saveJson(STORAGE_KEYS.clients, normalizedClients);
   }
@@ -114,7 +132,7 @@ function seedData() {
         email: 'cliente.demo@tacam.cl',
         address: 'Dirección demo',
         imputadoStatus: 'no_imputado',
-        representative: '',
+        representative: null,
         matter: 'Familiar',
         date: new Date().toISOString().slice(0, 10),
         time: '10:30',
@@ -130,7 +148,25 @@ function seedData() {
       ...booking,
       hiredLawyer: typeof booking.hiredLawyer === 'boolean' ? booking.hiredLawyer : Boolean((booking.assignedTo || '').trim()),
       imputadoStatus: booking.imputadoStatus === 'imputado' ? 'imputado' : 'no_imputado',
-      representative: booking.imputadoStatus === 'imputado' ? String(booking.representative || '').trim() : ''
+      representative: booking.imputadoStatus === 'imputado'
+        ? (typeof booking.representative === 'object' && booking.representative
+          ? {
+            name: String(booking.representative.name || '').trim(),
+            rut: String(booking.representative.rut || '').trim(),
+            phone: String(booking.representative.phone || '').trim(),
+            email: String(booking.representative.email || '').trim(),
+            address: String(booking.representative.address || '').trim(),
+            represents: String(booking.representative.represents || booking.customer || '').trim()
+          }
+          : {
+            name: String(booking.representative || '').trim(),
+            rut: '',
+            phone: '',
+            email: '',
+            address: '',
+            represents: String(booking.customer || '').trim()
+          })
+        : null
     }));
     saveJson(STORAGE_KEYS.bookings, normalized);
   }

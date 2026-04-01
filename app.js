@@ -53,10 +53,21 @@ const hiredLawyerInput = bookingForm.elements.hiredLawyer;
 const clientRutInput = clientForm.elements.rut;
 const clientPhoneInput = clientForm.elements.phone;
 const imputadoStatusInput = clientForm.elements.imputadoStatus;
-const representativeInput = clientForm.elements.representative;
-const representativeField = document.getElementById('representative-field');
+const representativeCreateFields = Array.from(document.querySelectorAll('.representative-create-field'));
+const representativeNameInput = clientForm.elements.representativeName;
+const representativeRutInput = clientForm.elements.representativeRut;
+const representativePhoneInput = clientForm.elements.representativePhone;
+const representativeEmailInput = clientForm.elements.representativeEmail;
+const representativeAddressInput = clientForm.elements.representativeAddress;
 const clientEditRutInput = clientEditForm.elements.rut;
 const clientEditPhoneInput = clientEditForm.elements.phone;
+const clientEditImputadoStatusInput = clientEditForm.elements.imputadoStatus;
+const representativeEditFields = Array.from(document.querySelectorAll('.representative-edit-field'));
+const clientEditRepresentativeNameInput = clientEditForm.elements.representativeName;
+const clientEditRepresentativeRutInput = clientEditForm.elements.representativeRut;
+const clientEditRepresentativePhoneInput = clientEditForm.elements.representativePhone;
+const clientEditRepresentativeEmailInput = clientEditForm.elements.representativeEmail;
+const clientEditRepresentativeAddressInput = clientEditForm.elements.representativeAddress;
 const clientEditHiredLaterInput = clientEditForm.elements.hiredLater;
 const clientEditAssignedToSelect = clientEditForm.elements.assignedTo;
 const prisonClientSelect = prisonBookingForm.elements.clientId;
@@ -98,16 +109,51 @@ function fillSelectedClientPreview(client) {
 
 function updateRepresentativeVisibility() {
   const isImputado = imputadoStatusInput.value === 'imputado';
-  representativeField.hidden = !isImputado;
-  representativeInput.required = isImputado;
-  if (!isImputado) representativeInput.value = '';
+  representativeCreateFields.forEach(field => {
+    field.hidden = !isImputado;
+    const input = field.querySelector('input');
+    if (input) {
+      input.required = isImputado && input.name === 'representativeName';
+      if (!isImputado) input.value = '';
+    }
+  });
+}
+
+function updateEditRepresentativeVisibility() {
+  const isImputado = clientEditImputadoStatusInput.value === 'imputado';
+  representativeEditFields.forEach(field => {
+    field.hidden = !isImputado;
+    const input = field.querySelector('input');
+    if (input) {
+      input.required = isImputado && input.name === 'representativeName';
+      if (!isImputado) input.value = '';
+    }
+  });
+}
+
+function buildRepresentativeRecord(data, representsName, prefix = '') {
+  const name = String(data.get(`${prefix}representativeName`) || '').trim();
+  const rutRaw = String(data.get(`${prefix}representativeRut`) || '').trim();
+  const phoneRaw = String(data.get(`${prefix}representativePhone`) || '').trim();
+  const rut = rutRaw ? formatRut(rutRaw) : '';
+  const phone = phoneRaw ? formatPhone(phoneRaw) : '';
+  const email = String(data.get(`${prefix}representativeEmail`) || '').trim();
+  const address = String(data.get(`${prefix}representativeAddress`) || '').trim();
+  if (!name && !rut && !phone && !email && !address) return null;
+  return { name, rut, phone, email, address, represents: representsName || '' };
 }
 
 function getBookingRepresentative(booking) {
-  if ((booking.representative || '').trim()) return booking.representative;
+  const rep = booking.representative;
+  if (rep && typeof rep === 'object' && String(rep.name || '').trim()) {
+    return `${rep.name}${rep.represents ? ` (representa a ${rep.represents})` : ''}`;
+  }
   if (!booking.clientId) return '';
   const client = getClients().find(item => item.id === booking.clientId);
-  return client?.representative || '';
+  if (client?.representative && typeof client.representative === 'object' && String(client.representative.name || '').trim()) {
+    return `${client.representative.name}${client.representative.represents ? ` (representa a ${client.representative.represents})` : ''}`;
+  }
+  return '';
 }
 
 function showApp() {
@@ -523,7 +569,8 @@ function renderClients() {
     appendCell(row, client.email || '');
     appendCell(row, client.address || '');
     appendCell(row, client.imputadoStatus === 'imputado' ? 'Imputado' : 'No imputado');
-    appendCell(row, client.representative || '-');
+    const representativeName = client.representative?.name || '';
+    appendCell(row, representativeName ? `${representativeName} (representa a ${client.name || '-'})` : '-');
     clientsBody.appendChild(row);
   });
 }
@@ -550,6 +597,8 @@ function renderClientEditOptions() {
     fillClientEditForm(selected);
   } else {
     clientEditForm.reset();
+    clientEditImputadoStatusInput.value = 'no_imputado';
+    updateEditRepresentativeVisibility();
     clientEditAssignedToSelect.value = UNASSIGNED_LAWYER_LABEL;
     clientEditAssignedToSelect.disabled = true;
   }
@@ -559,6 +608,8 @@ function fillClientEditForm(clientId) {
   const client = getClients().find(item => item.id === clientId);
   if (!client) {
     clientEditForm.reset();
+    clientEditImputadoStatusInput.value = 'no_imputado';
+    updateEditRepresentativeVisibility();
     return;
   }
 
@@ -567,6 +618,16 @@ function fillClientEditForm(clientId) {
   clientEditForm.elements.phone.value = client.phone || '';
   clientEditForm.elements.email.value = client.email || '';
   clientEditForm.elements.address.value = client.address || '';
+  clientEditImputadoStatusInput.value = client.imputadoStatus === 'imputado' ? 'imputado' : 'no_imputado';
+  const representative = typeof client.representative === 'object' && client.representative
+    ? client.representative
+    : { name: String(client.representative || '').trim(), rut: '', phone: '', email: '', address: '' };
+  clientEditRepresentativeNameInput.value = representative.name || '';
+  clientEditRepresentativeRutInput.value = representative.rut || '';
+  clientEditRepresentativePhoneInput.value = representative.phone || '';
+  clientEditRepresentativeEmailInput.value = representative.email || '';
+  clientEditRepresentativeAddressInput.value = representative.address || '';
+  updateEditRepresentativeVisibility();
 
   const clientBookings = getBookings().filter(booking => booking.clientId === clientId);
   const hiredBooking = clientBookings.find(booking => booking.hiredLawyer);
@@ -1210,13 +1271,13 @@ function renderAgenda() {
       const attendedBtn = document.createElement('button');
       attendedBtn.className = 'switch-btn primary';
       attendedBtn.dataset.attendYes = booking.id;
-      attendedBtn.textContent = 'Sí asistió';
+      attendedBtn.textContent = 'Sí contrató servicio';
       actionCell.appendChild(attendedBtn);
 
       const missedBtn = document.createElement('button');
       missedBtn.className = 'switch-btn';
       missedBtn.dataset.attendNo = booking.id;
-      missedBtn.textContent = 'No asistió';
+      missedBtn.textContent = 'No contrató servicio';
       actionCell.appendChild(missedBtn);
       row.appendChild(actionCell);
 
@@ -1540,7 +1601,7 @@ clientForm.addEventListener('submit', event => {
   const name = String(data.get('name') || '').trim();
   const address = String(data.get('address') || '').trim();
   const imputadoStatus = String(data.get('imputadoStatus') || 'no_imputado').trim() === 'imputado' ? 'imputado' : 'no_imputado';
-  const representative = String(data.get('representative') || '').trim();
+  const representative = buildRepresentativeRecord(data, name);
 
   if (!isValidRut(rut)) {
     clientRutInput.setCustomValidity('El RUT debe tener formato xx.xxx.xxx-x');
@@ -1563,12 +1624,12 @@ clientForm.addEventListener('submit', event => {
   }
   clientForm.elements.email.setCustomValidity('');
   if (!name || !address) return;
-  if (imputadoStatus === 'imputado' && !representative) {
-    representativeInput.setCustomValidity('Debes indicar la información del representante.');
-    representativeInput.reportValidity();
+  if (imputadoStatus === 'imputado' && !representative?.name) {
+    representativeNameInput.setCustomValidity('Debes indicar el nombre del representante.');
+    representativeNameInput.reportValidity();
     return;
   }
-  representativeInput.setCustomValidity('');
+  representativeNameInput.setCustomValidity('');
 
   const clients = getClients();
   const existing = clients.find(client => (client.rut || '').trim() === rut);
@@ -1579,7 +1640,7 @@ clientForm.addEventListener('submit', event => {
     existing.email = email;
     existing.address = address;
     existing.imputadoStatus = imputadoStatus;
-    existing.representative = imputadoStatus === 'imputado' ? representative : '';
+    existing.representative = imputadoStatus === 'imputado' ? representative : null;
     existing.updatedAt = new Date().toISOString();
   } else {
     clients.unshift({
@@ -1590,7 +1651,7 @@ clientForm.addEventListener('submit', event => {
       email,
       address,
       imputadoStatus,
-      representative: imputadoStatus === 'imputado' ? representative : '',
+      representative: imputadoStatus === 'imputado' ? representative : null,
       createdAt: new Date().toISOString()
     });
   }
@@ -1613,6 +1674,8 @@ clientEditForm.addEventListener('submit', event => {
   const name = String(data.get('name') || '').trim();
   const email = String(data.get('email') || '').trim();
   const address = String(data.get('address') || '').trim();
+  const imputadoStatus = String(data.get('imputadoStatus') || 'no_imputado').trim() === 'imputado' ? 'imputado' : 'no_imputado';
+  const representative = buildRepresentativeRecord(data, name);
   const hiredLater = Boolean(data.get('hiredLater'));
   const assignedTo = normalizeAssignedToValue(data.get('assignedTo'));
 
@@ -1631,6 +1694,12 @@ clientEditForm.addEventListener('submit', event => {
     return;
   }
   clientEditPhoneInput.setCustomValidity('');
+  if (imputadoStatus === 'imputado' && !representative?.name) {
+    clientEditRepresentativeNameInput.setCustomValidity('Debes indicar el nombre del representante.');
+    clientEditRepresentativeNameInput.reportValidity();
+    return;
+  }
+  clientEditRepresentativeNameInput.setCustomValidity('');
 
   const clients = getClients();
   const client = clients.find(item => item.id === clientId);
@@ -1641,6 +1710,8 @@ clientEditForm.addEventListener('submit', event => {
   client.phone = phone;
   client.email = email;
   client.address = address;
+  client.imputadoStatus = imputadoStatus;
+  client.representative = imputadoStatus === 'imputado' ? representative : null;
   client.updatedAt = new Date().toISOString();
   saveClients(clients);
 
@@ -1652,6 +1723,8 @@ clientEditForm.addEventListener('submit', event => {
     booking.phone = phone;
     booking.email = email;
     booking.address = address;
+    booking.imputadoStatus = imputadoStatus;
+    booking.representative = imputadoStatus === 'imputado' ? representative : null;
     if (hiredLater && !isPrisonVisit(booking)) {
       booking.hiredLawyer = true;
       booking.assignedTo = assignedTo;
@@ -1686,7 +1759,7 @@ bookingForm.addEventListener('submit', async event => {
     email: selectedClient.email,
     address: selectedClient.address,
     imputadoStatus: selectedClient.imputadoStatus || 'no_imputado',
-    representative: selectedClient.representative || '',
+    representative: selectedClient.representative || null,
     matter: normalizeMatterLabel(data.get('matter')),
     date: String(data.get('date') || '').trim(),
     time: String(data.get('time') || '').trim(),
@@ -1763,6 +1836,12 @@ clientPhoneInput.addEventListener('input', () => {
   clientPhoneInput.value = formatPhone(clientPhoneInput.value);
 });
 imputadoStatusInput.addEventListener('change', updateRepresentativeVisibility);
+representativeRutInput.addEventListener('input', () => {
+  representativeRutInput.value = formatRut(representativeRutInput.value);
+});
+representativePhoneInput.addEventListener('input', () => {
+  representativePhoneInput.value = formatPhone(representativePhoneInput.value);
+});
 
 clientSearchInput.addEventListener('input', renderClientOptions);
 clientEditSelect.addEventListener('change', () => fillClientEditForm(clientEditSelect.value));
@@ -1771,6 +1850,13 @@ clientEditRutInput.addEventListener('input', () => {
 });
 clientEditPhoneInput.addEventListener('input', () => {
   clientEditPhoneInput.value = formatPhone(clientEditPhoneInput.value);
+});
+clientEditImputadoStatusInput.addEventListener('change', updateEditRepresentativeVisibility);
+clientEditRepresentativeRutInput.addEventListener('input', () => {
+  clientEditRepresentativeRutInput.value = formatRut(clientEditRepresentativeRutInput.value);
+});
+clientEditRepresentativePhoneInput.addEventListener('input', () => {
+  clientEditRepresentativePhoneInput.value = formatPhone(clientEditRepresentativePhoneInput.value);
 });
 clientEditHiredLaterInput.addEventListener('change', () => {
   clientEditAssignedToSelect.disabled = !clientEditHiredLaterInput.checked;
@@ -1956,6 +2042,7 @@ lawyerCalendarMonth.value = currentMonth;
 clientPhoneInput.value = '+569';
 assignedToSelect.disabled = !hiredLawyerInput.checked;
 updateRepresentativeVisibility();
+updateEditRepresentativeVisibility();
 updateChileClock();
 
 saveSession({ loggedIn: false });
