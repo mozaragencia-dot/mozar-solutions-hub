@@ -184,6 +184,15 @@ function getAppointmentDateTime(booking) {
   return Number.isNaN(dateTime.getTime()) ? null : dateTime;
 }
 
+function hasBookingConflict(bookings, candidate) {
+  return bookings.some(booking =>
+    booking.status !== 'cancelada' &&
+    booking.assignedTo === candidate.assignedTo &&
+    booking.date === candidate.date &&
+    booking.time === candidate.time
+  );
+}
+
 function buildReminderMessage(booking, minutesLeft) {
   const matter = normalizeMatterLabel(booking.matter) || 'General';
   if (isPrisonVisit(booking)) {
@@ -1636,7 +1645,7 @@ bookingForm.addEventListener('submit', async event => {
   bookingClientSearchInput.setCustomValidity('');
 
   const bookings = getBookings();
-  bookings.unshift({
+  const bookingPayload = {
     id: crypto.randomUUID(),
     clientId: client.id,
     customer: client.customer,
@@ -1656,7 +1665,12 @@ bookingForm.addEventListener('submit', async event => {
     reminder24hSentAt: '',
     reminder1hSentAt: '',
     checkedInAt: ''
-  });
+  };
+  if (hasBookingConflict(bookings, bookingPayload)) {
+    alert('Ya existe una cita para esa abogada en la misma fecha y hora.');
+    return;
+  }
+  bookings.unshift(bookingPayload);
   saveBookings(bookings);
   await notifyVisitScheduled(bookings[0]);
   bookingForm.reset();
@@ -1677,7 +1691,7 @@ prisonVisitForm.addEventListener('submit', async event => {
   prisonClientSearchInput.setCustomValidity('');
 
   const bookings = getBookings();
-  bookings.unshift({
+  const bookingPayload = {
     id: crypto.randomUUID(),
     clientId: client.id,
     customer: client.customer,
@@ -1697,7 +1711,12 @@ prisonVisitForm.addEventListener('submit', async event => {
     reminder24hSentAt: '',
     reminder1hSentAt: '',
     checkedInAt: ''
-  });
+  };
+  if (hasBookingConflict(bookings, bookingPayload)) {
+    alert('Ya existe una visita para esa abogada en la misma fecha y hora.');
+    return;
+  }
+  bookings.unshift(bookingPayload);
   saveBookings(bookings);
   await notifyVisitScheduled(bookings[0]);
   prisonVisitForm.reset();
