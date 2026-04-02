@@ -95,6 +95,17 @@
           <label>Teléfono contacto <input id="selected-client-phone" readonly /></label>
           <label>Correo contacto <input id="selected-client-email" readonly /></label>
           <label class="full">Dirección contacto <input id="selected-client-address" readonly /></label>
+          <label>Situación
+            <select name="bookingImputadoStatus" required>
+              <option value="no_imputado">No imputado</option>
+              <option value="imputado">Imputado</option>
+            </select>
+          </label>
+          <label class="representative-booking-field" hidden>Nombre representante <input name="bookingRepresentativeName" /></label>
+          <label class="representative-booking-field" hidden>RUT representante <input name="bookingRepresentativeRut" maxlength="12" placeholder="12.345.678-9" /></label>
+          <label class="representative-booking-field" hidden>Teléfono representante <input name="bookingRepresentativePhone" maxlength="12" placeholder="+56912345678" /></label>
+          <label class="representative-booking-field" hidden>Correo representante <input name="bookingRepresentativeEmail" type="email" placeholder="representante@correo.com" /></label>
+          <label class="full representative-booking-field" hidden>Dirección representante <input name="bookingRepresentativeAddress" /></label>
           <label>Materia
             <select name="matter" required>
               <option value="">Seleccione materia</option>

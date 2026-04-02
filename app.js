@@ -52,6 +52,11 @@ const profileForm = document.getElementById('profile-form');
 const profileList = document.getElementById('profile-list');
 const clientSelect = document.getElementById('client-id-selected');
 const hiredLawyerInput = bookingForm.elements.hiredLawyer;
+const bookingImputadoStatusInput = bookingForm.elements.bookingImputadoStatus;
+const representativeBookingFields = Array.from(document.querySelectorAll('.representative-booking-field'));
+const bookingRepresentativeNameInput = bookingForm.elements.bookingRepresentativeName;
+const bookingRepresentativeRutInput = bookingForm.elements.bookingRepresentativeRut;
+const bookingRepresentativePhoneInput = bookingForm.elements.bookingRepresentativePhone;
 const clientRutInput = clientForm.elements.rut;
 const clientPhoneInput = clientForm.elements.phone;
 const imputadoStatusInput = clientForm.elements.imputadoStatus;
@@ -124,6 +129,13 @@ function fillSelectedClientPreview(client) {
   selectedClientPhoneInput.value = client?.phone || '';
   selectedClientEmailInput.value = client?.email || '';
   selectedClientAddressInput.value = client?.address || '';
+  bookingImputadoStatusInput.value = client?.imputadoStatus === 'imputado' ? 'imputado' : 'no_imputado';
+  bookingRepresentativeNameInput.value = client?.representative?.name || '';
+  bookingRepresentativeRutInput.value = client?.representative?.rut || '';
+  bookingRepresentativePhoneInput.value = client?.representative?.phone || '';
+  bookingForm.elements.bookingRepresentativeEmail.value = client?.representative?.email || '';
+  bookingForm.elements.bookingRepresentativeAddress.value = client?.representative?.address || '';
+  updateBookingRepresentativeVisibility();
 }
 
 function updateRepresentativeVisibility() {
@@ -151,15 +163,28 @@ function updateEditRepresentativeVisibility() {
 }
 
 function buildRepresentativeRecord(data, representsName, prefix = '') {
-  const name = String(data.get(`${prefix}representativeName`) || '').trim();
-  const rutRaw = String(data.get(`${prefix}representativeRut`) || '').trim();
-  const phoneRaw = String(data.get(`${prefix}representativePhone`) || '').trim();
+  const base = prefix ? `${prefix}Representative` : 'representative';
+  const name = String(data.get(`${base}Name`) || '').trim();
+  const rutRaw = String(data.get(`${base}Rut`) || '').trim();
+  const phoneRaw = String(data.get(`${base}Phone`) || '').trim();
   const rut = rutRaw ? formatRut(rutRaw) : '';
   const phone = phoneRaw ? formatPhone(phoneRaw) : '';
-  const email = String(data.get(`${prefix}representativeEmail`) || '').trim();
-  const address = String(data.get(`${prefix}representativeAddress`) || '').trim();
+  const email = String(data.get(`${base}Email`) || '').trim();
+  const address = String(data.get(`${base}Address`) || '').trim();
   if (!name && !rut && !phone && !email && !address) return null;
   return { name, rut, phone, email, address, represents: representsName || '' };
+}
+
+function updateBookingRepresentativeVisibility() {
+  const isImputado = bookingImputadoStatusInput.value === 'imputado';
+  representativeBookingFields.forEach(field => {
+    field.hidden = !isImputado;
+    const input = field.querySelector('input');
+    if (input) {
+      input.required = isImputado && input.name === 'bookingRepresentativeName';
+      if (!isImputado) input.value = '';
+    }
+  });
 }
 
 function getBookingRepresentative(booking) {
@@ -1916,6 +1941,14 @@ bookingForm.addEventListener('submit', async event => {
 
   const hiredLawyer = Boolean(data.get('hiredLawyer'));
   const assignedTo = normalizeAssignedToValue(data.get('assignedTo'));
+  const bookingImputadoStatus = String(data.get('bookingImputadoStatus') || 'no_imputado').trim() === 'imputado' ? 'imputado' : 'no_imputado';
+  const bookingRepresentative = buildRepresentativeRecord(data, selectedClient.name, 'booking');
+  if (bookingImputadoStatus === 'imputado' && !bookingRepresentative?.name) {
+    bookingRepresentativeNameInput.setCustomValidity('Debes indicar el nombre del representante.');
+    bookingRepresentativeNameInput.reportValidity();
+    return;
+  }
+  bookingRepresentativeNameInput.setCustomValidity('');
 
   const bookings = getBookings();
   bookings.unshift({
@@ -1926,8 +1959,8 @@ bookingForm.addEventListener('submit', async event => {
     phone: selectedClient.phone,
     email: selectedClient.email,
     address: selectedClient.address,
-    imputadoStatus: selectedClient.imputadoStatus || 'no_imputado',
-    representative: selectedClient.representative || null,
+    imputadoStatus: bookingImputadoStatus,
+    representative: bookingImputadoStatus === 'imputado' ? bookingRepresentative : null,
     matter: normalizeMatterLabel(data.get('matter')),
     date: String(data.get('date') || '').trim(),
     time: String(data.get('time') || '').trim(),
@@ -1951,6 +1984,8 @@ bookingForm.addEventListener('submit', async event => {
   clientSelectedLabel.textContent = 'Contacto seleccionado: ninguno';
   fillSelectedClientPreview(null);
   hiredLawyerInput.checked = true;
+  bookingImputadoStatusInput.value = 'no_imputado';
+  updateBookingRepresentativeVisibility();
   renderAll();
   savePhysicalBackup();
   showToast('Reserva guardada correctamente.');
@@ -2011,6 +2046,13 @@ representativeRutInput.addEventListener('input', () => {
 });
 representativePhoneInput.addEventListener('input', () => {
   representativePhoneInput.value = formatPhone(representativePhoneInput.value);
+});
+bookingImputadoStatusInput.addEventListener('change', updateBookingRepresentativeVisibility);
+bookingRepresentativeRutInput.addEventListener('input', () => {
+  bookingRepresentativeRutInput.value = formatRut(bookingRepresentativeRutInput.value);
+});
+bookingRepresentativePhoneInput.addEventListener('input', () => {
+  bookingRepresentativePhoneInput.value = formatPhone(bookingRepresentativePhoneInput.value);
 });
 
 clientSearchInput.addEventListener('input', renderClientOptions);
@@ -2269,6 +2311,7 @@ clientPhoneInput.value = '+569';
 assignedToSelect.disabled = !hiredLawyerInput.checked;
 updateRepresentativeVisibility();
 updateEditRepresentativeVisibility();
+updateBookingRepresentativeVisibility();
 updateChileClock();
 
 saveSession({ loggedIn: false });
