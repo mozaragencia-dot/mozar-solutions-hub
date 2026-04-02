@@ -70,6 +70,7 @@ const prisonModuleInput = clientForm.elements.prisonModule;
 const caseRoleInput = clientForm.elements.caseRole;
 const imputadoStatusInput = clientForm.elements.imputadoStatus;
 const imputadoModuleInput = clientForm.elements.imputadoModule;
+const imputadoRecintoInput = clientForm.elements.imputadoRecinto;
 const imputadoModuleFields = Array.from(document.querySelectorAll('.imputado-module-field'));
 const representativeCreateFields = Array.from(document.querySelectorAll('.representative-create-field'));
 const representativeNameInput = clientForm.elements.representativeName;
@@ -695,7 +696,7 @@ function renderClients() {
   if (!clients.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 11;
+    cell.colSpan = 12;
     cell.textContent = 'Sin contactos guardados.';
     row.appendChild(cell);
     clientsBody.appendChild(row);
@@ -714,6 +715,7 @@ function renderClients() {
     appendCell(row, client.caseRole || '-');
     appendCell(row, client.imputadoStatus === 'imputado' ? 'Imputado' : 'No imputado');
     appendCell(row, client.imputadoModule || '-');
+    appendCell(row, client.imputadoRecinto || '-');
     const representativeName = client.representative?.name || '';
     appendCell(row, representativeName ? `${representativeName} (representa a ${client.name || '-'})` : '-');
     clientsBody.appendChild(row);
@@ -1955,6 +1957,7 @@ clientForm.addEventListener('submit', event => {
   const caseRole = String(data.get('caseRole') || '').trim();
   const imputadoStatus = String(data.get('imputadoStatus') || 'no_imputado').trim() === 'imputado' ? 'imputado' : 'no_imputado';
   const imputadoModule = String(data.get('imputadoModule') || '').trim();
+  const imputadoRecinto = String(data.get('imputadoRecinto') || '').trim();
   const representative = buildRepresentativeRecord(data, name);
 
   if (!isValidRut(rut)) {
@@ -1992,7 +1995,13 @@ clientForm.addEventListener('submit', event => {
     imputadoModuleInput.reportValidity();
     return;
   }
+  if (imputadoStatus === 'imputado' && !imputadoRecinto) {
+    imputadoRecintoInput.setCustomValidity('Debes indicar el recinto del imputado.');
+    imputadoRecintoInput.reportValidity();
+    return;
+  }
   imputadoModuleInput.setCustomValidity('');
+  imputadoRecintoInput.setCustomValidity('');
   representativeNameInput.setCustomValidity('');
 
   const clients = getClients();
@@ -2008,6 +2017,7 @@ clientForm.addEventListener('submit', event => {
     existing.caseRole = inPrison ? caseRole : '';
     existing.imputadoStatus = imputadoStatus;
     existing.imputadoModule = imputadoStatus === 'imputado' ? imputadoModule : '';
+    existing.imputadoRecinto = imputadoStatus === 'imputado' ? imputadoRecinto : '';
     existing.representative = imputadoStatus === 'imputado' ? representative : null;
     existing.updatedAt = new Date().toISOString();
   } else {
@@ -2023,6 +2033,7 @@ clientForm.addEventListener('submit', event => {
       caseRole: inPrison ? caseRole : '',
       imputadoStatus,
       imputadoModule: imputadoStatus === 'imputado' ? imputadoModule : '',
+      imputadoRecinto: imputadoStatus === 'imputado' ? imputadoRecinto : '',
       representative: imputadoStatus === 'imputado' ? representative : null,
       createdAt: new Date().toISOString()
     });
