@@ -1,9 +1,11 @@
 const STORAGE_KEYS = {
+  clients: 'tacam_clients',
   bookings: 'tacam_bookings',
   lawyers: 'tacam_lawyers',
   profiles: 'tacam_profiles',
   session: 'tacam_session'
 };
+const SERVER_SYNC_ENDPOINT = 'storage-sync.php';
 
 const LEGACY_LAWYER_NAMES = new Set(['Daniela Sierra', 'Natalie Gómez', 'Camila Vásquez', 'Carolina Contreras']);
 const OFFICIAL_LAWYERS = [
@@ -25,27 +27,163 @@ function loadJson(key, fallback) {
 
 function saveJson(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
+  queueServerSync();
+}
+
+let syncTimer = null;
+function dispatchSyncStatus(status, message = '') {
+  window.dispatchEvent(new CustomEvent('tacam-sync-status', { detail: { status, message, at: new Date().toISOString() } }));
+}
+function queueServerSync() {
+  if (typeof fetch !== 'function') return;
+  if (syncTimer) clearTimeout(syncTimer);
+  dispatchSyncStatus('pending', 'Pendiente de sincronización');
+  syncTimer = setTimeout(() => {
+    syncTimer = null;
+    dispatchSyncStatus('syncing', 'Sincronizando con servidor...');
+    const payload = {
+      clients: loadJson(STORAGE_KEYS.clients, []),
+      bookings: loadJson(STORAGE_KEYS.bookings, []),
+      lawyers: loadJson(STORAGE_KEYS.lawyers, []),
+      profiles: loadJson(STORAGE_KEYS.profiles, []),
+    };
+    fetch(SERVER_SYNC_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(response => {
+        if (response.ok) {
+          dispatchSyncStatus('ok', 'Sincronizado con servidor');
+        } else {
+          dispatchSyncStatus('error', `Error al sincronizar (${response.status})`);
+        }
+      })
+      .catch(() => {
+        dispatchSyncStatus('error', 'Sin conexión con servidor');
+      });
+  }, 250);
+}
+
+function hydrateFromServer() {
+  if (typeof fetch !== 'function') return;
+  dispatchSyncStatus('syncing', 'Cargando datos del servidor...');
+  fetch(SERVER_SYNC_ENDPOINT, { method: 'GET' })
+    .then(response => response.ok ? response.json() : null)
+    .then(data => {
+      const payload = data?.data;
+      if (!payload || typeof payload !== 'object') return;
+
+      const clients = Array.isArray(payload.clients) ? payload.clients : [];
+      const bookings = Array.isArray(payload.bookings) ? payload.bookings : [];
+      const lawyers = Array.isArray(payload.lawyers) ? payload.lawyers : [];
+      const profiles = Array.isArray(payload.profiles) ? payload.profiles : [];
+
+      if (clients.length) localStorage.setItem(STORAGE_KEYS.clients, JSON.stringify(clients));
+      if (bookings.length) localStorage.setItem(STORAGE_KEYS.bookings, JSON.stringify(bookings));
+      if (lawyers.length) localStorage.setItem(STORAGE_KEYS.lawyers, JSON.stringify(lawyers));
+      if (profiles.length) localStorage.setItem(STORAGE_KEYS.profiles, JSON.stringify(profiles));
+      window.dispatchEvent(new Event('tacam-server-hydrated'));
+      dispatchSyncStatus('ok', 'Datos cargados desde servidor');
+    })
+    .catch(() => {
+      dispatchSyncStatus('error', 'No se pudo leer el servidor');
+    });
 }
 
 function seedData() {
+  const existingClients = loadJson(STORAGE_KEYS.clients, []);
+  if (!existingClients.length) {
+    saveJson(STORAGE_KEYS.clients, [
+      {
+        id: crypto.randomUUID(),
+        name: 'Cliente Demo',
+        rut: '12.345.678-9',
+        phone: '+56911111111',
+        email: 'cliente.demo@tacam.cl',
+        address: 'Dirección demo',
+        imputadoStatus: 'no_imputado',
+        representative: null,
+        createdAt: new Date().toISOString()
+      }
+    ]);
+  } else {
+    const normalizedClients = existingClients.map(client => ({
+      ...client,
+      imputadoStatus: client.imputadoStatus === 'imputado' ? 'imputado' : 'no_imputado',
+      representative: client.imputadoStatus === 'imputado'
+        ? (typeof client.representative === 'object' && client.representative
+          ? {
+            name: String(client.representative.name || '').trim(),
+            rut: String(client.representative.rut || '').trim(),
+            phone: String(client.representative.phone || '').trim(),
+            email: String(client.representative.email || '').trim(),
+            address: String(client.representative.address || '').trim(),
+            represents: String(client.representative.represents || client.name || '').trim()
+          }
+          : {
+            name: String(client.representative || '').trim(),
+            rut: '',
+            phone: '',
+            email: '',
+            address: '',
+            represents: String(client.name || '').trim()
+          })
+        : null
+    }));
+    saveJson(STORAGE_KEYS.clients, normalizedClients);
+  }
+  const clients = loadJson(STORAGE_KEYS.clients, []);
+
   const bookings = loadJson(STORAGE_KEYS.bookings, []);
   if (!bookings.length) {
     saveJson(STORAGE_KEYS.bookings, [
       {
         id: crypto.randomUUID(),
+        clientId: clients[0]?.id || '',
         customer: 'Cliente Demo',
         rut: '12.345.678-9',
         phone: '+56911111111',
         email: 'cliente.demo@tacam.cl',
+        address: 'Dirección demo',
+        imputadoStatus: 'no_imputado',
+        representative: null,
         matter: 'Familiar',
         date: new Date().toISOString().slice(0, 10),
         time: '10:30',
         assignedTo: 'KATHERINE SERRANO MARREY',
+        hiredLawyer: true,
         notes: 'Consulta por materia familiar.',
         status: 'nueva',
         createdAt: new Date().toISOString()
       }
     ]);
+  } else {
+    const normalized = bookings.map(booking => ({
+      ...booking,
+      hiredLawyer: typeof booking.hiredLawyer === 'boolean' ? booking.hiredLawyer : Boolean((booking.assignedTo || '').trim()),
+      imputadoStatus: booking.imputadoStatus === 'imputado' ? 'imputado' : 'no_imputado',
+      representative: booking.imputadoStatus === 'imputado'
+        ? (typeof booking.representative === 'object' && booking.representative
+          ? {
+            name: String(booking.representative.name || '').trim(),
+            rut: String(booking.representative.rut || '').trim(),
+            phone: String(booking.representative.phone || '').trim(),
+            email: String(booking.representative.email || '').trim(),
+            address: String(booking.representative.address || '').trim(),
+            represents: String(booking.representative.represents || booking.customer || '').trim()
+          }
+          : {
+            name: String(booking.representative || '').trim(),
+            rut: '',
+            phone: '',
+            email: '',
+            address: '',
+            represents: String(booking.customer || '').trim()
+          })
+        : null
+    }));
+    saveJson(STORAGE_KEYS.bookings, normalized);
   }
 
   syncLawyersData();
@@ -110,6 +248,14 @@ function getBookings() {
   return loadJson(STORAGE_KEYS.bookings, []);
 }
 
+function getClients() {
+  return loadJson(STORAGE_KEYS.clients, []);
+}
+
+function saveClients(clients) {
+  saveJson(STORAGE_KEYS.clients, clients);
+}
+
 function saveBookings(bookings) {
   saveJson(STORAGE_KEYS.bookings, bookings);
 }
@@ -159,7 +305,7 @@ function normalizeMatterLabel(value) {
   const clean = String(value || '').trim();
   if (!clean) return '';
   const normalized = clean.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  if (normalized.includes('cartel') || normalized.includes('carcel')) return 'Visita a la Cárcel';
+  if (normalized.includes('cartel') || normalized.includes('carcel') || normalized.includes('carce')) return 'Visita a la Cárcel';
   return clean;
 }
 
@@ -179,3 +325,4 @@ function fileToDataUrl(file) {
 }
 
 seedData();
+hydrateFromServer();
