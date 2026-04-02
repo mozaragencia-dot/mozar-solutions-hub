@@ -59,6 +59,10 @@ const bookingRepresentativeRutInput = bookingForm.elements.bookingRepresentative
 const bookingRepresentativePhoneInput = bookingForm.elements.bookingRepresentativePhone;
 const clientRutInput = clientForm.elements.rut;
 const clientPhoneInput = clientForm.elements.phone;
+const inPrisonInput = clientForm.elements.inPrison;
+const inPrisonFields = Array.from(document.querySelectorAll('.in-prison-field'));
+const prisonModuleInput = clientForm.elements.prisonModule;
+const caseRoleInput = clientForm.elements.caseRole;
 const imputadoStatusInput = clientForm.elements.imputadoStatus;
 const representativeCreateFields = Array.from(document.querySelectorAll('.representative-create-field'));
 const representativeNameInput = clientForm.elements.representativeName;
@@ -148,6 +152,18 @@ function updateRepresentativeVisibility() {
     if (input) {
       input.required = isImputado && input.name === 'representativeName';
       if (!isImputado) input.value = '';
+    }
+  });
+}
+
+function updateInPrisonVisibility() {
+  const inPrison = inPrisonInput.value === 'si';
+  inPrisonFields.forEach(field => {
+    field.hidden = !inPrison;
+    const input = field.querySelector('input');
+    if (input) {
+      input.required = inPrison;
+      if (!inPrison) input.value = '';
     }
   });
 }
@@ -634,7 +650,7 @@ function renderClients() {
   if (!clients.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 7;
+    cell.colSpan = 10;
     cell.textContent = 'Sin contactos guardados.';
     row.appendChild(cell);
     clientsBody.appendChild(row);
@@ -648,6 +664,9 @@ function renderClients() {
     appendCell(row, client.phone || '');
     appendCell(row, client.email || '');
     appendCell(row, client.address || '');
+    appendCell(row, client.inPrison ? 'Sí' : 'No');
+    appendCell(row, client.prisonModule || '-');
+    appendCell(row, client.caseRole || '-');
     appendCell(row, client.imputadoStatus === 'imputado' ? 'Imputado' : 'No imputado');
     const representativeName = client.representative?.name || '';
     appendCell(row, representativeName ? `${representativeName} (representa a ${client.name || '-'})` : '-');
@@ -733,6 +752,13 @@ function renderImputadosModule() {
     editBtn.dataset.imputadoEdit = client.id;
     editBtn.textContent = 'Editar datos';
     actionsCell.appendChild(editBtn);
+
+    const repBtn = document.createElement('button');
+    repBtn.className = 'switch-btn';
+    repBtn.type = 'button';
+    repBtn.dataset.imputadoRepresentative = client.id;
+    repBtn.textContent = 'Agregar representante';
+    actionsCell.appendChild(repBtn);
     row.appendChild(actionsCell);
 
     imputadosBody.appendChild(row);
@@ -1828,6 +1854,9 @@ clientForm.addEventListener('submit', event => {
   const email = String(data.get('email') || '').trim();
   const name = String(data.get('name') || '').trim();
   const address = String(data.get('address') || '').trim();
+  const inPrison = String(data.get('inPrison') || 'no').trim() === 'si';
+  const prisonModule = String(data.get('prisonModule') || '').trim();
+  const caseRole = String(data.get('caseRole') || '').trim();
   const imputadoStatus = String(data.get('imputadoStatus') || 'no_imputado').trim() === 'imputado' ? 'imputado' : 'no_imputado';
   const representative = buildRepresentativeRecord(data, name);
 
@@ -1852,6 +1881,10 @@ clientForm.addEventListener('submit', event => {
   }
   clientForm.elements.email.setCustomValidity('');
   if (!name || !address) return;
+  if (inPrison && (!prisonModule || !caseRole)) {
+    showToast('Si está en la cárcel debes indicar módulo y rol de la causa.');
+    return;
+  }
   if (imputadoStatus === 'imputado' && !representative?.name) {
     representativeNameInput.setCustomValidity('Debes indicar el nombre del representante.');
     representativeNameInput.reportValidity();
@@ -1867,6 +1900,9 @@ clientForm.addEventListener('submit', event => {
     existing.phone = phone;
     existing.email = email;
     existing.address = address;
+    existing.inPrison = inPrison;
+    existing.prisonModule = inPrison ? prisonModule : '';
+    existing.caseRole = inPrison ? caseRole : '';
     existing.imputadoStatus = imputadoStatus;
     existing.representative = imputadoStatus === 'imputado' ? representative : null;
     existing.updatedAt = new Date().toISOString();
@@ -1878,6 +1914,9 @@ clientForm.addEventListener('submit', event => {
       phone,
       email,
       address,
+      inPrison,
+      prisonModule: inPrison ? prisonModule : '',
+      caseRole: inPrison ? caseRole : '',
       imputadoStatus,
       representative: imputadoStatus === 'imputado' ? representative : null,
       createdAt: new Date().toISOString()
@@ -1887,6 +1926,8 @@ clientForm.addEventListener('submit', event => {
   saveClients(clients);
   clientForm.reset();
   clientPhoneInput.value = '+569';
+  inPrisonInput.value = 'no';
+  updateInPrisonVisibility();
   imputadoStatusInput.value = 'no_imputado';
   updateRepresentativeVisibility();
   renderAll();
@@ -2077,6 +2118,7 @@ clientRutInput.addEventListener('input', () => {
 clientPhoneInput.addEventListener('input', () => {
   clientPhoneInput.value = formatPhone(clientPhoneInput.value);
 });
+inPrisonInput.addEventListener('change', updateInPrisonVisibility);
 representativeRutInput.addEventListener('input', () => {
   representativeRutInput.value = formatRut(representativeRutInput.value);
 });
@@ -2222,6 +2264,56 @@ imputadosBody.addEventListener('click', event => {
     clientEditSelect.value = editClientId;
     fillClientEditForm(editClientId);
     showToast('Contacto cargado para edición.');
+    return;
+  }
+
+  const representativeClientId = target.dataset.imputadoRepresentative;
+  if (representativeClientId) {
+    const clients = getClients();
+    const client = clients.find(item => item.id === representativeClientId);
+    if (!client) return;
+
+    let representative = null;
+    if (window.confirm('¿Quieres buscar el representante entre contactos existentes?')) {
+      const query = String(window.prompt('Ingresa nombre o RUT del representante') || '').trim().toLowerCase();
+      const match = clients.find(item =>
+        item.id !== client.id
+        && (`${item.name || ''} ${item.rut || ''}`.toLowerCase().includes(query))
+      );
+      if (match) {
+        representative = {
+          name: match.name || '',
+          rut: match.rut || '',
+          phone: match.phone || '',
+          email: match.email || '',
+          address: match.address || ''
+        };
+      } else {
+        showToast('No se encontró representante en los contactos existentes.');
+      }
+    }
+
+    if (!representative) {
+      representative = promptRepresentativeData(client.representative || null, client.name || 'contacto');
+    }
+    if (!representative?.name) {
+      showToast('No se agregó representante.');
+      return;
+    }
+
+    client.imputadoStatus = 'imputado';
+    client.representative = { ...representative, represents: client.name || '' };
+    saveClients(clients);
+
+    const bookings = getBookings();
+    bookings.forEach(booking => {
+      if (booking.clientId !== client.id) return;
+      booking.imputadoStatus = 'imputado';
+      booking.representative = { ...representative, represents: client.name || '' };
+    });
+    saveBookings(bookings);
+    renderAll();
+    showToast('Representante agregado correctamente.');
   }
 });
 
@@ -2415,6 +2507,7 @@ prisonMonthInput.value = currentMonth;
 lawyerCalendarMonth.value = currentMonth;
 clientPhoneInput.value = '+569';
 assignedToSelect.disabled = !hiredLawyerInput.checked;
+updateInPrisonVisibility();
 updateRepresentativeVisibility();
 updateEditRepresentativeVisibility();
 updateBookingRepresentativeVisibility();

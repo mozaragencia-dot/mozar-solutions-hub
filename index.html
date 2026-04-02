@@ -61,6 +61,18 @@
           <label>Teléfono <input name="phone" required placeholder="+56912345678" maxlength="12" /></label>
           <label>Correo <input name="email" type="email" required placeholder="contacto@correo.com" /></label>
           <label class="full">Dirección <input name="address" required placeholder="Calle, número, comuna..." /></label>
+          <label>¿Está en la cárcel?
+            <select name="inPrison" required>
+              <option value="no">No</option>
+              <option value="si">Sí</option>
+            </select>
+          </label>
+          <label class="in-prison-field" hidden>Módulo
+            <input name="prisonModule" placeholder="Ej: Módulo 4-B" />
+          </label>
+          <label class="in-prison-field" hidden>Rol de la causa
+            <input name="caseRole" placeholder="Ej: RIT 1234-2026" />
+          </label>
           <label>Situación
             <select name="imputadoStatus" required>
               <option value="no_imputado">No imputado</option>
@@ -77,7 +89,7 @@
 
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Nombre</th><th>RUT</th><th>Teléfono</th><th>Correo</th><th>Dirección</th><th>Situación</th><th>Representante</th></tr></thead>
+            <thead><tr><th>Nombre</th><th>RUT</th><th>Teléfono</th><th>Correo</th><th>Dirección</th><th>Cárcel</th><th>Módulo</th><th>Rol causa</th><th>Situación</th><th>Representante</th></tr></thead>
             <tbody id="clients-body"></tbody>
           </table>
         </div>
