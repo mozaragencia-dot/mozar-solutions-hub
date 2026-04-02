@@ -62,17 +62,8 @@
           <label>Teléfono <input name="phone" required placeholder="+56912345678" maxlength="12" /></label>
           <label>Correo <input name="email" type="email" required placeholder="contacto@correo.com" /></label>
           <label class="full">Dirección <input name="address" required placeholder="Calle, número, comuna..." /></label>
-          <label>¿Está en la cárcel?
-            <select name="inPrison" required>
-              <option value="no">No</option>
-              <option value="si">Sí</option>
-            </select>
-          </label>
-          <label class="in-prison-field" hidden>Módulo
+          <label>Módulo
             <input name="prisonModule" placeholder="Ej: Módulo 4-B" />
-          </label>
-          <label class="in-prison-field" hidden>Rol de la causa
-            <input name="caseRole" placeholder="Ej: RIT 1234-2026" />
           </label>
           <label>Situación
             <select name="imputadoStatus" required>
@@ -80,11 +71,8 @@
               <option value="imputado">Imputado</option>
             </select>
           </label>
-          <label class="imputado-module-field" hidden>Módulo imputado
+          <label class="imputado-module-field" hidden>Módulo
             <input name="imputadoModule" placeholder="Ej: Módulo A-12" />
-          </label>
-          <label class="imputado-module-field" hidden>Recinto imputado
-            <input name="imputadoRecinto" placeholder="Ej: CCP Santiago Sur" />
           </label>
           <label class="representative-create-field" hidden>Nombre representante <input name="representativeName" /></label>
           <label class="representative-create-field" hidden>RUT representante <input name="representativeRut" maxlength="12" placeholder="12.345.678-9" /></label>
@@ -96,7 +84,7 @@
 
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Nombre</th><th>RUT</th><th>Teléfono</th><th>Correo</th><th>Dirección</th><th>Cárcel</th><th>Módulo</th><th>Rol causa</th><th>Situación</th><th>Módulo imputado</th><th>Recinto imputado</th><th>Representante</th></tr></thead>
+            <thead><tr><th>Nombre</th><th>RUT</th><th>Teléfono</th><th>Correo</th><th>Dirección</th><th>Módulo</th><th>Situación</th><th>Módulo</th><th>Representante</th></tr></thead>
             <tbody id="clients-body"></tbody>
           </table>
         </div>
@@ -120,13 +108,7 @@
               <option value="imputado">Imputado</option>
             </select>
           </label>
-          <label>¿Está en la cárcel?
-            <select name="bookingInPrison" required>
-              <option value="no">No</option>
-              <option value="si">Sí</option>
-            </select>
-          </label>
-          <label class="booking-prison-field" hidden>Módulo cárcel
+          <label>Módulo
             <input name="bookingPrisonModule" placeholder="Ej: Módulo 4-B" />
           </label>
           <label class="representative-booking-field" hidden>Nombre representante <input name="bookingRepresentativeName" /></label>
