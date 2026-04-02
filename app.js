@@ -476,7 +476,6 @@ function updateBooking(bookingId, updater) {
   updater(booking);
   saveBookings(bookings);
   renderAll();
-  savePhysicalBackup();
   showToast('Cambios guardados correctamente.');
 }
 
@@ -1323,10 +1322,6 @@ function createBackupPayload() {
   };
 }
 
-function savePhysicalBackup() {
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  downloadJson(`respaldo-fisico-${stamp}.json`, createBackupPayload());
-}
 
 function restoreBackupPayload(payload) {
   if (!payload || typeof payload !== 'object') throw new Error('Formato inválido');
@@ -2005,7 +2000,6 @@ clientForm.addEventListener('submit', event => {
   imputadoStatusInput.value = 'no_imputado';
   updateRepresentativeVisibility();
   renderAll();
-  savePhysicalBackup();
   showToast('Datos guardados correctamente.');
 });
 
@@ -2077,7 +2071,6 @@ clientEditForm.addEventListener('submit', event => {
   });
   saveBookings(bookings);
   renderAll();
-  savePhysicalBackup();
   showToast('Contacto actualizado correctamente.');
 });
 
@@ -2152,7 +2145,6 @@ bookingForm.addEventListener('submit', async event => {
   bookingImputadoStatusInput.value = 'no_imputado';
   updateBookingRepresentativeVisibility();
   renderAll();
-  savePhysicalBackup();
   showToast('Reserva guardada correctamente.');
 });
 
@@ -2192,7 +2184,6 @@ prisonBookingForm.addEventListener('submit', async event => {
   await notifyVisitScheduled(bookings[0]);
   prisonBookingForm.reset();
   renderAll();
-  savePhysicalBackup();
   showToast('Visita a la cárcel agendada correctamente.');
 });
 
@@ -2473,7 +2464,6 @@ imputadosBody.addEventListener('change', event => {
   }
   saveBookings(bookings);
   renderAll();
-  savePhysicalBackup();
 });
 
 downloadGeneralReportBtn.addEventListener('click', () => {
@@ -2587,7 +2577,6 @@ lawyerForm.addEventListener('submit', async event => {
   saveLawyers(lawyers);
   lawyerForm.reset();
   renderAll();
-  savePhysicalBackup();
   showToast('Perfil de abogada guardado.');
 });
 
@@ -2626,7 +2615,6 @@ profileForm.addEventListener('submit', event => {
   saveProfiles(profiles);
   profileForm.reset();
   renderProfiles();
-  savePhysicalBackup();
   showToast('Perfil de usuario guardado.');
 });
 
