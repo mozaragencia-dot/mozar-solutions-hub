@@ -130,11 +130,13 @@ function fillSelectedClientPreview(client) {
   selectedClientEmailInput.value = client?.email || '';
   selectedClientAddressInput.value = client?.address || '';
   bookingImputadoStatusInput.value = client?.imputadoStatus === 'imputado' ? 'imputado' : 'no_imputado';
-  bookingRepresentativeNameInput.value = client?.representative?.name || '';
-  bookingRepresentativeRutInput.value = client?.representative?.rut || '';
-  bookingRepresentativePhoneInput.value = client?.representative?.phone || '';
-  bookingForm.elements.bookingRepresentativeEmail.value = client?.representative?.email || '';
-  bookingForm.elements.bookingRepresentativeAddress.value = client?.representative?.address || '';
+  applyRepresentativeToInputs({
+    name: bookingRepresentativeNameInput,
+    rut: bookingRepresentativeRutInput,
+    phone: bookingRepresentativePhoneInput,
+    email: bookingForm.elements.bookingRepresentativeEmail,
+    address: bookingForm.elements.bookingRepresentativeAddress
+  }, client?.representative || null);
   updateBookingRepresentativeVisibility();
 }
 
@@ -185,6 +187,39 @@ function updateBookingRepresentativeVisibility() {
       if (!isImputado) input.value = '';
     }
   });
+}
+
+function promptRepresentativeData(existing = null, representsName = 'contacto') {
+  const name = window.prompt(`Nombre representante de ${representsName}`, existing?.name || '');
+  if (name === null) return null;
+  const trimmedName = String(name || '').trim();
+  if (!trimmedName) return null;
+
+  const rutRaw = window.prompt(`RUT representante de ${representsName}`, existing?.rut || '');
+  if (rutRaw === null) return null;
+  const phoneRaw = window.prompt(`Teléfono representante de ${representsName}`, existing?.phone || '');
+  if (phoneRaw === null) return null;
+  const email = window.prompt(`Correo representante de ${representsName}`, existing?.email || '');
+  if (email === null) return null;
+  const address = window.prompt(`Dirección representante de ${representsName}`, existing?.address || '');
+  if (address === null) return null;
+
+  return {
+    name: trimmedName,
+    rut: rutRaw ? formatRut(rutRaw) : '',
+    phone: phoneRaw ? formatPhone(phoneRaw) : '',
+    email: String(email || '').trim(),
+    address: String(address || '').trim()
+  };
+}
+
+function applyRepresentativeToInputs(target, representative = null) {
+  const rep = representative || {};
+  target.name.value = rep.name || '';
+  target.rut.value = rep.rut || '';
+  target.phone.value = rep.phone || '';
+  target.email.value = rep.email || '';
+  target.address.value = rep.address || '';
 }
 
 function getBookingRepresentative(booking) {
@@ -751,11 +786,13 @@ function fillClientEditForm(clientId) {
   const representative = typeof client.representative === 'object' && client.representative
     ? client.representative
     : { name: String(client.representative || '').trim(), rut: '', phone: '', email: '', address: '' };
-  clientEditRepresentativeNameInput.value = representative.name || '';
-  clientEditRepresentativeRutInput.value = representative.rut || '';
-  clientEditRepresentativePhoneInput.value = representative.phone || '';
-  clientEditRepresentativeEmailInput.value = representative.email || '';
-  clientEditRepresentativeAddressInput.value = representative.address || '';
+  applyRepresentativeToInputs({
+    name: clientEditRepresentativeNameInput,
+    rut: clientEditRepresentativeRutInput,
+    phone: clientEditRepresentativePhoneInput,
+    email: clientEditRepresentativeEmailInput,
+    address: clientEditRepresentativeAddressInput
+  }, representative);
   updateEditRepresentativeVisibility();
 
   const clientBookings = getBookings().filter(booking => booking.clientId === clientId);
@@ -2040,14 +2077,60 @@ clientRutInput.addEventListener('input', () => {
 clientPhoneInput.addEventListener('input', () => {
   clientPhoneInput.value = formatPhone(clientPhoneInput.value);
 });
-imputadoStatusInput.addEventListener('change', updateRepresentativeVisibility);
 representativeRutInput.addEventListener('input', () => {
   representativeRutInput.value = formatRut(representativeRutInput.value);
 });
 representativePhoneInput.addEventListener('input', () => {
   representativePhoneInput.value = formatPhone(representativePhoneInput.value);
 });
-bookingImputadoStatusInput.addEventListener('change', updateBookingRepresentativeVisibility);
+imputadoStatusInput.addEventListener('change', () => {
+  updateRepresentativeVisibility();
+  if (imputadoStatusInput.value !== 'imputado') return;
+  const representative = promptRepresentativeData({
+    name: representativeNameInput.value,
+    rut: representativeRutInput.value,
+    phone: representativePhoneInput.value,
+    email: representativeEmailInput.value,
+    address: representativeAddressInput.value
+  }, clientForm.elements.name.value || 'contacto');
+  if (!representative?.name) {
+    imputadoStatusInput.value = 'no_imputado';
+    updateRepresentativeVisibility();
+    showToast('Debes ingresar representante para marcar imputado.');
+    return;
+  }
+  applyRepresentativeToInputs({
+    name: representativeNameInput,
+    rut: representativeRutInput,
+    phone: representativePhoneInput,
+    email: representativeEmailInput,
+    address: representativeAddressInput
+  }, representative);
+});
+bookingImputadoStatusInput.addEventListener('change', () => {
+  updateBookingRepresentativeVisibility();
+  if (bookingImputadoStatusInput.value !== 'imputado') return;
+  const representative = promptRepresentativeData({
+    name: bookingRepresentativeNameInput.value,
+    rut: bookingRepresentativeRutInput.value,
+    phone: bookingRepresentativePhoneInput.value,
+    email: bookingForm.elements.bookingRepresentativeEmail.value,
+    address: bookingForm.elements.bookingRepresentativeAddress.value
+  }, selectedClientNameInput.value || 'contacto');
+  if (!representative?.name) {
+    bookingImputadoStatusInput.value = 'no_imputado';
+    updateBookingRepresentativeVisibility();
+    showToast('Debes ingresar representante para marcar imputado.');
+    return;
+  }
+  applyRepresentativeToInputs({
+    name: bookingRepresentativeNameInput,
+    rut: bookingRepresentativeRutInput,
+    phone: bookingRepresentativePhoneInput,
+    email: bookingForm.elements.bookingRepresentativeEmail,
+    address: bookingForm.elements.bookingRepresentativeAddress
+  }, representative);
+});
 bookingRepresentativeRutInput.addEventListener('input', () => {
   bookingRepresentativeRutInput.value = formatRut(bookingRepresentativeRutInput.value);
 });
@@ -2063,7 +2146,30 @@ clientEditRutInput.addEventListener('input', () => {
 clientEditPhoneInput.addEventListener('input', () => {
   clientEditPhoneInput.value = formatPhone(clientEditPhoneInput.value);
 });
-clientEditImputadoStatusInput.addEventListener('change', updateEditRepresentativeVisibility);
+clientEditImputadoStatusInput.addEventListener('change', () => {
+  updateEditRepresentativeVisibility();
+  if (clientEditImputadoStatusInput.value !== 'imputado') return;
+  const representative = promptRepresentativeData({
+    name: clientEditRepresentativeNameInput.value,
+    rut: clientEditRepresentativeRutInput.value,
+    phone: clientEditRepresentativePhoneInput.value,
+    email: clientEditRepresentativeEmailInput.value,
+    address: clientEditRepresentativeAddressInput.value
+  }, clientEditForm.elements.name.value || 'contacto');
+  if (!representative?.name) {
+    clientEditImputadoStatusInput.value = 'no_imputado';
+    updateEditRepresentativeVisibility();
+    showToast('Debes ingresar representante para marcar imputado.');
+    return;
+  }
+  applyRepresentativeToInputs({
+    name: clientEditRepresentativeNameInput,
+    rut: clientEditRepresentativeRutInput,
+    phone: clientEditRepresentativePhoneInput,
+    email: clientEditRepresentativeEmailInput,
+    address: clientEditRepresentativeAddressInput
+  }, representative);
+});
 clientEditRepresentativeRutInput.addEventListener('input', () => {
   clientEditRepresentativeRutInput.value = formatRut(clientEditRepresentativeRutInput.value);
 });
