@@ -62,6 +62,7 @@ const bookingRepresentativeNameInput = bookingForm.elements.bookingRepresentativ
 const bookingRepresentativeLastNameInput = bookingForm.elements.bookingRepresentativeLastName;
 const bookingRepresentativeRutInput = bookingForm.elements.bookingRepresentativeRut;
 const bookingRepresentativePhoneInput = bookingForm.elements.bookingRepresentativePhone;
+const bookingRepresentativeModuloInput = bookingForm.elements.modulo;
 const clientRutInput = clientForm.elements.rut;
 const clientPhoneInput = clientForm.elements.phone;
 const imputadoStatusInput = clientForm.elements.imputadoStatus;
@@ -155,14 +156,21 @@ function fillSelectedClientPreview(client) {
   selectedClientAddressInput.value = client?.address || '';
   bookingImputadoStatusInput.value = client?.imputadoStatus === 'imputado' ? 'imputado' : 'no_imputado';
   bookingInPrisonInput.value = client?.inPrison ? 'si' : 'no';
+  const representative = client?.representative && typeof client.representative === 'object'
+    ? { ...client.representative }
+    : null;
+  if (representative && !representative.modulo) {
+    representative.modulo = client?.imputadoModule || client?.prisonModule || '';
+  }
   applyRepresentativeToInputs({
     name: bookingRepresentativeNameInput,
     lastName: bookingRepresentativeLastNameInput,
     rut: bookingRepresentativeRutInput,
     phone: bookingRepresentativePhoneInput,
     email: bookingForm.elements.bookingRepresentativeEmail,
-    address: bookingForm.elements.bookingRepresentativeAddress
-  }, client?.representative || null);
+    address: bookingForm.elements.bookingRepresentativeAddress,
+    modulo: bookingRepresentativeModuloInput
+  }, representative);
   updateBookingRepresentativeVisibility();
 }
 
@@ -281,6 +289,7 @@ function applyRepresentativeToInputs(target, representative = null) {
   target.phone.value = rep.phone || '';
   target.email.value = rep.email || '';
   target.address.value = rep.address || '';
+  if (target.modulo) target.modulo.value = rep.modulo || '';
 }
 
 function getBookingRepresentative(booking) {
@@ -2116,7 +2125,11 @@ bookingForm.addEventListener('submit', async event => {
   const bookingImputadoStatus = String(data.get('bookingImputadoStatus') || 'no_imputado').trim() === 'imputado' ? 'imputado' : 'no_imputado';
   const bookingInPrison = bookingImputadoStatus === 'imputado' && String(data.get('bookingInPrison') || 'no').trim() === 'si';
   const bookingRepresentative = buildRepresentativeRecord(data, selectedClient.name, 'booking');
+  const bookingRepresentativeModulo = String(data.get('modulo') || '').trim();
   const bookingPrisonModule = bookingInPrison ? String(selectedClient.imputadoModule || selectedClient.prisonModule || '').trim() : '';
+  if (bookingRepresentative && bookingRepresentativeModulo) {
+    bookingRepresentative.modulo = bookingRepresentativeModulo;
+  }
   if (bookingImputadoStatus === 'imputado' && (!bookingRepresentative?.name || !bookingRepresentative?.lastName)) {
     bookingRepresentativeNameInput.setCustomValidity('Debes indicar el nombre del representante.');
     bookingRepresentativeNameInput.reportValidity();
