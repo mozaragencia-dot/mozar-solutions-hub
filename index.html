@@ -8,7 +8,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/logo-color.svg" />
   <link rel="shortcut icon" href="assets/logo-color.svg" />
   <link rel="apple-touch-icon" href="assets/logo-color.svg" />
-  <title>TACAM | Reservas Oficina Jurídica</title>
+  <title>Tacam definicivo | Reservas Oficina Jurídica</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -32,7 +32,7 @@
       <div>
         <h1 class="brand-title white"><span>Sistema de Reservas</span></h1>
         <p>Reserva de personas para atención en oficina de abogados</p>
-        <span class="version-badge">Versión 1</span>
+        <span class="version-badge">Tacam definicivo</span>
       </div>
       <div class="header-clock" aria-live="polite">
         <small>Hora local Chile</small>
@@ -79,6 +79,18 @@
             <input name="clientId" type="hidden" />
             <datalist id="booking-client-options"></datalist>
           </label>
+          <label class="full checkbox-inline consent-box">
+            <input name="isImputado" id="booking-is-imputado" type="checkbox" />
+            ¿La persona es imputado?
+          </label>
+          <div id="booking-imputado-fields" class="grid full" hidden>
+            <label>Nombre imputado <input name="imputadoName" /></label>
+            <label>Teléfono imputado <input name="imputadoPhone" placeholder="+56912345678" maxlength="12" /></label>
+            <label>DUT imputado <input name="imputadoDut" maxlength="12" /></label>
+            <label>Dirección imputado <input name="imputadoAddress" placeholder="Calle 123, comuna" /></label>
+            <label>Correo imputado <input name="imputadoEmail" type="email" placeholder="imputado@correo.com" /></label>
+            <label>Módulo imputado <input name="imputadoModulo" /></label>
+          </div>
           <label>Materia
             <select name="matter" required>
               <option value="">Seleccione materia</option>
