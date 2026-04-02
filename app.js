@@ -69,6 +69,8 @@ const inPrisonFields = Array.from(document.querySelectorAll('.in-prison-field'))
 const prisonModuleInput = clientForm.elements.prisonModule;
 const caseRoleInput = clientForm.elements.caseRole;
 const imputadoStatusInput = clientForm.elements.imputadoStatus;
+const imputadoModuleInput = clientForm.elements.imputadoModule;
+const imputadoModuleFields = Array.from(document.querySelectorAll('.imputado-module-field'));
 const representativeCreateFields = Array.from(document.querySelectorAll('.representative-create-field'));
 const representativeNameInput = clientForm.elements.representativeName;
 const representativeRutInput = clientForm.elements.representativeRut;
@@ -159,6 +161,18 @@ function updateRepresentativeVisibility() {
     const input = field.querySelector('input');
     if (input) {
       input.required = isImputado && input.name === 'representativeName';
+      if (!isImputado) input.value = '';
+    }
+  });
+}
+
+function updateImputadoModuleVisibility() {
+  const isImputado = imputadoStatusInput.value === 'imputado';
+  imputadoModuleFields.forEach(field => {
+    field.hidden = !isImputado;
+    const input = field.querySelector('input');
+    if (input) {
+      input.required = isImputado;
       if (!isImputado) input.value = '';
     }
   });
@@ -274,6 +288,7 @@ function getBookingRepresentative(booking) {
 function showApp() {
   loginScreen.hidden = true;
   appShell.hidden = false;
+  if (typeof hydrateFromServer === 'function') hydrateFromServer();
 }
 
 function showLogin() {
@@ -669,7 +684,7 @@ function renderClients() {
   if (!clients.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 10;
+    cell.colSpan = 11;
     cell.textContent = 'Sin contactos guardados.';
     row.appendChild(cell);
     clientsBody.appendChild(row);
@@ -687,6 +702,7 @@ function renderClients() {
     appendCell(row, client.prisonModule || '-');
     appendCell(row, client.caseRole || '-');
     appendCell(row, client.imputadoStatus === 'imputado' ? 'Imputado' : 'No imputado');
+    appendCell(row, client.imputadoModule || '-');
     const representativeName = client.representative?.name || '';
     appendCell(row, representativeName ? `${representativeName} (representa a ${client.name || '-'})` : '-');
     clientsBody.appendChild(row);
@@ -1927,6 +1943,7 @@ clientForm.addEventListener('submit', event => {
   const prisonModule = String(data.get('prisonModule') || '').trim();
   const caseRole = String(data.get('caseRole') || '').trim();
   const imputadoStatus = String(data.get('imputadoStatus') || 'no_imputado').trim() === 'imputado' ? 'imputado' : 'no_imputado';
+  const imputadoModule = String(data.get('imputadoModule') || '').trim();
   const representative = buildRepresentativeRecord(data, name);
 
   if (!isValidRut(rut)) {
@@ -1959,6 +1976,12 @@ clientForm.addEventListener('submit', event => {
     representativeNameInput.reportValidity();
     return;
   }
+  if (imputadoStatus === 'imputado' && !imputadoModule) {
+    imputadoModuleInput.setCustomValidity('Debes indicar el módulo del imputado.');
+    imputadoModuleInput.reportValidity();
+    return;
+  }
+  imputadoModuleInput.setCustomValidity('');
   representativeNameInput.setCustomValidity('');
 
   const clients = getClients();
@@ -1973,6 +1996,7 @@ clientForm.addEventListener('submit', event => {
     existing.prisonModule = inPrison ? prisonModule : '';
     existing.caseRole = inPrison ? caseRole : '';
     existing.imputadoStatus = imputadoStatus;
+    existing.imputadoModule = imputadoStatus === 'imputado' ? imputadoModule : '';
     existing.representative = imputadoStatus === 'imputado' ? representative : null;
     existing.updatedAt = new Date().toISOString();
   } else {
@@ -1987,6 +2011,7 @@ clientForm.addEventListener('submit', event => {
       prisonModule: inPrison ? prisonModule : '',
       caseRole: inPrison ? caseRole : '',
       imputadoStatus,
+      imputadoModule: imputadoStatus === 'imputado' ? imputadoModule : '',
       representative: imputadoStatus === 'imputado' ? representative : null,
       createdAt: new Date().toISOString()
     });
@@ -1998,6 +2023,7 @@ clientForm.addEventListener('submit', event => {
   inPrisonInput.value = 'no';
   updateInPrisonVisibility();
   imputadoStatusInput.value = 'no_imputado';
+  updateImputadoModuleVisibility();
   updateRepresentativeVisibility();
   renderAll();
   showToast('Datos guardados correctamente.');
@@ -2204,6 +2230,7 @@ representativePhoneInput.addEventListener('input', () => {
   representativePhoneInput.value = formatPhone(representativePhoneInput.value);
 });
 imputadoStatusInput.addEventListener('change', () => {
+  updateImputadoModuleVisibility();
   updateRepresentativeVisibility();
   if (imputadoStatusInput.value !== 'imputado') return;
   const representative = promptRepresentativeData({
@@ -2627,6 +2654,7 @@ lawyerCalendarMonth.value = currentMonth;
 clientPhoneInput.value = '+569';
 assignedToSelect.disabled = !hiredLawyerInput.checked;
 updateInPrisonVisibility();
+updateImputadoModuleVisibility();
 updateRepresentativeVisibility();
 updateEditRepresentativeVisibility();
 updateBookingPrisonVisibility();
@@ -2637,7 +2665,10 @@ saveSession({ loggedIn: false });
 showLogin();
 
 window.addEventListener('tacam-server-hydrated', () => {
-  if (!appShell.hidden) renderAll();
+  if (!appShell.hidden) {
+    renderAll();
+    showToast('Datos sincronizados desde servidor.');
+  }
 });
 
 setInterval(() => {
