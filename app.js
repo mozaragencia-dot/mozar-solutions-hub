@@ -184,6 +184,7 @@ function updateRepresentativeVisibility() {
 }
 
 function updateImputadoModuleVisibility() {
+  if (!imputadoModuleFields.length || !imputadoModuleInput) return;
   const isImputado = imputadoStatusInput.value === 'imputado' && inPrisonInput.value === 'si';
   imputadoModuleFields.forEach(field => {
     field.hidden = !isImputado;
@@ -694,7 +695,7 @@ function renderClients() {
   if (!clients.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 8;
+    cell.colSpan = 7;
     cell.textContent = 'Sin contactos guardados.';
     row.appendChild(cell);
     clientsBody.appendChild(row);
@@ -709,7 +710,6 @@ function renderClients() {
     appendCell(row, client.email || '');
     appendCell(row, client.address || '');
     appendCell(row, client.imputadoStatus === 'imputado' ? 'Imputado' : 'No imputado');
-    appendCell(row, client.inPrison ? (client.imputadoModule || client.prisonModule || '-') : '-');
     const representativeName = [client.representative?.name || '', client.representative?.lastName || ''].join(' ').trim();
     appendCell(row, representativeName ? `${representativeName} (representa a ${client.name || '-'})` : '-');
     clientsBody.appendChild(row);
@@ -1950,7 +1950,7 @@ clientForm.addEventListener('submit', event => {
   const address = String(data.get('address') || '').trim();
   const imputadoStatus = String(data.get('imputadoStatus') || 'no_imputado').trim() === 'imputado' ? 'imputado' : 'no_imputado';
   const inPrison = imputadoStatus === 'imputado' && String(data.get('inPrison') || 'no').trim() === 'si';
-  const imputadoModule = String(data.get('imputadoModule') || '').trim();
+  const imputadoModule = imputadoModuleInput ? String(data.get('imputadoModule') || '').trim() : '';
   const representative = buildRepresentativeRecord(data, name);
 
   if (!isValidRut(rut)) {
@@ -1981,12 +1981,7 @@ clientForm.addEventListener('submit', event => {
   }
   representativeNameInput.setCustomValidity('');
   representativeLastNameInput.setCustomValidity('');
-  if (inPrison && !imputadoModule) {
-    imputadoModuleInput.setCustomValidity('Debes indicar el módulo del imputado.');
-    imputadoModuleInput.reportValidity();
-    return;
-  }
-  imputadoModuleInput.setCustomValidity('');
+  if (imputadoModuleInput) imputadoModuleInput.setCustomValidity('');
 
   const clients = getClients();
   const existing = clients.find(client => (client.rut || '').trim() === rut);
