@@ -51,9 +51,21 @@ const bookingClientSearchInput = bookingForm.elements.clientSearch;
 const prisonClientSearchInput = prisonVisitForm.elements.clientSearch;
 const bookingClientOptions = document.getElementById('booking-client-options');
 const prisonClientOptions = document.getElementById('prison-client-options');
+const bookingIsImputadoInput = document.getElementById('booking-is-imputado');
+const bookingImputadoFields = document.getElementById('booking-imputado-fields');
 const moduleTabs = document.querySelectorAll('[data-module-tab]');
 const modulePanels = document.querySelectorAll('[data-module-panel]');
 let clientOptionMap = new Map();
+
+function toggleBookingImputadoFields() {
+  const enabled = Boolean(bookingIsImputadoInput?.checked);
+  if (!bookingImputadoFields) return;
+
+  bookingImputadoFields.hidden = !enabled;
+  bookingImputadoFields.querySelectorAll('input, select, textarea').forEach(input => {
+    input.disabled = !enabled;
+  });
+}
 
 function switchModule(moduleName) {
   moduleTabs.forEach(tab => {
@@ -1660,6 +1672,7 @@ bookingForm.addEventListener('submit', async event => {
   saveBookings(bookings);
   await notifyVisitScheduled(bookings[0]);
   bookingForm.reset();
+  toggleBookingImputadoFields();
   renderAll();
 });
 
@@ -1878,6 +1891,8 @@ profileForm.addEventListener('submit', event => {
   renderProfiles();
 });
 
+bookingIsImputadoInput?.addEventListener('change', toggleBookingImputadoFields);
+
 switchModule('create');
 
 const currentMonth = monthValueFromDate(new Date());
@@ -1885,6 +1900,7 @@ agendaMonthInput.value = currentMonth;
 prisonMonthInput.value = currentMonth;
 lawyerCalendarMonth.value = currentMonth;
 clientPhoneInput.value = '+569';
+toggleBookingImputadoFields();
 updateChileClock();
 
 saveSession({ loggedIn: false });
