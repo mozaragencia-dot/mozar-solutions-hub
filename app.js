@@ -76,6 +76,7 @@ const representativeLastNameInput = clientForm.elements.representativeLastName;
 const representativeRutInput = clientForm.elements.representativeRut;
 const representativePhoneInput = clientForm.elements.representativePhone;
 const representativeEmailInput = clientForm.elements.representativeEmail;
+const representativeModuloInput = clientForm.elements.representativeModulo;
 const representativeAddressInput = clientForm.elements.representativeAddress;
 const clientEditRutInput = clientEditForm.elements.rut;
 const clientEditPhoneInput = clientEditForm.elements.phone;
@@ -88,6 +89,7 @@ const clientEditRepresentativeLastNameInput = clientEditForm.elements.representa
 const clientEditRepresentativeRutInput = clientEditForm.elements.representativeRut;
 const clientEditRepresentativePhoneInput = clientEditForm.elements.representativePhone;
 const clientEditRepresentativeEmailInput = clientEditForm.elements.representativeEmail;
+const clientEditRepresentativeModuloInput = clientEditForm.elements.representativeModulo;
 const clientEditRepresentativeAddressInput = clientEditForm.elements.representativeAddress;
 const clientEditHiredLaterInput = clientEditForm.elements.hiredLater;
 const clientEditAssignedToSelect = clientEditForm.elements.assignedTo;
@@ -230,9 +232,10 @@ function buildRepresentativeRecord(data, representsName, prefix = '') {
   const rut = rutRaw ? formatRut(rutRaw) : '';
   const phone = phoneRaw ? formatPhone(phoneRaw) : '';
   const email = String(data.get(`${base}Email`) || '').trim();
+  const modulo = String(data.get(`${base}Modulo`) || '').trim();
   const address = String(data.get(`${base}Address`) || '').trim();
-  if (!name && !lastName && !rut && !phone && !email && !address) return null;
-  return { name, lastName, rut, phone, email, address, represents: representsName || '' };
+  if (!name && !lastName && !rut && !phone && !email && !modulo && !address) return null;
+  return { name, lastName, rut, phone, email, modulo, address, represents: representsName || '' };
 }
 
 function updateBookingRepresentativeVisibility() {
@@ -288,8 +291,8 @@ function applyRepresentativeToInputs(target, representative = null) {
   target.rut.value = rep.rut || '';
   target.phone.value = rep.phone || '';
   target.email.value = rep.email || '';
-  target.address.value = rep.address || '';
   if (target.modulo) target.modulo.value = rep.modulo || '';
+  target.address.value = rep.address || '';
 }
 
 function getBookingRepresentative(booking) {
@@ -917,13 +920,14 @@ function fillClientEditForm(clientId) {
   clientEditInPrisonInput.value = client.inPrison ? 'si' : 'no';
   const representative = typeof client.representative === 'object' && client.representative
     ? client.representative
-    : { name: String(client.representative || '').trim(), lastName: '', rut: '', phone: '', email: '', address: '' };
+    : { name: String(client.representative || '').trim(), lastName: '', rut: '', phone: '', email: '', modulo: '', address: '' };
   applyRepresentativeToInputs({
     name: clientEditRepresentativeNameInput,
     lastName: clientEditRepresentativeLastNameInput,
     rut: clientEditRepresentativeRutInput,
     phone: clientEditRepresentativePhoneInput,
     email: clientEditRepresentativeEmailInput,
+    modulo: clientEditRepresentativeModuloInput,
     address: clientEditRepresentativeAddressInput
   }, representative);
   updateEditRepresentativeVisibility();
