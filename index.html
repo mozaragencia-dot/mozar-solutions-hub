@@ -42,18 +42,17 @@
 
     <main>
       <nav class="module-tabs" aria-label="Módulos TACAM">
-        <button type="button" class="module-tab active" data-module-tab="create">Ingreso de Contacto</button>
-        <button type="button" class="module-tab" data-module-tab="agenda">Imputados / No imputados</button>
+        <button type="button" class="module-tab active" data-module-tab="create">Ingreso de Cliente</button>
         <button type="button" class="module-tab" data-module-tab="bookings">Agendamiento</button>
-        <button type="button" class="module-tab" data-module-tab="outcomes">Contratos / No contratados</button>
-        <button type="button" class="module-tab" data-module-tab="contacts-edit">Editar Contactos</button>
-        <button type="button" class="module-tab" data-module-tab="prison-visits">Visitas a la Cárcel</button>
+        <button type="button" class="module-tab" data-module-tab="agenda">Calendario de Abogadas</button>
+        <button type="button" class="module-tab" data-module-tab="prison-visits">Visitas a la Carcel</button>
+        <button type="button" class="module-tab" data-module-tab="outcomes">Contratados / No contratados</button>
         <button type="button" class="module-tab" data-module-tab="lawyers">Perfiles de Abogados</button>
         <button type="button" class="module-tab" data-module-tab="reports">Reportes y Gráficos</button>
       </nav>
 
       <section class="card module-panel active" data-module-panel="create">
-        <h2>Ingreso de Contacto</h2>
+        <h2>Ingreso de Cliente</h2>
         <form id="client-form" class="grid">
           <input name="clientId" type="hidden" />
           <label>Nombre del cliente <input name="customer" required /></label>
@@ -66,6 +65,13 @@
           </label>
           <button type="submit">Guardar cliente</button>
         </form>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Nombre</th><th>RUT</th><th>Teléfono</th><th>Correo</th><th>Acción</th></tr></thead>
+            <tbody id="clients-body"></tbody>
+          </table>
+        </div>
+
         <h3>Agendar atención</h3>
         <form id="booking-form" class="grid">
           <label>Cliente registrado
@@ -91,16 +97,6 @@
           <label class="full">Motivo de consulta <textarea name="notes" rows="3" placeholder="Detalle del caso..."></textarea></label>
           <button type="submit">Agendar atención</button>
         </form>
-      </section>
-
-      <section class="card module-panel" data-module-panel="contacts-edit">
-        <h2>Editar Contactos</h2>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Nombre</th><th>RUT</th><th>Teléfono</th><th>Correo</th><th>Acción</th></tr></thead>
-            <tbody id="clients-body"></tbody>
-          </table>
-        </div>
       </section>
 
       <section class="card module-panel" data-module-panel="bookings">
