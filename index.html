@@ -113,6 +113,15 @@
               <option value="imputado">Imputado</option>
             </select>
           </label>
+          <label>¿Está en la cárcel?
+            <select name="bookingInPrison" required>
+              <option value="no">No</option>
+              <option value="si">Sí</option>
+            </select>
+          </label>
+          <label class="booking-prison-field" hidden>Módulo cárcel
+            <input name="bookingPrisonModule" placeholder="Ej: Módulo 4-B" />
+          </label>
           <label class="representative-booking-field" hidden>Nombre representante <input name="bookingRepresentativeName" /></label>
           <label class="representative-booking-field" hidden>RUT representante <input name="bookingRepresentativeRut" maxlength="12" placeholder="12.345.678-9" /></label>
           <label class="representative-booking-field" hidden>Teléfono representante <input name="bookingRepresentativePhone" maxlength="12" placeholder="+56912345678" /></label>
@@ -147,10 +156,25 @@
       <section class="card module-panel" data-module-panel="imputados">
         <h2>Módulo de Imputados y No imputados</h2>
         <p class="muted">Gestiona imputado/no imputado, representante, cambio de abogada/estado y acceso rápido para agendar visita.</p>
+        <h3>Imputados</h3>
         <div class="table-wrap">
           <table>
             <thead><tr><th>Contacto</th><th>Tipo</th><th>Representante</th><th>Contrató</th><th>Visita cárcel</th><th>Abogada</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody id="imputados-body"></tbody>
+          </table>
+        </div>
+        <h3>No imputados</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Contacto</th><th>Tipo</th><th>Representante</th><th>Contrató</th><th>Visita cárcel</th><th>Abogada</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody id="no-imputados-body"></tbody>
+          </table>
+        </div>
+        <h3>En la cárcel</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Contacto</th><th>Módulo</th><th>Representante</th><th>Seleccionar representante</th><th>Acciones</th></tr></thead>
+            <tbody id="prison-imputados-body"></tbody>
           </table>
         </div>
       </section>

@@ -7,6 +7,8 @@ const bookingsBody = document.getElementById('bookings-body');
 const hiredBody = document.getElementById('hired-body');
 const agendaBody = document.getElementById('agenda-body');
 const imputadosBody = document.getElementById('imputados-body');
+const noImputadosBody = document.getElementById('no-imputados-body');
+const prisonImputadosBody = document.getElementById('prison-imputados-body');
 const clientForm = document.getElementById('client-form');
 const clientsBody = document.getElementById('clients-body');
 const clientSearchInput = document.getElementById('client-search');
@@ -53,6 +55,9 @@ const profileList = document.getElementById('profile-list');
 const clientSelect = document.getElementById('client-id-selected');
 const hiredLawyerInput = bookingForm.elements.hiredLawyer;
 const bookingImputadoStatusInput = bookingForm.elements.bookingImputadoStatus;
+const bookingInPrisonInput = bookingForm.elements.bookingInPrison;
+const bookingPrisonFields = Array.from(document.querySelectorAll('.booking-prison-field'));
+const bookingPrisonModuleInput = bookingForm.elements.bookingPrisonModule;
 const representativeBookingFields = Array.from(document.querySelectorAll('.representative-booking-field'));
 const bookingRepresentativeNameInput = bookingForm.elements.bookingRepresentativeName;
 const bookingRepresentativeRutInput = bookingForm.elements.bookingRepresentativeRut;
@@ -133,6 +138,9 @@ function fillSelectedClientPreview(client) {
   selectedClientPhoneInput.value = client?.phone || '';
   selectedClientEmailInput.value = client?.email || '';
   selectedClientAddressInput.value = client?.address || '';
+  bookingInPrisonInput.value = client?.inPrison ? 'si' : 'no';
+  bookingPrisonModuleInput.value = client?.prisonModule || '';
+  updateBookingPrisonVisibility();
   bookingImputadoStatusInput.value = client?.imputadoStatus === 'imputado' ? 'imputado' : 'no_imputado';
   applyRepresentativeToInputs({
     name: bookingRepresentativeNameInput,
@@ -201,6 +209,18 @@ function updateBookingRepresentativeVisibility() {
     if (input) {
       input.required = isImputado && input.name === 'bookingRepresentativeName';
       if (!isImputado) input.value = '';
+    }
+  });
+}
+
+function updateBookingPrisonVisibility() {
+  const inPrison = bookingInPrisonInput.value === 'si';
+  bookingPrisonFields.forEach(field => {
+    field.hidden = !inPrison;
+    const input = field.querySelector('input');
+    if (input) {
+      input.required = inPrison;
+      if (!inPrison) input.value = '';
     }
   });
 }
@@ -685,18 +705,22 @@ function getLastBookingForClient(clientId, predicate = null) {
 function renderImputadosModule() {
   const clients = getClients().sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'es'));
   imputadosBody.replaceChildren();
+  noImputadosBody.replaceChildren();
+  prisonImputadosBody.replaceChildren();
 
   if (!clients.length) {
-    const row = document.createElement('tr');
-    const cell = document.createElement('td');
-    cell.colSpan = 8;
-    cell.textContent = 'Sin contactos registrados.';
-    row.appendChild(cell);
-    imputadosBody.appendChild(row);
+    [imputadosBody, noImputadosBody, prisonImputadosBody].forEach(body => {
+      const row = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.colSpan = 8;
+      cell.textContent = 'Sin contactos registrados.';
+      row.appendChild(cell);
+      body.appendChild(row);
+    });
     return;
   }
 
-  clients.forEach(client => {
+  const renderMainRow = (client, body) => {
     const latestGeneral = getLastBookingForClient(client.id, booking => !isPrisonVisit(booking));
     const latestPrison = getLastBookingForClient(client.id, booking => isPrisonVisit(booking));
     const targetBooking = latestPrison || latestGeneral;
@@ -759,9 +783,59 @@ function renderImputadosModule() {
     repBtn.dataset.imputadoRepresentative = client.id;
     repBtn.textContent = 'Agregar representante';
     actionsCell.appendChild(repBtn);
+
+    const okBtn = document.createElement('button');
+    okBtn.className = 'switch-btn primary';
+    okBtn.type = 'button';
+    okBtn.dataset.imputadoOk = client.id;
+    okBtn.textContent = 'OK';
+    actionsCell.appendChild(okBtn);
     row.appendChild(actionsCell);
 
-    imputadosBody.appendChild(row);
+    body.appendChild(row);
+  };
+
+  clients.forEach(client => {
+    if (client.imputadoStatus === 'imputado') {
+      renderMainRow(client, imputadosBody);
+    } else {
+      renderMainRow(client, noImputadosBody);
+    }
+
+    if (client.inPrison) {
+      const row = document.createElement('tr');
+      appendCell(row, client.name || '');
+      appendCell(row, client.prisonModule || '-');
+      appendCell(row, client.representative?.name ? `${client.representative.name} (representa a ${client.name || '-'})` : '-');
+
+      const selectorCell = document.createElement('td');
+      const representativeSelect = document.createElement('select');
+      representativeSelect.dataset.prisonRepresentativeSelect = client.id;
+      const first = document.createElement('option');
+      first.value = '';
+      first.textContent = 'Mantener representante actual';
+      representativeSelect.appendChild(first);
+      clients
+        .filter(item => item.id !== client.id)
+        .forEach(item => {
+          const option = document.createElement('option');
+          option.value = item.id;
+          option.textContent = `${item.name} · ${item.rut || ''}`;
+          representativeSelect.appendChild(option);
+        });
+      selectorCell.appendChild(representativeSelect);
+      row.appendChild(selectorCell);
+
+      const actionCell = document.createElement('td');
+      const okBtn = document.createElement('button');
+      okBtn.className = 'switch-btn primary';
+      okBtn.type = 'button';
+      okBtn.dataset.prisonRepresentativeSave = client.id;
+      okBtn.textContent = 'OK';
+      actionCell.appendChild(okBtn);
+      row.appendChild(actionCell);
+      prisonImputadosBody.appendChild(row);
+    }
   });
 }
 
@@ -2019,8 +2093,16 @@ bookingForm.addEventListener('submit', async event => {
 
   const hiredLawyer = Boolean(data.get('hiredLawyer'));
   const assignedTo = normalizeAssignedToValue(data.get('assignedTo'));
+  const bookingInPrison = String(data.get('bookingInPrison') || 'no').trim() === 'si';
+  const bookingPrisonModule = String(data.get('bookingPrisonModule') || '').trim();
   const bookingImputadoStatus = String(data.get('bookingImputadoStatus') || 'no_imputado').trim() === 'imputado' ? 'imputado' : 'no_imputado';
   const bookingRepresentative = buildRepresentativeRecord(data, selectedClient.name, 'booking');
+  if (bookingInPrison && !bookingPrisonModule) {
+    bookingPrisonModuleInput.setCustomValidity('Debes indicar el módulo de cárcel.');
+    bookingPrisonModuleInput.reportValidity();
+    return;
+  }
+  bookingPrisonModuleInput.setCustomValidity('');
   if (bookingImputadoStatus === 'imputado' && !bookingRepresentative?.name) {
     bookingRepresentativeNameInput.setCustomValidity('Debes indicar el nombre del representante.');
     bookingRepresentativeNameInput.reportValidity();
@@ -2037,6 +2119,9 @@ bookingForm.addEventListener('submit', async event => {
     phone: selectedClient.phone,
     email: selectedClient.email,
     address: selectedClient.address,
+    inPrison: bookingInPrison,
+    prisonModule: bookingInPrison ? bookingPrisonModule : '',
+    caseRole: selectedClient.caseRole || '',
     imputadoStatus: bookingImputadoStatus,
     representative: bookingImputadoStatus === 'imputado' ? bookingRepresentative : null,
     matter: normalizeMatterLabel(data.get('matter')),
@@ -2062,6 +2147,8 @@ bookingForm.addEventListener('submit', async event => {
   clientSelectedLabel.textContent = 'Contacto seleccionado: ninguno';
   fillSelectedClientPreview(null);
   hiredLawyerInput.checked = true;
+  bookingInPrisonInput.value = 'no';
+  updateBookingPrisonVisibility();
   bookingImputadoStatusInput.value = 'no_imputado';
   updateBookingRepresentativeVisibility();
   renderAll();
@@ -2173,6 +2260,7 @@ bookingImputadoStatusInput.addEventListener('change', () => {
     address: bookingForm.elements.bookingRepresentativeAddress
   }, representative);
 });
+bookingInPrisonInput.addEventListener('change', updateBookingPrisonVisibility);
 bookingRepresentativeRutInput.addEventListener('input', () => {
   bookingRepresentativeRutInput.value = formatRut(bookingRepresentativeRutInput.value);
 });
@@ -2314,6 +2402,49 @@ imputadosBody.addEventListener('click', event => {
     saveBookings(bookings);
     renderAll();
     showToast('Representante agregado correctamente.');
+    return;
+  }
+
+  const okClientId = target.dataset.imputadoOk;
+  if (okClientId) {
+    saveClients(getClients());
+    saveBookings(getBookings());
+    showToast('Datos guardados correctamente.');
+    return;
+  }
+
+  const prisonSaveClientId = target.dataset.prisonRepresentativeSave;
+  if (prisonSaveClientId) {
+    const clients = getClients();
+    const client = clients.find(item => item.id === prisonSaveClientId);
+    if (!client) return;
+    const selector = prisonImputadosBody.querySelector(`[data-prison-representative-select="${prisonSaveClientId}"]`);
+    if (selector instanceof HTMLSelectElement && selector.value) {
+      const selected = clients.find(item => item.id === selector.value);
+      if (selected) {
+        client.imputadoStatus = 'imputado';
+        client.representative = {
+          name: selected.name || '',
+          rut: selected.rut || '',
+          phone: selected.phone || '',
+          email: selected.email || '',
+          address: selected.address || '',
+          represents: client.name || ''
+        };
+      }
+    }
+    saveClients(clients);
+    const bookings = getBookings();
+    bookings.forEach(booking => {
+      if (booking.clientId !== client.id) return;
+      booking.imputadoStatus = client.imputadoStatus || 'no_imputado';
+      booking.representative = client.representative || null;
+      booking.inPrison = Boolean(client.inPrison);
+      booking.prisonModule = client.prisonModule || '';
+    });
+    saveBookings(bookings);
+    renderAll();
+    showToast('Datos de cárcel/representante guardados.');
   }
 });
 
@@ -2510,6 +2641,7 @@ assignedToSelect.disabled = !hiredLawyerInput.checked;
 updateInPrisonVisibility();
 updateRepresentativeVisibility();
 updateEditRepresentativeVisibility();
+updateBookingPrisonVisibility();
 updateBookingRepresentativeVisibility();
 updateChileClock();
 
