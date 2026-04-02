@@ -55,19 +55,23 @@ const profileList = document.getElementById('profile-list');
 const clientSelect = document.getElementById('client-id-selected');
 const hiredLawyerInput = bookingForm.elements.hiredLawyer;
 const bookingImputadoStatusInput = bookingForm.elements.bookingImputadoStatus;
-const bookingPrisonModuleInput = bookingForm.elements.bookingPrisonModule;
+const bookingInPrisonInput = bookingForm.elements.bookingInPrison;
+const bookingImputadoPrisonFields = Array.from(document.querySelectorAll('.booking-imputado-prison-field'));
 const representativeBookingFields = Array.from(document.querySelectorAll('.representative-booking-field'));
 const bookingRepresentativeNameInput = bookingForm.elements.bookingRepresentativeName;
+const bookingRepresentativeLastNameInput = bookingForm.elements.bookingRepresentativeLastName;
 const bookingRepresentativeRutInput = bookingForm.elements.bookingRepresentativeRut;
 const bookingRepresentativePhoneInput = bookingForm.elements.bookingRepresentativePhone;
 const clientRutInput = clientForm.elements.rut;
 const clientPhoneInput = clientForm.elements.phone;
-const prisonModuleInput = clientForm.elements.prisonModule;
 const imputadoStatusInput = clientForm.elements.imputadoStatus;
+const inPrisonInput = clientForm.elements.inPrison;
+const imputadoPrisonFields = Array.from(document.querySelectorAll('.imputado-prison-field'));
 const imputadoModuleInput = clientForm.elements.imputadoModule;
 const imputadoModuleFields = Array.from(document.querySelectorAll('.imputado-module-field'));
 const representativeCreateFields = Array.from(document.querySelectorAll('.representative-create-field'));
 const representativeNameInput = clientForm.elements.representativeName;
+const representativeLastNameInput = clientForm.elements.representativeLastName;
 const representativeRutInput = clientForm.elements.representativeRut;
 const representativePhoneInput = clientForm.elements.representativePhone;
 const representativeEmailInput = clientForm.elements.representativeEmail;
@@ -75,8 +79,11 @@ const representativeAddressInput = clientForm.elements.representativeAddress;
 const clientEditRutInput = clientEditForm.elements.rut;
 const clientEditPhoneInput = clientEditForm.elements.phone;
 const clientEditImputadoStatusInput = clientEditForm.elements.imputadoStatus;
+const clientEditInPrisonInput = clientEditForm.elements.inPrison;
+const editImputadoPrisonFields = Array.from(document.querySelectorAll('.edit-imputado-prison-field'));
 const representativeEditFields = Array.from(document.querySelectorAll('.representative-edit-field'));
 const clientEditRepresentativeNameInput = clientEditForm.elements.representativeName;
+const clientEditRepresentativeLastNameInput = clientEditForm.elements.representativeLastName;
 const clientEditRepresentativeRutInput = clientEditForm.elements.representativeRut;
 const clientEditRepresentativePhoneInput = clientEditForm.elements.representativePhone;
 const clientEditRepresentativeEmailInput = clientEditForm.elements.representativeEmail;
@@ -146,10 +153,11 @@ function fillSelectedClientPreview(client) {
   selectedClientPhoneInput.value = client?.phone || '';
   selectedClientEmailInput.value = client?.email || '';
   selectedClientAddressInput.value = client?.address || '';
-  bookingPrisonModuleInput.value = client?.prisonModule || '';
   bookingImputadoStatusInput.value = client?.imputadoStatus === 'imputado' ? 'imputado' : 'no_imputado';
+  bookingInPrisonInput.value = client?.inPrison ? 'si' : 'no';
   applyRepresentativeToInputs({
     name: bookingRepresentativeNameInput,
+    lastName: bookingRepresentativeLastNameInput,
     rut: bookingRepresentativeRutInput,
     phone: bookingRepresentativePhoneInput,
     email: bookingForm.elements.bookingRepresentativeEmail,
@@ -160,18 +168,23 @@ function fillSelectedClientPreview(client) {
 
 function updateRepresentativeVisibility() {
   const isImputado = imputadoStatusInput.value === 'imputado';
+  imputadoPrisonFields.forEach(field => {
+    field.hidden = !isImputado;
+  });
+  if (!isImputado) inPrisonInput.value = 'no';
   representativeCreateFields.forEach(field => {
     field.hidden = !isImputado;
     const input = field.querySelector('input');
     if (input) {
-      input.required = isImputado && input.name === 'representativeName';
+      input.required = isImputado && (input.name === 'representativeName' || input.name === 'representativeLastName');
       if (!isImputado) input.value = '';
     }
   });
+  updateImputadoModuleVisibility();
 }
 
 function updateImputadoModuleVisibility() {
-  const isImputado = imputadoStatusInput.value === 'imputado';
+  const isImputado = imputadoStatusInput.value === 'imputado' && inPrisonInput.value === 'si';
   imputadoModuleFields.forEach(field => {
     field.hidden = !isImputado;
     const input = field.querySelector('input');
@@ -185,11 +198,15 @@ function updateImputadoModuleVisibility() {
 
 function updateEditRepresentativeVisibility() {
   const isImputado = clientEditImputadoStatusInput.value === 'imputado';
+  editImputadoPrisonFields.forEach(field => {
+    field.hidden = !isImputado;
+  });
+  if (!isImputado) clientEditInPrisonInput.value = 'no';
   representativeEditFields.forEach(field => {
     field.hidden = !isImputado;
     const input = field.querySelector('input');
     if (input) {
-      input.required = isImputado && input.name === 'representativeName';
+      input.required = isImputado && (input.name === 'representativeName' || input.name === 'representativeLastName');
       if (!isImputado) input.value = '';
     }
   });
@@ -198,23 +215,28 @@ function updateEditRepresentativeVisibility() {
 function buildRepresentativeRecord(data, representsName, prefix = '') {
   const base = prefix ? `${prefix}Representative` : 'representative';
   const name = String(data.get(`${base}Name`) || '').trim();
+  const lastName = String(data.get(`${base}LastName`) || '').trim();
   const rutRaw = String(data.get(`${base}Rut`) || '').trim();
   const phoneRaw = String(data.get(`${base}Phone`) || '').trim();
   const rut = rutRaw ? formatRut(rutRaw) : '';
   const phone = phoneRaw ? formatPhone(phoneRaw) : '';
   const email = String(data.get(`${base}Email`) || '').trim();
   const address = String(data.get(`${base}Address`) || '').trim();
-  if (!name && !rut && !phone && !email && !address) return null;
-  return { name, rut, phone, email, address, represents: representsName || '' };
+  if (!name && !lastName && !rut && !phone && !email && !address) return null;
+  return { name, lastName, rut, phone, email, address, represents: representsName || '' };
 }
 
 function updateBookingRepresentativeVisibility() {
   const isImputado = bookingImputadoStatusInput.value === 'imputado';
+  bookingImputadoPrisonFields.forEach(field => {
+    field.hidden = !isImputado;
+  });
+  if (!isImputado) bookingInPrisonInput.value = 'no';
   representativeBookingFields.forEach(field => {
     field.hidden = !isImputado;
     const input = field.querySelector('input');
     if (input) {
-      input.required = isImputado && input.name === 'bookingRepresentativeName';
+      input.required = isImputado && (input.name === 'bookingRepresentativeName' || input.name === 'bookingRepresentativeLastName');
       if (!isImputado) input.value = '';
     }
   });
@@ -226,6 +248,10 @@ function promptRepresentativeData(existing = null, representsName = 'contacto') 
   if (name === null) return null;
   const trimmedName = String(name || '').trim();
   if (!trimmedName) return null;
+  const lastName = window.prompt(`Apellido representante de ${representsName}`, existing?.lastName || '');
+  if (lastName === null) return null;
+  const trimmedLastName = String(lastName || '').trim();
+  if (!trimmedLastName) return null;
 
   const rutRaw = window.prompt(`RUT representante de ${representsName}`, existing?.rut || '');
   if (rutRaw === null) return null;
@@ -238,6 +264,7 @@ function promptRepresentativeData(existing = null, representsName = 'contacto') 
 
   return {
     name: trimmedName,
+    lastName: trimmedLastName,
     rut: rutRaw ? formatRut(rutRaw) : '',
     phone: phoneRaw ? formatPhone(phoneRaw) : '',
     email: String(email || '').trim(),
@@ -248,6 +275,7 @@ function promptRepresentativeData(existing = null, representsName = 'contacto') 
 function applyRepresentativeToInputs(target, representative = null) {
   const rep = representative || {};
   target.name.value = rep.name || '';
+  target.lastName.value = rep.lastName || '';
   target.rut.value = rep.rut || '';
   target.phone.value = rep.phone || '';
   target.email.value = rep.email || '';
@@ -257,12 +285,12 @@ function applyRepresentativeToInputs(target, representative = null) {
 function getBookingRepresentative(booking) {
   const rep = booking.representative;
   if (rep && typeof rep === 'object' && String(rep.name || '').trim()) {
-    return `${rep.name}${rep.represents ? ` (representa a ${rep.represents})` : ''}`;
+    return `${rep.name} ${rep.lastName || ''}`.trim() + (rep.represents ? ` (representa a ${rep.represents})` : '');
   }
   if (!booking.clientId) return '';
   const client = getClients().find(item => item.id === booking.clientId);
   if (client?.representative && typeof client.representative === 'object' && String(client.representative.name || '').trim()) {
-    return `${client.representative.name}${client.representative.represents ? ` (representa a ${client.representative.represents})` : ''}`;
+    return `${client.representative.name} ${client.representative.lastName || ''}`.trim() + (client.representative.represents ? ` (representa a ${client.representative.represents})` : '');
   }
   return '';
 }
@@ -666,7 +694,7 @@ function renderClients() {
   if (!clients.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 9;
+    cell.colSpan = 8;
     cell.textContent = 'Sin contactos guardados.';
     row.appendChild(cell);
     clientsBody.appendChild(row);
@@ -680,10 +708,9 @@ function renderClients() {
     appendCell(row, client.phone || '');
     appendCell(row, client.email || '');
     appendCell(row, client.address || '');
-    appendCell(row, client.prisonModule || '-');
     appendCell(row, client.imputadoStatus === 'imputado' ? 'Imputado' : 'No imputado');
-    appendCell(row, client.imputadoModule || '-');
-    const representativeName = client.representative?.name || '';
+    appendCell(row, client.inPrison ? (client.imputadoModule || client.prisonModule || '-') : '-');
+    const representativeName = [client.representative?.name || '', client.representative?.lastName || ''].join(' ').trim();
     appendCell(row, representativeName ? `${representativeName} (representa a ${client.name || '-'})` : '-');
     clientsBody.appendChild(row);
   });
@@ -878,11 +905,13 @@ function fillClientEditForm(clientId) {
   clientEditForm.elements.email.value = client.email || '';
   clientEditForm.elements.address.value = client.address || '';
   clientEditImputadoStatusInput.value = client.imputadoStatus === 'imputado' ? 'imputado' : 'no_imputado';
+  clientEditInPrisonInput.value = client.inPrison ? 'si' : 'no';
   const representative = typeof client.representative === 'object' && client.representative
     ? client.representative
-    : { name: String(client.representative || '').trim(), rut: '', phone: '', email: '', address: '' };
+    : { name: String(client.representative || '').trim(), lastName: '', rut: '', phone: '', email: '', address: '' };
   applyRepresentativeToInputs({
     name: clientEditRepresentativeNameInput,
+    lastName: clientEditRepresentativeLastNameInput,
     rut: clientEditRepresentativeRutInput,
     phone: clientEditRepresentativePhoneInput,
     email: clientEditRepresentativeEmailInput,
@@ -1919,8 +1948,8 @@ clientForm.addEventListener('submit', event => {
   const email = String(data.get('email') || '').trim();
   const name = String(data.get('name') || '').trim();
   const address = String(data.get('address') || '').trim();
-  const prisonModule = String(data.get('prisonModule') || '').trim();
   const imputadoStatus = String(data.get('imputadoStatus') || 'no_imputado').trim() === 'imputado' ? 'imputado' : 'no_imputado';
+  const inPrison = imputadoStatus === 'imputado' && String(data.get('inPrison') || 'no').trim() === 'si';
   const imputadoModule = String(data.get('imputadoModule') || '').trim();
   const representative = buildRepresentativeRecord(data, name);
 
@@ -1945,18 +1974,19 @@ clientForm.addEventListener('submit', event => {
   }
   clientForm.elements.email.setCustomValidity('');
   if (!name || !address) return;
-  if (imputadoStatus === 'imputado' && !representative?.name) {
+  if (imputadoStatus === 'imputado' && (!representative?.name || !representative?.lastName)) {
     representativeNameInput.setCustomValidity('Debes indicar el nombre del representante.');
     representativeNameInput.reportValidity();
     return;
   }
-  if (imputadoStatus === 'imputado' && !imputadoModule) {
+  representativeNameInput.setCustomValidity('');
+  representativeLastNameInput.setCustomValidity('');
+  if (inPrison && !imputadoModule) {
     imputadoModuleInput.setCustomValidity('Debes indicar el módulo del imputado.');
     imputadoModuleInput.reportValidity();
     return;
   }
   imputadoModuleInput.setCustomValidity('');
-  representativeNameInput.setCustomValidity('');
 
   const clients = getClients();
   const existing = clients.find(client => (client.rut || '').trim() === rut);
@@ -1966,10 +1996,10 @@ clientForm.addEventListener('submit', event => {
     existing.phone = phone;
     existing.email = email;
     existing.address = address;
-    existing.inPrison = Boolean(prisonModule);
-    existing.prisonModule = prisonModule;
+    existing.inPrison = inPrison;
+    existing.prisonModule = inPrison ? imputadoModule : '';
     existing.imputadoStatus = imputadoStatus;
-    existing.imputadoModule = imputadoStatus === 'imputado' ? imputadoModule : '';
+    existing.imputadoModule = inPrison ? imputadoModule : '';
     existing.representative = imputadoStatus === 'imputado' ? representative : null;
     existing.updatedAt = new Date().toISOString();
   } else {
@@ -1980,10 +2010,10 @@ clientForm.addEventListener('submit', event => {
       phone,
       email,
       address,
-      inPrison: Boolean(prisonModule),
-      prisonModule,
+      inPrison,
+      prisonModule: inPrison ? imputadoModule : '',
       imputadoStatus,
-      imputadoModule: imputadoStatus === 'imputado' ? imputadoModule : '',
+      imputadoModule: inPrison ? imputadoModule : '',
       representative: imputadoStatus === 'imputado' ? representative : null,
       createdAt: new Date().toISOString()
     });
@@ -2009,6 +2039,7 @@ clientEditForm.addEventListener('submit', event => {
   const email = String(data.get('email') || '').trim();
   const address = String(data.get('address') || '').trim();
   const imputadoStatus = String(data.get('imputadoStatus') || 'no_imputado').trim() === 'imputado' ? 'imputado' : 'no_imputado';
+  const inPrison = imputadoStatus === 'imputado' && String(data.get('inPrison') || 'no').trim() === 'si';
   const representative = buildRepresentativeRecord(data, name);
   const hiredLater = Boolean(data.get('hiredLater'));
   const assignedTo = normalizeAssignedToValue(data.get('assignedTo'));
@@ -2028,7 +2059,7 @@ clientEditForm.addEventListener('submit', event => {
     return;
   }
   clientEditPhoneInput.setCustomValidity('');
-  if (imputadoStatus === 'imputado' && !representative?.name) {
+  if (imputadoStatus === 'imputado' && (!representative?.name || !representative?.lastName)) {
     clientEditRepresentativeNameInput.setCustomValidity('Debes indicar el nombre del representante.');
     clientEditRepresentativeNameInput.reportValidity();
     return;
@@ -2045,6 +2076,9 @@ clientEditForm.addEventListener('submit', event => {
   client.email = email;
   client.address = address;
   client.imputadoStatus = imputadoStatus;
+  client.inPrison = inPrison;
+  client.prisonModule = inPrison ? (client.imputadoModule || client.prisonModule || '') : '';
+  client.imputadoModule = inPrison ? (client.imputadoModule || client.prisonModule || '') : '';
   client.representative = imputadoStatus === 'imputado' ? representative : null;
   client.updatedAt = new Date().toISOString();
   saveClients(clients);
@@ -2058,6 +2092,8 @@ clientEditForm.addEventListener('submit', event => {
     booking.email = email;
     booking.address = address;
     booking.imputadoStatus = imputadoStatus;
+    booking.inPrison = inPrison;
+    booking.prisonModule = inPrison ? (client.imputadoModule || client.prisonModule || '') : '';
     booking.representative = imputadoStatus === 'imputado' ? representative : null;
     if (hiredLater && !isPrisonVisit(booking)) {
       booking.hiredLawyer = true;
@@ -2082,10 +2118,11 @@ bookingForm.addEventListener('submit', async event => {
 
   const hiredLawyer = Boolean(data.get('hiredLawyer'));
   const assignedTo = normalizeAssignedToValue(data.get('assignedTo'));
-  const bookingPrisonModule = String(data.get('bookingPrisonModule') || '').trim();
   const bookingImputadoStatus = String(data.get('bookingImputadoStatus') || 'no_imputado').trim() === 'imputado' ? 'imputado' : 'no_imputado';
+  const bookingInPrison = bookingImputadoStatus === 'imputado' && String(data.get('bookingInPrison') || 'no').trim() === 'si';
   const bookingRepresentative = buildRepresentativeRecord(data, selectedClient.name, 'booking');
-  if (bookingImputadoStatus === 'imputado' && !bookingRepresentative?.name) {
+  const bookingPrisonModule = bookingInPrison ? String(selectedClient.imputadoModule || selectedClient.prisonModule || '').trim() : '';
+  if (bookingImputadoStatus === 'imputado' && (!bookingRepresentative?.name || !bookingRepresentative?.lastName)) {
     bookingRepresentativeNameInput.setCustomValidity('Debes indicar el nombre del representante.');
     bookingRepresentativeNameInput.reportValidity();
     return;
@@ -2101,7 +2138,7 @@ bookingForm.addEventListener('submit', async event => {
     phone: selectedClient.phone,
     email: selectedClient.email,
     address: selectedClient.address,
-    inPrison: Boolean(bookingPrisonModule),
+    inPrison: bookingInPrison,
     prisonModule: bookingPrisonModule,
     imputadoStatus: bookingImputadoStatus,
     representative: bookingImputadoStatus === 'imputado' ? bookingRepresentative : null,
@@ -2194,12 +2231,13 @@ imputadoStatusInput.addEventListener('change', () => {
   if (imputadoStatusInput.value !== 'imputado') return;
   const representative = promptRepresentativeData({
     name: representativeNameInput.value,
+    lastName: representativeLastNameInput.value,
     rut: representativeRutInput.value,
     phone: representativePhoneInput.value,
     email: representativeEmailInput.value,
     address: representativeAddressInput.value
   }, clientForm.elements.name.value || 'contacto');
-  if (!representative?.name) {
+  if (!representative?.name || !representative?.lastName) {
     imputadoStatusInput.value = 'no_imputado';
     updateRepresentativeVisibility();
     showToast('Debes ingresar representante para marcar imputado.');
@@ -2207,23 +2245,28 @@ imputadoStatusInput.addEventListener('change', () => {
   }
   applyRepresentativeToInputs({
     name: representativeNameInput,
+    lastName: representativeLastNameInput,
     rut: representativeRutInput,
     phone: representativePhoneInput,
     email: representativeEmailInput,
     address: representativeAddressInput
   }, representative);
 });
+inPrisonInput.addEventListener('change', () => {
+  updateImputadoModuleVisibility();
+});
 bookingImputadoStatusInput.addEventListener('change', () => {
   updateBookingRepresentativeVisibility();
   if (bookingImputadoStatusInput.value !== 'imputado') return;
   const representative = promptRepresentativeData({
     name: bookingRepresentativeNameInput.value,
+    lastName: bookingRepresentativeLastNameInput.value,
     rut: bookingRepresentativeRutInput.value,
     phone: bookingRepresentativePhoneInput.value,
     email: bookingForm.elements.bookingRepresentativeEmail.value,
     address: bookingForm.elements.bookingRepresentativeAddress.value
   }, selectedClientNameInput.value || 'contacto');
-  if (!representative?.name) {
+  if (!representative?.name || !representative?.lastName) {
     bookingImputadoStatusInput.value = 'no_imputado';
     updateBookingRepresentativeVisibility();
     showToast('Debes ingresar representante para marcar imputado.');
@@ -2231,6 +2274,7 @@ bookingImputadoStatusInput.addEventListener('change', () => {
   }
   applyRepresentativeToInputs({
     name: bookingRepresentativeNameInput,
+    lastName: bookingRepresentativeLastNameInput,
     rut: bookingRepresentativeRutInput,
     phone: bookingRepresentativePhoneInput,
     email: bookingForm.elements.bookingRepresentativeEmail,
@@ -2257,12 +2301,13 @@ clientEditImputadoStatusInput.addEventListener('change', () => {
   if (clientEditImputadoStatusInput.value !== 'imputado') return;
   const representative = promptRepresentativeData({
     name: clientEditRepresentativeNameInput.value,
+    lastName: clientEditRepresentativeLastNameInput.value,
     rut: clientEditRepresentativeRutInput.value,
     phone: clientEditRepresentativePhoneInput.value,
     email: clientEditRepresentativeEmailInput.value,
     address: clientEditRepresentativeAddressInput.value
   }, clientEditForm.elements.name.value || 'contacto');
-  if (!representative?.name) {
+  if (!representative?.name || !representative?.lastName) {
     clientEditImputadoStatusInput.value = 'no_imputado';
     updateEditRepresentativeVisibility();
     showToast('Debes ingresar representante para marcar imputado.');
@@ -2270,6 +2315,7 @@ clientEditImputadoStatusInput.addEventListener('change', () => {
   }
   applyRepresentativeToInputs({
     name: clientEditRepresentativeNameInput,
+    lastName: clientEditRepresentativeLastNameInput,
     rut: clientEditRepresentativeRutInput,
     phone: clientEditRepresentativePhoneInput,
     email: clientEditRepresentativeEmailInput,
