@@ -156,7 +156,10 @@ function fillSelectedClientPreview(client) {
   selectedClientPhoneInput.value = client?.phone || '';
   selectedClientEmailInput.value = client?.email || '';
   selectedClientAddressInput.value = client?.address || '';
-  bookingImputadoStatusInput.value = client?.imputadoStatus === 'imputado' ? 'imputado' : 'no_imputado';
+  const allowAutoImputado = bookingImputadoStatusInput.dataset.manualChange !== '1';
+  if (allowAutoImputado) {
+    bookingImputadoStatusInput.value = client?.imputadoStatus === 'imputado' ? 'imputado' : 'no_imputado';
+  }
   bookingInPrisonInput.value = client?.inPrison ? 'si' : 'no';
   const representative = client?.representative && typeof client.representative === 'object'
     ? { ...client.representative }
@@ -584,7 +587,8 @@ function formatPhone(value) {
 }
 
 function isValidRut(value) {
-  return /^\d{1,2}(\.\d{3}){1,2}-[\dK]$/.test(String(value || '').toUpperCase());
+  const clean = String(value || '').replace(/[.\-]/g, '').toUpperCase();
+  return /^\d{7,8}[\dK]$/.test(clean);
 }
 
 function isValidPhone(value) {
@@ -693,6 +697,7 @@ function renderClientSearchResults(clients, query) {
       clientSelect.value = client.id;
       clientSearchInput.value = `${client.name} (${client.rut})`;
       clientSelectedLabel.textContent = `Contacto seleccionado: ${client.name} · ${client.rut}`;
+      bookingImputadoStatusInput.dataset.manualChange = '0';
       fillSelectedClientPreview(client);
       clientSearchResults.replaceChildren();
     });
@@ -2185,6 +2190,7 @@ bookingForm.addEventListener('submit', async event => {
   clientSelectedLabel.textContent = 'Contacto seleccionado: ninguno';
   fillSelectedClientPreview(null);
   hiredLawyerInput.checked = true;
+  bookingImputadoStatusInput.dataset.manualChange = '0';
   bookingImputadoStatusInput.value = 'no_imputado';
   updateBookingRepresentativeVisibility();
   renderAll();
@@ -2253,6 +2259,7 @@ inPrisonInput.addEventListener('change', () => {
   updateImputadoModuleVisibility();
 });
 bookingImputadoStatusInput.addEventListener('change', () => {
+  bookingImputadoStatusInput.dataset.manualChange = '1';
   updateBookingRepresentativeVisibility();
 });
 bookingRepresentativeRutInput.addEventListener('input', () => {
@@ -2610,6 +2617,7 @@ assignedToSelect.disabled = !hiredLawyerInput.checked;
 updateImputadoModuleVisibility();
 updateRepresentativeVisibility();
 updateEditRepresentativeVisibility();
+bookingImputadoStatusInput.dataset.manualChange = '0';
 updateBookingRepresentativeVisibility();
 updateSyncIndicator('pending', 'Sincronización: pendiente');
 updateChileClock();
