@@ -221,7 +221,6 @@ function updateEditRepresentativeVisibility() {
     const input = field.querySelector('input');
     if (input) {
       input.required = isImputado && (input.name === 'representativeName' || input.name === 'representativeLastName');
-      if (!isImputado) input.value = '';
     }
   });
 }
@@ -2088,6 +2087,7 @@ clientEditForm.addEventListener('submit', event => {
   const clients = getClients();
   const client = clients.find(item => item.id === clientId);
   if (!client) return;
+  const representativeData = representative || client.representative || null;
 
   client.name = name;
   client.rut = rut;
@@ -2098,7 +2098,7 @@ clientEditForm.addEventListener('submit', event => {
   client.inPrison = inPrison;
   client.prisonModule = inPrison ? (client.imputadoModule || client.prisonModule || '') : '';
   client.imputadoModule = inPrison ? (client.imputadoModule || client.prisonModule || '') : '';
-  client.representative = imputadoStatus === 'imputado' ? representative : null;
+  client.representative = representativeData;
   client.updatedAt = new Date().toISOString();
   saveClients(clients);
 
@@ -2113,7 +2113,7 @@ clientEditForm.addEventListener('submit', event => {
     booking.imputadoStatus = imputadoStatus;
     booking.inPrison = inPrison;
     booking.prisonModule = inPrison ? (client.imputadoModule || client.prisonModule || '') : '';
-    booking.representative = imputadoStatus === 'imputado' ? representative : null;
+    booking.representative = representativeData;
     if (hiredLater && !isPrisonVisit(booking)) {
       booking.hiredLawyer = true;
       booking.assignedTo = assignedTo;
