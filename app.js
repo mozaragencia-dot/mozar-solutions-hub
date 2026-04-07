@@ -2639,7 +2639,6 @@ window.addEventListener('tacam-sync-status', event => {
 setInterval(() => {
   updateChileClock();
   if (!appShell.hidden) {
-    renderAll();
     void notifyUpcomingAppointments();
   }
 }, 5000);
