@@ -1483,12 +1483,13 @@ function renderBookings() {
         option.textContent = name;
         convertSelect.appendChild(option);
       });
+      convertSelect.value = booking.assignedTo || UNASSIGNED_LAWYER_LABEL;
       actionsCell.appendChild(convertSelect);
 
       const convertBtn = document.createElement('button');
       convertBtn.className = 'switch-btn primary';
       convertBtn.dataset.convertBtn = booking.id;
-      convertBtn.textContent = 'Contrató después';
+      convertBtn.textContent = 'Contrató';
       actionsCell.appendChild(convertBtn);
 
       row.appendChild(actionsCell);
@@ -1561,6 +1562,12 @@ function renderBookings() {
         booking.status = 'confirmada';
       });
     };
+  });
+
+  bookingsBody.querySelectorAll('[data-convert-lawyer]').forEach(select => {
+    select.onchange = () => updateBooking(select.dataset.convertLawyer, booking => {
+      booking.assignedTo = normalizeAssignedToValue(select.value);
+    });
   });
 
   bookingsBody.querySelectorAll('[data-remarket-whatsapp]').forEach(btn => {
@@ -1663,7 +1670,6 @@ function renderAgenda() {
   agendaBody.querySelectorAll('[data-agenda-lawyer]').forEach(select => {
     select.onchange = () => updateBooking(select.dataset.agendaLawyer, booking => {
       booking.assignedTo = normalizeAssignedToValue(select.value);
-      booking.hiredLawyer = Boolean(booking.assignedTo);
     });
   });
 }
@@ -2111,6 +2117,8 @@ clientEditForm.addEventListener('submit', event => {
   });
   saveBookings(bookings);
   renderAll();
+  clientEditSelect.value = clientId;
+  fillClientEditForm(clientId);
   showToast('Contacto actualizado correctamente.');
 });
 
@@ -2430,7 +2438,6 @@ imputadosBody.addEventListener('change', event => {
 
   if (target.dataset.imputadoLawyer) {
     booking.assignedTo = normalizeAssignedToValue(target.value);
-    if (!isPrisonVisit(booking)) booking.hiredLawyer = Boolean(booking.assignedTo);
     showToast('Abogada actualizada.');
   } else if (target.dataset.imputadoStatusBooking) {
     booking.status = target.value;
