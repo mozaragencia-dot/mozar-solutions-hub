@@ -313,6 +313,7 @@ function getBookingRepresentative(booking) {
 function showApp() {
   loginScreen.hidden = true;
   appShell.hidden = false;
+  applyRoleAccess();
   if (typeof hydrateFromServer === 'function') hydrateFromServer();
 }
 
@@ -347,8 +348,36 @@ function normalizeAssignedToValue(value) {
   return clean === UNASSIGNED_LAWYER_LABEL ? '' : clean;
 }
 
+function getProfileByCredentials(username, password) {
+  return getProfiles().find(profile =>
+    String(profile.username || '').trim() === username &&
+    String(profile.password || '').trim() === password
+  ) || null;
+}
+
 function tryLogin(username, password) {
-  return ALLOWED_CREDENTIALS.some(cred => cred.username === username && cred.password === password);
+  if (ALLOWED_CREDENTIALS.some(cred => cred.username === username && cred.password === password)) {
+    return { username, role: 'Admin' };
+  }
+  const profile = getProfileByCredentials(username, password);
+  if (!profile) return null;
+  return { username: profile.username, role: profile.role || 'Recepción' };
+}
+
+function applyRoleAccess() {
+  const session = getSession();
+  const role = String(session.role || 'Admin');
+  const allowedForLawyer = new Set(['prison-visits', 'imputados', 'clients']);
+  moduleTabs.forEach(tab => {
+    if (role !== 'Abogada') {
+      tab.hidden = false;
+      return;
+    }
+    tab.hidden = !allowedForLawyer.has(tab.dataset.moduleTab || '');
+  });
+  if (role === 'Abogada' && !allowedForLawyer.has(document.querySelector('.module-tab.active')?.dataset.moduleTab || '')) {
+    switchModule('prison-visits');
+  }
 }
 
 function hasNotificationConsent(booking) {
@@ -1463,18 +1492,6 @@ function renderBookings() {
 
       const actionsCell = document.createElement('td');
 
-      const confirmBtn = document.createElement('button');
-      confirmBtn.className = `switch-btn ${booking.status === 'confirmada' ? 'primary' : ''}`.trim();
-      confirmBtn.dataset.confirmBtn = booking.id;
-      confirmBtn.textContent = 'Confirmar';
-      actionsCell.appendChild(confirmBtn);
-
-      const cancelBtn = document.createElement('button');
-      cancelBtn.className = `switch-btn ${booking.status === 'cancelada' ? 'primary' : ''}`.trim();
-      cancelBtn.dataset.cancelBtn = booking.id;
-      cancelBtn.textContent = 'Cancelar';
-      actionsCell.appendChild(cancelBtn);
-
       const convertSelect = document.createElement('select');
       convertSelect.dataset.convertLawyer = booking.id;
       const first = document.createElement('option');
@@ -1495,6 +1512,12 @@ function renderBookings() {
       convertBtn.dataset.convertBtn = booking.id;
       convertBtn.textContent = 'Contrató';
       actionsCell.appendChild(convertBtn);
+
+      const keepLeadBtn = document.createElement('button');
+      keepLeadBtn.className = 'switch-btn';
+      keepLeadBtn.dataset.keepLeadBtn = booking.id;
+      keepLeadBtn.textContent = 'No contrató';
+      actionsCell.appendChild(keepLeadBtn);
 
       row.appendChild(actionsCell);
 
@@ -1518,7 +1541,7 @@ function renderBookings() {
   if (!hiredBookings.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 7;
+    cell.colSpan = 8;
     cell.textContent = 'Sin contactos contratados para remarketing';
     row.appendChild(cell);
     hiredBody.appendChild(row);
@@ -1540,21 +1563,17 @@ function renderBookings() {
     statusCell.appendChild(statusBadge);
     row.appendChild(statusCell);
 
+    const actionCell = document.createElement('td');
+    const toLeadBtn = document.createElement('button');
+    toLeadBtn.className = 'switch-btn';
+    toLeadBtn.dataset.toLeadBtn = booking.id;
+    toLeadBtn.textContent = 'Pasar a no contratado';
+    actionCell.appendChild(toLeadBtn);
+    row.appendChild(actionCell);
+
       hiredBody.appendChild(row);
     });
   }
-
-  bookingsBody.querySelectorAll('[data-confirm-btn]').forEach(btn => {
-    btn.onclick = async () => {
-      await updateBookingStatusWithNotification(btn.dataset.confirmBtn, 'confirmada');
-    };
-  });
-
-  bookingsBody.querySelectorAll('[data-cancel-btn]').forEach(btn => {
-    btn.onclick = async () => {
-      await updateBookingStatusWithNotification(btn.dataset.cancelBtn, 'cancelada');
-    };
-  });
 
   bookingsBody.querySelectorAll('[data-convert-btn]').forEach(btn => {
     btn.onclick = () => {
@@ -1571,6 +1590,20 @@ function renderBookings() {
   bookingsBody.querySelectorAll('[data-convert-lawyer]').forEach(select => {
     select.onchange = () => updateBooking(select.dataset.convertLawyer, booking => {
       booking.assignedTo = normalizeAssignedToValue(select.value);
+    });
+  });
+
+  bookingsBody.querySelectorAll('[data-keep-lead-btn]').forEach(btn => {
+    btn.onclick = () => updateBooking(btn.dataset.keepLeadBtn, booking => {
+      booking.hiredLawyer = false;
+      booking.status = booking.status === 'atendida' ? 'nueva' : booking.status;
+    });
+  });
+
+  hiredBody.querySelectorAll('[data-to-lead-btn]').forEach(btn => {
+    btn.onclick = () => updateBooking(btn.dataset.toLeadBtn, booking => {
+      booking.hiredLawyer = false;
+      booking.status = 'nueva';
     });
   });
 
@@ -1952,11 +1985,13 @@ loginForm.addEventListener('submit', event => {
   const data = new FormData(loginForm);
   const username = String(data.get('username') || '').trim();
   const password = String(data.get('password') || '').trim();
+  const auth = tryLogin(username, password);
 
-  if (tryLogin(username, password)) {
-    saveSession({ loggedIn: true, username });
+  if (auth) {
+    saveSession({ loggedIn: true, username: auth.username, role: auth.role });
     loginError.hidden = true;
     showApp();
+    applyRoleAccess();
     renderAll();
   } else {
     loginError.hidden = false;
@@ -2194,7 +2229,7 @@ bookingForm.addEventListener('submit', async event => {
   bookingImputadoStatusInput.value = 'no_imputado';
   updateBookingRepresentativeVisibility();
   renderAll();
-  showToast('Reserva guardada correctamente.');
+  showToast('✅ Reserva guardada correctamente.');
 });
 
 prisonBookingForm.addEventListener('submit', async event => {
@@ -2573,9 +2608,10 @@ profileForm.addEventListener('submit', event => {
   const data = new FormData(profileForm);
   const name = String(data.get('name') || '').trim();
   const username = String(data.get('username') || '').trim();
+  const password = String(data.get('password') || '').trim();
   const role = String(data.get('role') || '').trim();
 
-  if (!name || !username || !role) return;
+  if (!name || !username || !password || !role) return;
 
   const permissions = [];
   if (data.get('permBookings')) permissions.push('Reservas');
@@ -2588,6 +2624,7 @@ profileForm.addEventListener('submit', event => {
 
   if (existing) {
     existing.name = name;
+    existing.password = password;
     existing.role = role;
     existing.permissions = permissions;
   } else {
@@ -2595,6 +2632,7 @@ profileForm.addEventListener('submit', event => {
       id: crypto.randomUUID(),
       name,
       username,
+      password,
       role,
       permissions
     });
