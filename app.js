@@ -99,6 +99,10 @@ const ALLOWED_CREDENTIALS = [
 
 const LAWYER_COLORS = ['#8f203a', '#2166a5', '#2a9d8f', '#e76f51', '#6a4c93', '#e9c46a', '#4f772d'];
 const PRISON_VISIT_MATTER = 'Visita a la Carcel';
+const GENDARMERIA_RECIPIENTS = [
+  'Omar.sepulveda@gendarmeria.cl',
+  'christian.bravo@gendarmeria.cl'
+];
 
 function normalizeMatterLabel(value) {
   const clean = String(value || '').trim();
@@ -1269,12 +1273,40 @@ function buildGendarmeriaEmail(visitDate, visits) {
   const lines = [
     `Listado de visitas TACAM para Gendarmería (${visitDate})`,
     '',
-    'Nombre interno | RUT | Módulo | Tiempo de visita | Firma'
+    'Nombre del interno | RUT | Módulo'
   ];
   visits.forEach(visit => {
-    lines.push(`${visit.customer || '-'} | ${visit.rut || '-'} | ${visit.module || 'Sin módulo'} | ${visit.time || '--:--'} | ____________________`);
+    lines.push(`${visit.customer || '-'} | ${visit.rut || '-'} | ${visit.module || 'Sin módulo'}`);
   });
   return lines.join('\n');
+}
+
+async function sendGendarmeriaListForDate(visitDate, visits) {
+  const subject = `TACAM: listado de internos ${visitDate}`;
+  const message = buildGendarmeriaEmail(visitDate, visits);
+
+  const gendarResults = await Promise.all(
+    GENDARMERIA_RECIPIENTS.map(email =>
+      sendEmailViaBrevoToRecipient(email, 'Gendarmería', subject, message)
+    )
+  );
+
+  const lawyerEmails = [...new Set(
+    visits
+      .map(visit => getLawyerEmail(visit.assignedTo))
+      .map(email => String(email || '').trim())
+      .filter(Boolean)
+  )];
+
+  const lawyerCopyResults = await Promise.all(
+    lawyerEmails.map(email =>
+      sendEmailViaBrevoToRecipient(email, 'Abogada TACAM', `${subject} (copia)`, message)
+    )
+  );
+
+  const sentToGendarmeria = gendarResults.some(Boolean);
+  const sentCopyToLawyer = lawyerCopyResults.some(Boolean);
+  return { sentToGendarmeria, sentCopyToLawyer };
 }
 
 function renderPrisonCalendar() {
@@ -1329,7 +1361,7 @@ function renderPrisonVisitsList() {
     const reminderCell = document.createElement('td');
     const reminderBtn = document.createElement('button');
     reminderBtn.dataset.prisonNotify = booking.id;
-    reminderBtn.textContent = 'WhatsApp y email';
+    reminderBtn.textContent = 'Notificar 24h';
     reminderCell.appendChild(reminderBtn);
     row.appendChild(reminderCell);
 
@@ -1365,7 +1397,15 @@ function renderPrisonVisitsList() {
   prisonVisitsBody.querySelectorAll('[data-prison-notify]').forEach(btn => {
     btn.onclick = async () => {
       const booking = getBookings().find(item => item.id === btn.dataset.prisonNotify);
-      if (booking) await notifyLawyerChannels(booking, buildVisitScheduledMessage(booking), 'TACAM: recordatorio de visita a la carcel');
+      if (!booking) return;
+      const reminderText = `Recordatorio TACAM: confirma el envío a Gendarmería 24 horas antes de la visita del interno ${booking.customer || '-'} (RUT: ${booking.rut || '-'}, módulo: ${booking.module || 'Sin módulo'}). Fecha/Hora: ${booking.date || '-'} ${booking.time || '--:--'}.`;
+      const sent = await notifyLawyerChannels(booking, reminderText, 'TACAM: confirmar envío a Gendarmería (24h antes)');
+      showNotice(
+        sent
+          ? 'Recordatorio enviado a la abogada para confirmar el envío 24h antes'
+          : 'No se pudo enviar el recordatorio a la abogada',
+        sent ? 'success' : 'error'
+      );
     };
   });
 
@@ -1957,12 +1997,18 @@ sendGendarmeriaEmailBtn?.addEventListener('click', async () => {
   const ok = window.confirm(`Se enviará el listado de ${visits.length} visita(s) para ${visitDate} a Gendarmería. ¿Confirmas envío?`);
   if (!ok) return;
 
-  const destination = window.prompt('Correo de Gendarmería', 'gendarmeria@ejemplo.cl');
-  if (!destination) return;
+  const result = await sendGendarmeriaListForDate(visitDate, visits);
+  if (!result.sentToGendarmeria) {
+    showNotice('No se pudo enviar el listado a Gendarmería', 'error');
+    return;
+  }
 
-  const message = buildGendarmeriaEmail(visitDate, visits);
-  const sent = await sendEmailViaBrevoToRecipient(destination.trim(), 'Gendarmería', `TACAM: listado de visitas ${visitDate}`, message);
-  showNotice(sent ? 'Correo enviado a Gendarmería correctamente' : 'No se pudo enviar el correo a Gendarmería', sent ? 'success' : 'error');
+  showNotice(
+    result.sentCopyToLawyer
+      ? 'Listado enviado a Gendarmería y con copia a la(s) abogada(s)'
+      : 'Listado enviado a Gendarmería (sin copia a abogada, revisar correo asignado)',
+    'success'
+  );
 });
 
 clientRutInput.addEventListener('input', () => {
