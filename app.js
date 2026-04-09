@@ -980,7 +980,20 @@ function buildBackupPayload() {
   };
 }
 
+function resizeReportCanvas(canvas) {
+  if (!(canvas instanceof HTMLCanvasElement)) return;
+  const container = canvas.parentElement;
+  const targetWidth = Math.max(360, Math.floor(container?.clientWidth || window.innerWidth - 48));
+  const targetHeight = 420;
+  if (canvas.width !== targetWidth) canvas.width = targetWidth;
+  if (canvas.height !== targetHeight) canvas.height = targetHeight;
+}
+
 function renderReports() {
+  resizeReportCanvas(generalStatsChart);
+  resizeReportCanvas(lawyerStatsChart);
+  resizeReportCanvas(prisonStatsChart);
+
   const general = getGeneralStatusStats();
   const generalLabels = ['Nueva', 'Confirmada', 'Atendida', 'Cancelada'];
   const generalValues = [general.nueva, general.confirmada, general.atendida, general.cancelada];
@@ -1930,6 +1943,9 @@ prisonMonthInput.addEventListener('change', () => {
 lawyerCalendarFilter.addEventListener('change', renderLawyerCalendar);
 lawyerCalendarMonth.addEventListener('change', renderLawyerCalendar);
 sharedOnlyInput.addEventListener('change', renderLawyerCalendar);
+window.addEventListener('resize', () => {
+  if (!appShell.hidden) renderReports();
+});
 
 downloadGeneralReportBtn.addEventListener('click', () => {
   downloadCsv('reporte-completo-tacam.csv', buildFullExportRows());
