@@ -2666,7 +2666,6 @@ showLogin();
 window.addEventListener('tacam-server-hydrated', () => {
   if (!appShell.hidden) {
     renderAll();
-    showToast('Datos sincronizados desde servidor.');
   }
 });
 window.addEventListener('tacam-sync-status', event => {
@@ -2680,3 +2679,12 @@ setInterval(() => {
     void notifyUpcomingAppointments();
   }
 }, 5000);
+
+setInterval(() => {
+  if (appShell.hidden) return;
+  const activeTag = document.activeElement?.tagName?.toLowerCase() || '';
+  if (['input', 'textarea', 'select'].includes(activeTag)) return;
+  if (typeof hydrateFromServer === 'function') {
+    void hydrateFromServer();
+  }
+}, 60000);
