@@ -8,7 +8,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/logo-color.svg" />
   <link rel="shortcut icon" href="assets/logo-color.svg" />
   <link rel="apple-touch-icon" href="assets/logo-color.svg" />
-  <title>TACAM | Reservas Oficina Jurídica</title>
+  <title>Tacam definicivo | Reservas Oficina Jurídica</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -22,7 +22,7 @@
         <label>Contraseña <input name="password" type="password" required placeholder="admin" /></label>
         <button type="submit">Ingresar</button>
       </form>
-      <p id="login-error" class="login-error" hidden>Credenciales inválidas. Usa admin/admin.</p>
+      <p id="login-error" class="login-error" hidden>Credenciales inválidas. Verifica usuario y contraseña.</p>
     </div>
   </section>
 
@@ -32,13 +32,14 @@
       <div>
         <h1 class="brand-title white"><span>Sistema de Reservas</span></h1>
         <p>Reserva de personas para atención en oficina de abogados</p>
-        <span class="version-badge">Versión 1</span>
+        <span class="version-badge">Tacam definicivo</span>
       </div>
       <div class="header-clock" aria-live="polite">
         <small>Hora local Chile</small>
         <strong id="chile-clock">--:--:--</strong>
       </div>
     </header>
+    <p id="app-notice" class="app-notice" hidden></p>
 
     <main>
       <nav class="module-tabs" aria-label="Módulos TACAM">
@@ -46,7 +47,7 @@
         <button type="button" class="module-tab" data-module-tab="bookings">Agendamiento</button>
         <button type="button" class="module-tab" data-module-tab="agenda">Calendario de Abogadas</button>
         <button type="button" class="module-tab" data-module-tab="prison-visits">Visitas a la Carcel</button>
-        <button type="button" class="module-tab" data-module-tab="outcomes">Contratados / No contratados</button>
+        <button type="button" class="module-tab" data-module-tab="outcomes">Imputados / No imputados</button>
         <button type="button" class="module-tab" data-module-tab="lawyers">Perfiles de Abogados</button>
         <button type="button" class="module-tab" data-module-tab="reports">Reportes y Gráficos</button>
       </nav>
@@ -79,6 +80,18 @@
             <input name="clientId" type="hidden" />
             <datalist id="booking-client-options"></datalist>
           </label>
+          <label class="full checkbox-inline consent-box">
+            <input name="isImputado" id="booking-is-imputado" type="checkbox" />
+            ¿La persona es imputado?
+          </label>
+          <div id="booking-imputado-fields" class="grid full" hidden>
+            <label>Nombre imputado <input name="imputadoName" /></label>
+            <label>Teléfono imputado <input name="imputadoPhone" placeholder="+56912345678" maxlength="12" /></label>
+            <label>RUT imputado <input name="imputadoRut" maxlength="12" /></label>
+            <label>Dirección imputado <input name="imputadoAddress" placeholder="Calle 123, comuna" /></label>
+            <label>Correo imputado <input name="imputadoEmail" type="email" placeholder="imputado@correo.com" /></label>
+            <label>Módulo imputado <input name="imputadoModulo" /></label>
+          </div>
           <label>Materia
             <select name="matter" required>
               <option value="">Seleccione materia</option>
@@ -166,6 +179,7 @@
             <h2>Visitas a la Carcel</h2>
             <p class="muted">Calendario exclusivo para la materia Visita a la Carcel. Las notificaciones por WhatsApp y correo se envían a la abogada asignada.</p>
           </div>
+          <button type="button" id="send-gendarmeria-email">Enviar listado a Gendarmería (día siguiente)</button>
           <label>Mes
             <input id="prison-month" type="month" />
           </label>
@@ -178,6 +192,7 @@
           </label>
           <label>Fecha de visita <input name="date" type="date" required /></label>
           <label>Hora de visita <input name="time" type="time" min="08:00" max="18:00" step="1800" required /></label>
+          <label>Módulo <input name="module" placeholder="Ej: Módulo A-2" /></label>
           <label>Abogado asignado
             <select name="assignedTo">
               <option value="">No asignar ahora</option>
@@ -188,21 +203,59 @@
         </form>
         <div id="prison-calendar-legend" class="calendar-legend"></div>
         <div id="prison-calendar" class="calendar"></div>
+        <h3>Listado para envío a Gendarmería</h3>
+        <p class="muted">Arriba: personas con visita a cárcel para la fecha objetivo. Abajo: imputados registrados.</p>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Abogada</th><th>Persona</th><th>Fecha</th><th>Hora</th><th>Estado</th><th>Check-in secretaria</th><th>Recordatorios</th></tr></thead>
+            <thead><tr><th colspan="3">Personas en cárcel (listado de visitas)</th></tr></thead>
+            <thead><tr><th>Nombre del interno</th><th>RUT</th><th>Módulo</th></tr></thead>
+            <tbody id="gendarmeria-prisoners-body"></tbody>
+          </table>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th colspan="3">Imputados registrados</th></tr></thead>
+            <thead><tr><th>Nombre del interno</th><th>RUT</th><th>Módulo</th></tr></thead>
+            <tbody id="gendarmeria-imputados-body"></tbody>
+          </table>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Abogada</th><th>Persona</th><th>Fecha</th><th>Hora</th><th>Estado</th><th>Check-in secretaria</th><th>Recordatorios</th><th>Acciones</th></tr></thead>
             <tbody id="prison-visits-body"></tbody>
           </table>
         </div>
       </section>
 
       <section class="card module-panel" data-module-panel="outcomes">
-        <h2>Contratados y No contratados</h2>
+        <h2>Contratados / No contratados</h2>
+
+        <div class="grid">
+          <form id="quick-imputado-form" class="grid card">
+            <h3 class="full">Agregar imputado</h3>
+            <label>Nombre <input name="customer" required /></label>
+            <label>RUT <input name="rut" required placeholder="12.345.678-9" maxlength="12" /></label>
+            <label>Teléfono <input name="phone" required placeholder="+56912345678" maxlength="12" /></label>
+            <label>Correo <input name="email" type="email" required placeholder="correo@dominio.cl" /></label>
+            <label>Módulo <input name="module" placeholder="Ej: Módulo A-2" /></label>
+            <label class="full">Dirección <input name="address" placeholder="Calle 123, comuna" /></label>
+            <button type="submit">Guardar imputado</button>
+          </form>
+          <form id="quick-representative-form" class="grid card">
+            <h3 class="full">Agregar representante</h3>
+            <label>Nombre <input name="customer" required /></label>
+            <label>RUT <input name="rut" required placeholder="12.345.678-9" maxlength="12" /></label>
+            <label>Teléfono <input name="phone" required placeholder="+56912345678" maxlength="12" /></label>
+            <label>Correo <input name="email" type="email" required placeholder="correo@dominio.cl" /></label>
+            <label class="full">Dirección <input name="address" placeholder="Calle 123, comuna" /></label>
+            <button type="submit">Guardar representante</button>
+          </form>
+        </div>
 
         <h3>Contratados</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Persona</th><th>Correo</th><th>Teléfono</th><th>Cita</th><th>Abogado</th></tr></thead>
+            <thead><tr><th>Persona</th><th>Correo</th><th>Teléfono</th><th>Cita</th><th>Abogado</th><th>Mover</th><th>Contacto</th></tr></thead>
             <tbody id="contracted-body"></tbody>
           </table>
         </div>
@@ -210,7 +263,7 @@
         <h3>No contratados</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Persona</th><th>Correo</th><th>Teléfono</th><th>Cita</th><th>Acción email</th></tr></thead>
+            <thead><tr><th>Persona</th><th>Correo</th><th>Teléfono</th><th>Cita</th><th>Mover</th><th>Acción email</th><th>Contacto</th></tr></thead>
             <tbody id="non-contracted-body"></tbody>
           </table>
         </div>
@@ -265,6 +318,7 @@
               <option value="Abogada">Abogada</option>
             </select>
           </label>
+          <label>Contraseña <input name="password" type="password" required minlength="4" /></label>
           <fieldset class="full permissions-box">
             <legend>Permisos (marcar/tickear)</legend>
             <label><input type="checkbox" name="permBookings" /> Reservas</label>
@@ -292,7 +346,7 @@
           </article>
           <article class="report-card">
             <h3>Visitas a la Carcel por abogada</h3>
-            <p class="muted">Indicador por color: rojo (0-1), amarillo (2-3), verde (4 o más).</p>
+            <p class="muted">Indicador por color: rojo (0-1), amarillo (2), verde (3 o más).</p>
             <canvas id="prison-stats-chart" width="1100" height="420"></canvas>
           </article>
         </div>
@@ -301,6 +355,8 @@
           <button type="button" id="download-general-report">Descargar Excel completo</button>
           <button type="button" id="download-lawyer-report">Descargar Excel completo</button>
           <button type="button" id="download-bookings-report">Descargar Excel completo</button>
+          <button type="button" id="sync-cloud-backup">Guardar respaldo en nube</button>
+          <button type="button" id="restore-cloud-backup">Restaurar respaldo desde nube</button>
           <button type="button" id="download-backup-json">Descargar respaldo JSON</button>
           <button type="button" id="restore-backup-json">Restaurar respaldo JSON</button>
           <input id="restore-backup-input" type="file" accept="application/json" hidden />

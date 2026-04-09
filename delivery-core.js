@@ -108,11 +108,14 @@ function seedData() {
         id: crypto.randomUUID(),
         name: 'Administrador TACAM',
         username: 'admin',
+        password: 'admin',
         role: 'Admin',
         permissions: ['Reservas', 'Agenda', 'Abogadas', 'Estadísticas']
       }
     ]);
   }
+
+  ensureLawyerProfiles();
 }
 
 function normalizeLawyerKey(name) {
@@ -155,6 +158,59 @@ function syncLawyersData() {
   if (currentSerialized !== syncedSerialized) {
     saveJson(STORAGE_KEYS.lawyers, syncedLawyers);
   }
+}
+
+function usernameFromLawyer(lawyer, usedUsernames) {
+  const emailUser = String(lawyer.email || '').trim().split('@')[0];
+  const baseRaw = emailUser || String(lawyer.name || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '.');
+  const base = baseRaw.replace(/^\.+|\.+$/g, '') || 'abogada';
+  let candidate = base;
+  let suffix = 1;
+  while (usedUsernames.has(candidate.toLowerCase())) {
+    suffix += 1;
+    candidate = `${base}${suffix}`;
+  }
+  usedUsernames.add(candidate.toLowerCase());
+  return candidate;
+}
+
+function ensureLawyerProfiles() {
+  const profiles = loadJson(STORAGE_KEYS.profiles, []);
+  const lawyers = loadJson(STORAGE_KEYS.lawyers, []);
+  const usedUsernames = new Set(
+    profiles
+      .map(profile => String(profile.username || '').trim().toLowerCase())
+      .filter(Boolean)
+  );
+  let hasChanges = false;
+
+  lawyers.forEach(lawyer => {
+    const normalizedName = String(lawyer.name || '').trim().toLowerCase();
+    if (!normalizedName) return;
+    const existing = profiles.find(profile =>
+      String(profile.role || '').trim() === 'Abogada'
+      && String(profile.name || '').trim().toLowerCase() === normalizedName
+    );
+    if (existing) {
+      if (!existing.password) {
+        existing.password = 'tacam1234';
+        hasChanges = true;
+      }
+      return;
+    }
+
+    profiles.push({
+      id: crypto.randomUUID(),
+      name: lawyer.name,
+      username: usernameFromLawyer(lawyer, usedUsernames),
+      password: 'tacam1234',
+      role: 'Abogada',
+      permissions: ['Visitas a la Carcel', 'Imputados / No imputados']
+    });
+    hasChanges = true;
+  });
+
+  if (hasChanges) saveJson(STORAGE_KEYS.profiles, profiles);
 }
 
 function getBookings() {
