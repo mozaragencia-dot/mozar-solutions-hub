@@ -203,6 +203,22 @@
         </form>
         <div id="prison-calendar-legend" class="calendar-legend"></div>
         <div id="prison-calendar" class="calendar"></div>
+        <h3>Listado para envío a Gendarmería</h3>
+        <p class="muted">Arriba: personas con visita a cárcel para la fecha objetivo. Abajo: imputados registrados.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th colspan="3">Personas en cárcel (listado de visitas)</th></tr></thead>
+            <thead><tr><th>Nombre del interno</th><th>RUT</th><th>Módulo</th></tr></thead>
+            <tbody id="gendarmeria-prisoners-body"></tbody>
+          </table>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th colspan="3">Imputados registrados</th></tr></thead>
+            <thead><tr><th>Nombre del interno</th><th>RUT</th><th>Módulo</th></tr></thead>
+            <tbody id="gendarmeria-imputados-body"></tbody>
+          </table>
+        </div>
         <div class="table-wrap">
           <table>
             <thead><tr><th>Abogada</th><th>Persona</th><th>Fecha</th><th>Hora</th><th>Estado</th><th>Check-in secretaria</th><th>Recordatorios</th><th>Acciones</th></tr></thead>
@@ -221,6 +237,7 @@
             <label>RUT <input name="rut" required placeholder="12.345.678-9" maxlength="12" /></label>
             <label>Teléfono <input name="phone" required placeholder="+56912345678" maxlength="12" /></label>
             <label>Correo <input name="email" type="email" required placeholder="correo@dominio.cl" /></label>
+            <label>Módulo <input name="module" placeholder="Ej: Módulo A-2" /></label>
             <label class="full">Dirección <input name="address" placeholder="Calle 123, comuna" /></label>
             <button type="submit">Guardar imputado</button>
           </form>

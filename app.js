@@ -20,6 +20,8 @@ const prisonMonthInput = document.getElementById('prison-month');
 const prisonCalendar = document.getElementById('prison-calendar');
 const prisonCalendarLegend = document.getElementById('prison-calendar-legend');
 const prisonVisitsBody = document.getElementById('prison-visits-body');
+const gendarmeriaPrisonersBody = document.getElementById('gendarmeria-prisoners-body');
+const gendarmeriaImputadosBody = document.getElementById('gendarmeria-imputados-body');
 const sendGendarmeriaEmailBtn = document.getElementById('send-gendarmeria-email');
 const contractedBody = document.getElementById('contracted-body');
 const nonContractedBody = document.getElementById('non-contracted-body');
@@ -1269,21 +1271,26 @@ function getTomorrowDateISO() {
   return date.toISOString().slice(0, 10);
 }
 
-function buildGendarmeriaEmail(visitDate, visits) {
+function buildGendarmeriaEmail(visitDate, visits, imputados = []) {
   const lines = [
     `Listado de visitas TACAM para Gendarmería (${visitDate})`,
     '',
+    'PERSONAS EN CÁRCEL (VISITAS)',
     'Nombre del interno | RUT | Módulo'
   ];
   visits.forEach(visit => {
     lines.push(`${visit.customer || '-'} | ${visit.rut || '-'} | ${visit.module || 'Sin módulo'}`);
   });
+  lines.push('', 'IMPUTADOS REGISTRADOS', 'Nombre del interno | RUT | Módulo');
+  imputados.forEach(item => {
+    lines.push(`${item.customer || '-'} | ${item.rut || '-'} | ${item.module || 'Sin módulo'}`);
+  });
   return lines.join('\n');
 }
 
-async function sendGendarmeriaListForDate(visitDate, visits) {
+async function sendGendarmeriaListForDate(visitDate, visits, imputados) {
   const subject = `TACAM: listado de internos ${visitDate}`;
-  const message = buildGendarmeriaEmail(visitDate, visits);
+  const message = buildGendarmeriaEmail(visitDate, visits, imputados);
 
   const gendarResults = await Promise.all(
     GENDARMERIA_RECIPIENTS.map(email =>
@@ -1315,6 +1322,54 @@ function renderPrisonCalendar() {
   const names = [...new Set(bookings.map(booking => booking.assignedTo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
   renderCalendarLegend(prisonCalendarLegend, names);
   renderCalendar(prisonCalendar, bookings, selectedMonth);
+}
+
+function renderGendarmeriaPreviewList() {
+  const visitDate = getTomorrowDateISO();
+  const visits = getBookings()
+    .filter(booking => booking.status !== 'cancelada' && isPrisonVisit(booking) && booking.date === visitDate);
+  const imputados = getClients().filter(client => String(client.contactRole || '').trim().toLowerCase() === 'imputado');
+
+  gendarmeriaPrisonersBody?.replaceChildren();
+  gendarmeriaImputadosBody?.replaceChildren();
+
+  if (gendarmeriaPrisonersBody) {
+    if (!visits.length) {
+      const row = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.colSpan = 3;
+      cell.textContent = 'Sin personas con visita a cárcel para la fecha objetivo.';
+      row.appendChild(cell);
+      gendarmeriaPrisonersBody.appendChild(row);
+    } else {
+      visits.forEach(visit => {
+        const row = document.createElement('tr');
+        appendCell(row, visit.customer || '-');
+        appendCell(row, visit.rut || '-');
+        appendCell(row, visit.module || 'Sin módulo');
+        gendarmeriaPrisonersBody.appendChild(row);
+      });
+    }
+  }
+
+  if (gendarmeriaImputadosBody) {
+    if (!imputados.length) {
+      const row = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.colSpan = 3;
+      cell.textContent = 'Sin imputados registrados.';
+      row.appendChild(cell);
+      gendarmeriaImputadosBody.appendChild(row);
+    } else {
+      imputados.forEach(item => {
+        const row = document.createElement('tr');
+        appendCell(row, item.customer || '-');
+        appendCell(row, item.rut || '-');
+        appendCell(row, item.module || 'Sin módulo');
+        gendarmeriaImputadosBody.appendChild(row);
+      });
+    }
+  }
 }
 
 function renderPrisonVisitsList() {
@@ -1733,6 +1788,7 @@ function saveQuickContact(form, roleTag) {
   const rut = formatRut(data.get('rut'));
   const phone = formatPhone(data.get('phone'));
   const email = String(data.get('email') || '').trim();
+  const module = String(data.get('module') || '').trim();
   const customer = String(data.get('customer') || '').trim();
   const address = String(data.get('address') || '').trim();
 
@@ -1758,6 +1814,7 @@ function saveQuickContact(form, roleTag) {
     rut,
     phone,
     email,
+    module,
     address,
     contactRole: roleTag,
     notificationsConsent: true,
@@ -1788,6 +1845,7 @@ function renderAll() {
   renderAgenda();
   renderAgendaCalendar();
   renderPrisonCalendar();
+  renderGendarmeriaPreviewList();
   renderPrisonVisitsList();
   renderOutcomes();
   renderLawyers();
@@ -1988,6 +2046,7 @@ sendGendarmeriaEmailBtn?.addEventListener('click', async () => {
   const visits = getBookings()
     .filter(booking => booking.status !== 'cancelada' && isPrisonVisit(booking) && booking.date === visitDate)
     .sort((a, b) => `${a.time || ''}`.localeCompare(`${b.time || ''}`));
+  const imputados = getClients().filter(client => String(client.contactRole || '').trim().toLowerCase() === 'imputado');
 
   if (!visits.length) {
     showNotice('No hay visitas a la cárcel para mañana', 'error');
@@ -1997,7 +2056,7 @@ sendGendarmeriaEmailBtn?.addEventListener('click', async () => {
   const ok = window.confirm(`Se enviará el listado de ${visits.length} visita(s) para ${visitDate} a Gendarmería. ¿Confirmas envío?`);
   if (!ok) return;
 
-  const result = await sendGendarmeriaListForDate(visitDate, visits);
+  const result = await sendGendarmeriaListForDate(visitDate, visits, imputados);
   if (!result.sentToGendarmeria) {
     showNotice('No se pudo enviar el listado a Gendarmería', 'error');
     return;
