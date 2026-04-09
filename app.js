@@ -41,6 +41,8 @@ const prisonStatsChart = document.getElementById('prison-stats-chart');
 const downloadGeneralReportBtn = document.getElementById('download-general-report');
 const downloadLawyerReportBtn = document.getElementById('download-lawyer-report');
 const downloadBookingsReportBtn = document.getElementById('download-bookings-report');
+const syncCloudBackupBtn = document.getElementById('sync-cloud-backup');
+const restoreCloudBackupBtn = document.getElementById('restore-cloud-backup');
 const downloadBackupJsonBtn = document.getElementById('download-backup-json');
 const restoreBackupJsonBtn = document.getElementById('restore-backup-json');
 const restoreBackupInput = document.getElementById('restore-backup-input');
@@ -63,6 +65,7 @@ const moduleTabs = document.querySelectorAll('[data-module-tab]');
 const modulePanels = document.querySelectorAll('[data-module-panel]');
 let clientOptionMap = new Map();
 let currentSessionProfile = null;
+let lastCloudRestoreAt = 0;
 
 function toggleBookingImputadoFields() {
   const enabled = Boolean(bookingIsImputadoInput?.checked);
@@ -2113,6 +2116,21 @@ downloadBookingsReportBtn.addEventListener('click', () => {
   downloadCsv('reporte-completo-tacam.csv', buildFullExportRows());
 });
 
+syncCloudBackupBtn?.addEventListener('click', async () => {
+  await persistServerState();
+  showNotice('Respaldo completo guardado en nube correctamente', 'success');
+});
+
+restoreCloudBackupBtn?.addEventListener('click', async () => {
+  const restored = await restoreServerState();
+  if (!restored) {
+    showNotice('No se pudo restaurar el respaldo desde nube', 'error');
+    return;
+  }
+  renderAll();
+  showNotice('Respaldo restaurado desde nube correctamente', 'success');
+});
+
 downloadBackupJsonBtn.addEventListener('click', () => {
   const dateTag = new Date().toISOString().slice(0, 10);
   downloadJson(`respaldo-tacam-${dateTag}.json`, buildBackupPayload());
@@ -2262,12 +2280,20 @@ updateChileClock();
 saveSession({ loggedIn: false });
 showLogin();
 void restoreServerState().then(() => {
+  lastCloudRestoreAt = Date.now();
   renderAll();
 });
 
 setInterval(() => {
   updateChileClock();
   if (!appShell.hidden) {
+    const now = Date.now();
+    if (now - lastCloudRestoreAt > 60000) {
+      lastCloudRestoreAt = now;
+      void restoreServerState().then(restored => {
+        if (restored) renderAll();
+      });
+    }
     renderAll();
     void notifyUpcomingAppointments();
   }
