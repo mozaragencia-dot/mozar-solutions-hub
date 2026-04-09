@@ -212,9 +212,30 @@
       </section>
 
       <section class="card module-panel" data-module-panel="outcomes">
-        <h2>Imputados / No imputados</h2>
+        <h2>Contratados / No contratados</h2>
 
-        <h3>Imputados</h3>
+        <div class="grid">
+          <form id="quick-imputado-form" class="grid card">
+            <h3 class="full">Agregar imputado</h3>
+            <label>Nombre <input name="customer" required /></label>
+            <label>RUT <input name="rut" required placeholder="12.345.678-9" maxlength="12" /></label>
+            <label>Teléfono <input name="phone" required placeholder="+56912345678" maxlength="12" /></label>
+            <label>Correo <input name="email" type="email" required placeholder="correo@dominio.cl" /></label>
+            <label class="full">Dirección <input name="address" placeholder="Calle 123, comuna" /></label>
+            <button type="submit">Guardar imputado</button>
+          </form>
+          <form id="quick-representative-form" class="grid card">
+            <h3 class="full">Agregar representante</h3>
+            <label>Nombre <input name="customer" required /></label>
+            <label>RUT <input name="rut" required placeholder="12.345.678-9" maxlength="12" /></label>
+            <label>Teléfono <input name="phone" required placeholder="+56912345678" maxlength="12" /></label>
+            <label>Correo <input name="email" type="email" required placeholder="correo@dominio.cl" /></label>
+            <label class="full">Dirección <input name="address" placeholder="Calle 123, comuna" /></label>
+            <button type="submit">Guardar representante</button>
+          </form>
+        </div>
+
+        <h3>Contratados</h3>
         <div class="table-wrap">
           <table>
             <thead><tr><th>Persona</th><th>Correo</th><th>Teléfono</th><th>Cita</th><th>Abogado</th><th>Mover</th><th>Contacto</th></tr></thead>
@@ -222,7 +243,7 @@
           </table>
         </div>
 
-        <h3>No imputados</h3>
+        <h3>No contratados</h3>
         <div class="table-wrap">
           <table>
             <thead><tr><th>Persona</th><th>Correo</th><th>Teléfono</th><th>Cita</th><th>Mover</th><th>Acción email</th><th>Contacto</th></tr></thead>
@@ -293,7 +314,7 @@
         <div id="profile-list" class="profile-grid"></div>
       </section>
 
-      <section class="card module-panel reports-panel" data-module-panel="reports">
+      <section class="card module-panel" data-module-panel="reports">
         <h2>Reportes de Atenciones</h2>
         <p class="muted">Visualiza métricas generales y separadas por abogada. Puedes descargar los datos en formato Excel (CSV).</p>
 

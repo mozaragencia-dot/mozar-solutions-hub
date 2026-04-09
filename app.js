@@ -23,6 +23,8 @@ const prisonVisitsBody = document.getElementById('prison-visits-body');
 const sendGendarmeriaEmailBtn = document.getElementById('send-gendarmeria-email');
 const contractedBody = document.getElementById('contracted-body');
 const nonContractedBody = document.getElementById('non-contracted-body');
+const quickImputadoForm = document.getElementById('quick-imputado-form');
+const quickRepresentativeForm = document.getElementById('quick-representative-form');
 const remarketingForm = document.getElementById('remarketing-form');
 const lawyerForm = document.getElementById('lawyer-form');
 const lawyerList = document.getElementById('lawyer-list');
@@ -980,20 +982,7 @@ function buildBackupPayload() {
   };
 }
 
-function resizeReportCanvas(canvas) {
-  if (!(canvas instanceof HTMLCanvasElement)) return;
-  const container = canvas.parentElement;
-  const targetWidth = Math.max(360, Math.floor(container?.clientWidth || window.innerWidth - 48));
-  const targetHeight = 420;
-  if (canvas.width !== targetWidth) canvas.width = targetWidth;
-  if (canvas.height !== targetHeight) canvas.height = targetHeight;
-}
-
 function renderReports() {
-  resizeReportCanvas(generalStatsChart);
-  resizeReportCanvas(lawyerStatsChart);
-  resizeReportCanvas(prisonStatsChart);
-
   const general = getGeneralStatusStats();
   const generalLabels = ['Nueva', 'Confirmada', 'Atendida', 'Cancelada'];
   const generalValues = [general.nueva, general.confirmada, general.atendida, general.cancelada];
@@ -1430,7 +1419,7 @@ function renderOutcomes() {
       const toggleCell = document.createElement('td');
       const toggleBtn = document.createElement('button');
       toggleBtn.dataset.moveToNonContracted = booking.id;
-      toggleBtn.textContent = 'Pasar a No imputado';
+      toggleBtn.textContent = 'Pasar a No contratado';
       toggleCell.appendChild(toggleBtn);
       row.appendChild(toggleCell);
       const editContactCell = document.createElement('td');
@@ -1460,7 +1449,7 @@ function renderOutcomes() {
       const toggleCell = document.createElement('td');
       const toggleBtn = document.createElement('button');
       toggleBtn.dataset.moveToContracted = booking.id;
-      toggleBtn.textContent = 'Pasar a Imputado';
+      toggleBtn.textContent = 'Pasar a Contratado';
       toggleCell.appendChild(toggleBtn);
       row.appendChild(toggleCell);
 
@@ -1698,6 +1687,59 @@ function renderProfiles() {
   });
 }
 
+function saveQuickContact(form, roleTag) {
+  if (!(form instanceof HTMLFormElement)) return;
+  const data = new FormData(form);
+  const rut = formatRut(data.get('rut'));
+  const phone = formatPhone(data.get('phone'));
+  const email = String(data.get('email') || '').trim();
+  const customer = String(data.get('customer') || '').trim();
+  const address = String(data.get('address') || '').trim();
+
+  if (!customer || !rut || !phone || !email) {
+    showNotice('Completa todos los campos obligatorios', 'error');
+    return;
+  }
+
+  if (!isValidRut(rut)) {
+    showNotice('El RUT no tiene un formato válido', 'error');
+    return;
+  }
+
+  if (!isValidPhone(phone)) {
+    showNotice('El teléfono debe tener formato +569XXXXXXXX', 'error');
+    return;
+  }
+
+  const clients = getClients();
+  const existing = clients.find(item => String(item.rut || '').toUpperCase() === rut.toUpperCase());
+  const payload = {
+    customer,
+    rut,
+    phone,
+    email,
+    address,
+    contactRole: roleTag,
+    notificationsConsent: true,
+    consentAt: new Date().toISOString()
+  };
+
+  if (existing) {
+    Object.assign(existing, payload);
+  } else {
+    clients.unshift({
+      id: crypto.randomUUID(),
+      ...payload,
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  saveClients(clients);
+  form.reset();
+  renderAll();
+  showNotice(`${roleTag} guardado correctamente`, 'success');
+}
+
 function renderAll() {
   renderClientOptions();
   renderClients();
@@ -1891,6 +1933,16 @@ prisonVisitForm.addEventListener('submit', async event => {
   }
 });
 
+quickImputadoForm?.addEventListener('submit', event => {
+  event.preventDefault();
+  saveQuickContact(quickImputadoForm, 'Imputado');
+});
+
+quickRepresentativeForm?.addEventListener('submit', event => {
+  event.preventDefault();
+  saveQuickContact(quickRepresentativeForm, 'Representante');
+});
+
 sendGendarmeriaEmailBtn?.addEventListener('click', async () => {
   const visitDate = getTomorrowDateISO();
   const visits = getBookings()
@@ -1943,9 +1995,6 @@ prisonMonthInput.addEventListener('change', () => {
 lawyerCalendarFilter.addEventListener('change', renderLawyerCalendar);
 lawyerCalendarMonth.addEventListener('change', renderLawyerCalendar);
 sharedOnlyInput.addEventListener('change', renderLawyerCalendar);
-window.addEventListener('resize', () => {
-  if (!appShell.hidden) renderReports();
-});
 
 downloadGeneralReportBtn.addEventListener('click', () => {
   downloadCsv('reporte-completo-tacam.csv', buildFullExportRows());
