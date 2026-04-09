@@ -22,7 +22,7 @@
         <label>Contraseña <input name="password" type="password" required placeholder="admin" /></label>
         <button type="submit">Ingresar</button>
       </form>
-      <p id="login-error" class="login-error" hidden>Credenciales inválidas. Usa admin/admin.</p>
+      <p id="login-error" class="login-error" hidden>Credenciales inválidas. Verifica usuario y contraseña.</p>
     </div>
   </section>
 
@@ -39,6 +39,7 @@
         <strong id="chile-clock">--:--:--</strong>
       </div>
     </header>
+    <p id="app-notice" class="app-notice" hidden></p>
 
     <main>
       <nav class="module-tabs" aria-label="Módulos TACAM">
@@ -46,7 +47,7 @@
         <button type="button" class="module-tab" data-module-tab="bookings">Agendamiento</button>
         <button type="button" class="module-tab" data-module-tab="agenda">Calendario de Abogadas</button>
         <button type="button" class="module-tab" data-module-tab="prison-visits">Visitas a la Carcel</button>
-        <button type="button" class="module-tab" data-module-tab="outcomes">Contratados / No contratados</button>
+        <button type="button" class="module-tab" data-module-tab="outcomes">Imputados / No imputados</button>
         <button type="button" class="module-tab" data-module-tab="lawyers">Perfiles de Abogados</button>
         <button type="button" class="module-tab" data-module-tab="reports">Reportes y Gráficos</button>
       </nav>
@@ -178,6 +179,7 @@
             <h2>Visitas a la Carcel</h2>
             <p class="muted">Calendario exclusivo para la materia Visita a la Carcel. Las notificaciones por WhatsApp y correo se envían a la abogada asignada.</p>
           </div>
+          <button type="button" id="send-gendarmeria-email">Enviar correo a Gendarmería (día siguiente)</button>
           <label>Mes
             <input id="prison-month" type="month" />
           </label>
@@ -190,6 +192,7 @@
           </label>
           <label>Fecha de visita <input name="date" type="date" required /></label>
           <label>Hora de visita <input name="time" type="time" min="08:00" max="18:00" step="1800" required /></label>
+          <label>Módulo <input name="module" placeholder="Ej: Módulo A-2" /></label>
           <label>Abogado asignado
             <select name="assignedTo">
               <option value="">No asignar ahora</option>
@@ -202,27 +205,27 @@
         <div id="prison-calendar" class="calendar"></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Abogada</th><th>Persona</th><th>Fecha</th><th>Hora</th><th>Estado</th><th>Check-in secretaria</th><th>Recordatorios</th></tr></thead>
+            <thead><tr><th>Abogada</th><th>Persona</th><th>Fecha</th><th>Hora</th><th>Estado</th><th>Check-in secretaria</th><th>Recordatorios</th><th>Acciones</th></tr></thead>
             <tbody id="prison-visits-body"></tbody>
           </table>
         </div>
       </section>
 
       <section class="card module-panel" data-module-panel="outcomes">
-        <h2>Contratados y No contratados</h2>
+        <h2>Imputados / No imputados</h2>
 
-        <h3>Contratados</h3>
+        <h3>Imputados</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Persona</th><th>Correo</th><th>Teléfono</th><th>Cita</th><th>Abogado</th></tr></thead>
+            <thead><tr><th>Persona</th><th>Correo</th><th>Teléfono</th><th>Cita</th><th>Abogado</th><th>Mover</th><th>Contacto</th></tr></thead>
             <tbody id="contracted-body"></tbody>
           </table>
         </div>
 
-        <h3>No contratados</h3>
+        <h3>No imputados</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Persona</th><th>Correo</th><th>Teléfono</th><th>Cita</th><th>Acción email</th></tr></thead>
+            <thead><tr><th>Persona</th><th>Correo</th><th>Teléfono</th><th>Cita</th><th>Mover</th><th>Acción email</th><th>Contacto</th></tr></thead>
             <tbody id="non-contracted-body"></tbody>
           </table>
         </div>
@@ -277,6 +280,7 @@
               <option value="Abogada">Abogada</option>
             </select>
           </label>
+          <label>Contraseña <input name="password" type="password" required minlength="4" /></label>
           <fieldset class="full permissions-box">
             <legend>Permisos (marcar/tickear)</legend>
             <label><input type="checkbox" name="permBookings" /> Reservas</label>
@@ -304,7 +308,7 @@
           </article>
           <article class="report-card">
             <h3>Visitas a la Carcel por abogada</h3>
-            <p class="muted">Indicador por color: rojo (0-1), amarillo (2-3), verde (4 o más).</p>
+            <p class="muted">Indicador por color: rojo (0-1), amarillo (2), verde (3 o más).</p>
             <canvas id="prison-stats-chart" width="1100" height="420"></canvas>
           </article>
         </div>

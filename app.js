@@ -2,6 +2,7 @@ const loginScreen = document.getElementById('login-screen');
 const appShell = document.getElementById('app-shell');
 const loginForm = document.getElementById('login-form');
 const loginError = document.getElementById('login-error');
+const appNotice = document.getElementById('app-notice');
 
 const bookingsBody = document.getElementById('bookings-body');
 const bookingStatusFilter = document.getElementById('booking-status-filter');
@@ -19,6 +20,7 @@ const prisonMonthInput = document.getElementById('prison-month');
 const prisonCalendar = document.getElementById('prison-calendar');
 const prisonCalendarLegend = document.getElementById('prison-calendar-legend');
 const prisonVisitsBody = document.getElementById('prison-visits-body');
+const sendGendarmeriaEmailBtn = document.getElementById('send-gendarmeria-email');
 const contractedBody = document.getElementById('contracted-body');
 const nonContractedBody = document.getElementById('non-contracted-body');
 const remarketingForm = document.getElementById('remarketing-form');
@@ -56,6 +58,7 @@ const bookingImputadoFields = document.getElementById('booking-imputado-fields')
 const moduleTabs = document.querySelectorAll('[data-module-tab]');
 const modulePanels = document.querySelectorAll('[data-module-panel]');
 let clientOptionMap = new Map();
+let currentSessionProfile = null;
 
 function toggleBookingImputadoFields() {
   const enabled = Boolean(bookingIsImputadoInput?.checked);
@@ -107,8 +110,60 @@ function isPrisonVisit(booking) {
   return normalizeMatterLabel(booking?.matter) === PRISON_VISIT_MATTER;
 }
 
-function tryLogin(username, password) {
-  return ALLOWED_CREDENTIALS.some(cred => cred.username === username && cred.password === password);
+function showNotice(message, type = 'success') {
+  if (!appNotice) return;
+  appNotice.hidden = false;
+  appNotice.className = `app-notice ${type}`;
+  appNotice.textContent = message;
+  window.clearTimeout(showNotice.timerId);
+  showNotice.timerId = window.setTimeout(() => {
+    appNotice.hidden = true;
+  }, 4200);
+}
+
+function authenticateUser(username, password) {
+  const cleanUsername = String(username || '').trim();
+  const cleanPassword = String(password || '').trim();
+  if (!cleanUsername || !cleanPassword) return null;
+
+  const profiles = getProfiles();
+  const matchedProfile = profiles.find(profile =>
+    String(profile.username || '').trim().toLowerCase() === cleanUsername.toLowerCase() &&
+    String(profile.password || '').trim() === cleanPassword
+  );
+  if (matchedProfile) return matchedProfile;
+
+  if (ALLOWED_CREDENTIALS.some(cred => cred.username === cleanUsername && cred.password === cleanPassword)) {
+    return {
+      username: cleanUsername,
+      name: 'Administrador TACAM',
+      role: 'Admin',
+      permissions: ['Reservas', 'Agenda', 'Abogadas', 'Estadísticas']
+    };
+  }
+  return null;
+}
+
+function applyAccessControl(profile) {
+  const role = String(profile?.role || 'Admin').trim();
+  const allowedModules = role === 'Abogada'
+    ? new Set(['prison-visits', 'outcomes'])
+    : new Set(['create', 'bookings', 'agenda', 'prison-visits', 'outcomes', 'lawyers', 'reports']);
+
+  moduleTabs.forEach(tab => {
+    const moduleName = tab.dataset.moduleTab;
+    tab.hidden = !allowedModules.has(moduleName);
+  });
+  modulePanels.forEach(panel => {
+    const moduleName = panel.dataset.modulePanel;
+    panel.hidden = !allowedModules.has(moduleName);
+  });
+
+  if (role === 'Abogada') {
+    switchModule('prison-visits');
+  } else {
+    switchModule('create');
+  }
 }
 
 function hasNotificationConsent(booking) {
@@ -727,7 +782,7 @@ function getPrisonVisitStats() {
 
 function getPrisonVisitLoadColor(total) {
   if (total <= 1) return '#d90429'; // rojo
-  if (total <= 3) return '#ffbe0b'; // amarillo
+  if (total === 2) return '#ffbe0b'; // amarillo
   return '#2a9d8f'; // verde
 }
 
@@ -1003,21 +1058,6 @@ function renderBookings() {
     statusActionCell.appendChild(sendConfirmBtn);
     row.appendChild(statusActionCell);
 
-    const confirmSelect = document.createElement('select');
-    confirmSelect.dataset.confirmState = booking.id;
-    [
-      { value: '', label: 'Confirmar / Cancelar' },
-      { value: 'confirmada', label: 'Confirmar' },
-      { value: 'cancelada', label: 'Cancelar' }
-    ].forEach(optionData => {
-      const option = document.createElement('option');
-      option.value = optionData.value;
-      option.textContent = optionData.label;
-      confirmSelect.appendChild(option);
-    });
-    confirmSelect.value = booking.status === 'confirmada' || booking.status === 'cancelada' ? booking.status : '';
-    statusActionCell.appendChild(confirmSelect);
-
     const attendanceCell = document.createElement('td');
     const attendanceSelect = document.createElement('select');
     attendanceSelect.dataset.attendanceState = booking.id;
@@ -1124,13 +1164,6 @@ function renderBookings() {
     };
   });
 
-  bookingsBody.querySelectorAll('[data-confirm-state]').forEach(select => {
-    select.onchange = async () => {
-      if (!select.value) return;
-      await updateBookingStatusWithNotification(select.dataset.confirmState, select.value);
-    };
-  });
-
   bookingsBody.querySelectorAll('[data-attendance-state]').forEach(select => {
     select.onchange = () => {
       if (!select.value) return;
@@ -1224,6 +1257,24 @@ function buildPrisonCheckInMessage(booking) {
   return `TACAM: check-in registrado para la visita a la carcel de ${booking.customer || 'Cliente'}. Fecha/Hora: ${booking.date || '-'} ${booking.time || ''}. Abogada: ${booking.assignedTo || 'Por confirmar'}.`;
 }
 
+function getTomorrowDateISO() {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  return date.toISOString().slice(0, 10);
+}
+
+function buildGendarmeriaEmail(visitDate, visits) {
+  const lines = [
+    `Listado de visitas TACAM para Gendarmería (${visitDate})`,
+    '',
+    'Nombre interno | RUT | Módulo | Tiempo de visita | Firma'
+  ];
+  visits.forEach(visit => {
+    lines.push(`${visit.customer || '-'} | ${visit.rut || '-'} | ${visit.module || 'Sin módulo'} | ${visit.time || '--:--'} | ____________________`);
+  });
+  return lines.join('\n');
+}
+
 function renderPrisonCalendar() {
   const selectedMonth = prisonMonthInput.value;
   const bookings = getCalendarBookings('', selectedMonth, false, booking => isPrisonVisit(booking));
@@ -1244,7 +1295,7 @@ function renderPrisonVisitsList() {
   if (!visits.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 7;
+    cell.colSpan = 8;
     cell.textContent = 'Sin visitas a la carcel registradas en este mes.';
     row.appendChild(cell);
     prisonVisitsBody.appendChild(row);
@@ -1280,6 +1331,17 @@ function renderPrisonVisitsList() {
     reminderCell.appendChild(reminderBtn);
     row.appendChild(reminderCell);
 
+    const extraActionsCell = document.createElement('td');
+    const cancelBtn = document.createElement('button');
+    cancelBtn.dataset.prisonCancel = booking.id;
+    cancelBtn.textContent = 'Cancelar visita';
+    extraActionsCell.appendChild(cancelBtn);
+    const editBtn = document.createElement('button');
+    editBtn.dataset.prisonEditContact = booking.id;
+    editBtn.textContent = 'Editar contacto';
+    extraActionsCell.appendChild(editBtn);
+    row.appendChild(extraActionsCell);
+
     prisonVisitsBody.appendChild(row);
   });
 
@@ -1304,6 +1366,29 @@ function renderPrisonVisitsList() {
       if (booking) await notifyLawyerChannels(booking, buildVisitScheduledMessage(booking), 'TACAM: recordatorio de visita a la carcel');
     };
   });
+
+  prisonVisitsBody.querySelectorAll('[data-prison-cancel]').forEach(btn => {
+    btn.onclick = () => {
+      updateBooking(btn.dataset.prisonCancel, booking => {
+        booking.status = 'cancelada';
+      });
+    };
+  });
+
+  prisonVisitsBody.querySelectorAll('[data-prison-edit-contact]').forEach(btn => {
+    btn.onclick = () => {
+      const booking = getBookings().find(item => item.id === btn.dataset.prisonEditContact);
+      if (!booking) return;
+      const nextPhone = window.prompt('Nuevo teléfono de contacto', booking.phone || '');
+      if (nextPhone === null) return;
+      const nextEmail = window.prompt('Nuevo correo de contacto', booking.email || '');
+      if (nextEmail === null) return;
+      updateBooking(booking.id, item => {
+        item.phone = nextPhone.trim();
+        item.email = nextEmail.trim();
+      });
+    };
+  });
 }
 
 function renderOutcomes() {
@@ -1317,7 +1402,7 @@ function renderOutcomes() {
   if (!contracted.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 5;
+    cell.colSpan = 7;
     cell.textContent = 'Sin personas contratadas registradas.';
     row.appendChild(cell);
     contractedBody.appendChild(row);
@@ -1329,6 +1414,18 @@ function renderOutcomes() {
       appendCell(row, booking.phone || '');
       appendCell(row, formatAppointment(booking));
       appendCell(row, booking.assignedTo || 'Sin abogada');
+      const toggleCell = document.createElement('td');
+      const toggleBtn = document.createElement('button');
+      toggleBtn.dataset.moveToNonContracted = booking.id;
+      toggleBtn.textContent = 'Pasar a No imputado';
+      toggleCell.appendChild(toggleBtn);
+      row.appendChild(toggleCell);
+      const editContactCell = document.createElement('td');
+      const editBtn = document.createElement('button');
+      editBtn.dataset.editOutcomeContact = booking.id;
+      editBtn.textContent = 'Editar contacto';
+      editContactCell.appendChild(editBtn);
+      row.appendChild(editContactCell);
       contractedBody.appendChild(row);
     });
   }
@@ -1336,7 +1433,7 @@ function renderOutcomes() {
   if (!nonContracted.length) {
     const row = document.createElement('tr');
     const cell = document.createElement('td');
-    cell.colSpan = 5;
+    cell.colSpan = 7;
     cell.textContent = 'Sin personas en no contratados.';
     row.appendChild(cell);
     nonContractedBody.appendChild(row);
@@ -1347,6 +1444,12 @@ function renderOutcomes() {
       appendCell(row, booking.email || '');
       appendCell(row, booking.phone || '');
       appendCell(row, formatAppointment(booking));
+      const toggleCell = document.createElement('td');
+      const toggleBtn = document.createElement('button');
+      toggleBtn.dataset.moveToContracted = booking.id;
+      toggleBtn.textContent = 'Pasar a Imputado';
+      toggleCell.appendChild(toggleBtn);
+      row.appendChild(toggleCell);
 
       const actionCell = document.createElement('td');
       const mailBtn = document.createElement('button');
@@ -1354,9 +1457,31 @@ function renderOutcomes() {
       mailBtn.textContent = 'Escribir y enviar';
       actionCell.appendChild(mailBtn);
       row.appendChild(actionCell);
+      const editContactCell = document.createElement('td');
+      const editBtn = document.createElement('button');
+      editBtn.dataset.editOutcomeContact = booking.id;
+      editBtn.textContent = 'Editar contacto';
+      editContactCell.appendChild(editBtn);
+      row.appendChild(editContactCell);
       nonContractedBody.appendChild(row);
     });
   }
+
+  contractedBody.querySelectorAll('[data-move-to-non-contracted]').forEach(btn => {
+    btn.onclick = () => {
+      updateBooking(btn.dataset.moveToNonContracted, booking => {
+        booking.postVisitOutcome = 'No contrató';
+      });
+    };
+  });
+
+  nonContractedBody.querySelectorAll('[data-move-to-contracted]').forEach(btn => {
+    btn.onclick = () => {
+      updateBooking(btn.dataset.moveToContracted, booking => {
+        booking.postVisitOutcome = 'Contrató';
+      });
+    };
+  });
 
   nonContractedBody.querySelectorAll('[data-non-contracted-mail]').forEach(btn => {
     btn.onclick = async () => {
@@ -1368,6 +1493,26 @@ function renderOutcomes() {
       if (!message) return;
       await sendEmailViaBrevo(booking, subject.trim(), message.trim());
     };
+  });
+
+  const handleEditContact = bookingId => {
+    const booking = getBookings().find(item => item.id === bookingId);
+    if (!booking) return;
+    const nextPhone = window.prompt('Teléfono de contacto', booking.phone || '');
+    if (nextPhone === null) return;
+    const nextEmail = window.prompt('Correo de contacto', booking.email || '');
+    if (nextEmail === null) return;
+    updateBooking(bookingId, item => {
+      item.phone = nextPhone.trim();
+      item.email = nextEmail.trim();
+    });
+  };
+
+  contractedBody.querySelectorAll('[data-edit-outcome-contact]').forEach(btn => {
+    btn.onclick = () => handleEditContact(btn.dataset.editOutcomeContact);
+  });
+  nonContractedBody.querySelectorAll('[data-edit-outcome-contact]').forEach(btn => {
+    btn.onclick = () => handleEditContact(btn.dataset.editOutcomeContact);
   });
 }
 
@@ -1562,10 +1707,13 @@ loginForm.addEventListener('submit', event => {
   const username = String(data.get('username') || '').trim();
   const password = String(data.get('password') || '').trim();
 
-  if (tryLogin(username, password)) {
-    saveSession({ loggedIn: true, username });
+  const profile = authenticateUser(username, password);
+  if (profile) {
+    currentSessionProfile = profile;
+    saveSession({ loggedIn: true, username: profile.username || username, role: profile.role || 'Admin' });
     loginError.hidden = true;
     showApp();
+    applyAccessControl(profile);
     renderAll();
   } else {
     loginError.hidden = false;
@@ -1636,85 +1784,120 @@ clientForm.addEventListener('submit', event => {
 
 bookingForm.addEventListener('submit', async event => {
   event.preventDefault();
-  syncClientIdFromSearch(bookingClientSearchInput, clientSelect);
-  const data = new FormData(bookingForm);
-  const clientId = String(data.get('clientId') || '').trim();
-  const client = getClientById(clientId);
-  if (!client) {
-    bookingClientSearchInput.setCustomValidity('Debes seleccionar un cliente ya agregado');
-    bookingClientSearchInput.reportValidity();
-    return;
-  }
-  bookingClientSearchInput.setCustomValidity('');
+  try {
+    syncClientIdFromSearch(bookingClientSearchInput, clientSelect);
+    const data = new FormData(bookingForm);
+    const clientId = String(data.get('clientId') || '').trim();
+    const client = getClientById(clientId);
+    if (!client) {
+      bookingClientSearchInput.setCustomValidity('Debes seleccionar un cliente ya agregado');
+      bookingClientSearchInput.reportValidity();
+      return;
+    }
+    bookingClientSearchInput.setCustomValidity('');
 
-  const bookings = getBookings();
-  bookings.unshift({
-    id: crypto.randomUUID(),
-    clientId: client.id,
-    customer: client.customer,
-    rut: client.rut,
-    phone: client.phone,
-    email: client.email,
-    address: client.address || '',
-    matter: normalizeMatterLabel(data.get('matter')),
-    date: String(data.get('date') || '').trim(),
-    time: String(data.get('time') || '').trim(),
-    assignedTo: String(data.get('assignedTo') || '').trim(),
-    notes: String(data.get('notes') || '').trim(),
-    notificationsConsent: Boolean(client.notificationsConsent),
-    consentAt: client.consentAt || '',
-    status: 'nueva',
-    createdAt: new Date().toISOString(),
-    reminder24hSentAt: '',
-    reminder1hSentAt: '',
-    checkedInAt: ''
-  });
-  saveBookings(bookings);
-  await notifyVisitScheduled(bookings[0]);
-  bookingForm.reset();
-  toggleBookingImputadoFields();
-  renderAll();
+    const bookings = getBookings();
+    bookings.unshift({
+      id: crypto.randomUUID(),
+      clientId: client.id,
+      customer: client.customer,
+      rut: client.rut,
+      phone: client.phone,
+      email: client.email,
+      address: client.address || '',
+      matter: normalizeMatterLabel(data.get('matter')),
+      date: String(data.get('date') || '').trim(),
+      time: String(data.get('time') || '').trim(),
+      assignedTo: String(data.get('assignedTo') || '').trim(),
+      notes: String(data.get('notes') || '').trim(),
+      notificationsConsent: Boolean(client.notificationsConsent),
+      consentAt: client.consentAt || '',
+      status: 'nueva',
+      createdAt: new Date().toISOString(),
+      reminder24hSentAt: '',
+      reminder1hSentAt: '',
+      checkedInAt: ''
+    });
+    saveBookings(bookings);
+    await notifyVisitScheduled(bookings[0]);
+    bookingForm.reset();
+    toggleBookingImputadoFields();
+    renderAll();
+    showNotice('Reserva guardada correctamente', 'success');
+  } catch (error) {
+    console.error(error);
+    showNotice('Error al guardar la reserva', 'error');
+  }
 });
 
 prisonVisitForm.addEventListener('submit', async event => {
   event.preventDefault();
-  syncClientIdFromSearch(prisonClientSearchInput, prisonClientSelect);
-  const data = new FormData(prisonVisitForm);
-  const clientId = String(data.get('clientId') || '').trim();
-  const client = getClientById(clientId);
-  if (!client) {
-    prisonClientSearchInput.setCustomValidity('Debes seleccionar un cliente ya agregado');
-    prisonClientSearchInput.reportValidity();
+  try {
+    syncClientIdFromSearch(prisonClientSearchInput, prisonClientSelect);
+    const data = new FormData(prisonVisitForm);
+    const clientId = String(data.get('clientId') || '').trim();
+    const client = getClientById(clientId);
+    if (!client) {
+      prisonClientSearchInput.setCustomValidity('Debes seleccionar un cliente ya agregado');
+      prisonClientSearchInput.reportValidity();
+      return;
+    }
+    prisonClientSearchInput.setCustomValidity('');
+
+    const bookings = getBookings();
+    bookings.unshift({
+      id: crypto.randomUUID(),
+      clientId: client.id,
+      customer: client.customer,
+      rut: client.rut,
+      phone: client.phone,
+      email: client.email,
+      address: client.address || '',
+      matter: PRISON_VISIT_MATTER,
+      date: String(data.get('date') || '').trim(),
+      time: String(data.get('time') || '').trim(),
+      module: String(data.get('module') || '').trim(),
+      assignedTo: String(data.get('assignedTo') || '').trim(),
+      notes: String(data.get('notes') || '').trim(),
+      notificationsConsent: Boolean(client.notificationsConsent),
+      consentAt: client.consentAt || '',
+      status: 'nueva',
+      createdAt: new Date().toISOString(),
+      reminder24hSentAt: '',
+      reminder1hSentAt: '',
+      checkedInAt: ''
+    });
+    saveBookings(bookings);
+    await notifyVisitScheduled(bookings[0]);
+    prisonVisitForm.reset();
+    renderAll();
+    showNotice('Reserva guardada correctamente', 'success');
+  } catch (error) {
+    console.error(error);
+    showNotice('Error al guardar la reserva', 'error');
+  }
+});
+
+sendGendarmeriaEmailBtn?.addEventListener('click', async () => {
+  const visitDate = getTomorrowDateISO();
+  const visits = getBookings()
+    .filter(booking => booking.status !== 'cancelada' && isPrisonVisit(booking) && booking.date === visitDate)
+    .sort((a, b) => `${a.time || ''}`.localeCompare(`${b.time || ''}`));
+
+  if (!visits.length) {
+    showNotice('No hay visitas a la cárcel para mañana', 'error');
     return;
   }
-  prisonClientSearchInput.setCustomValidity('');
 
-  const bookings = getBookings();
-  bookings.unshift({
-    id: crypto.randomUUID(),
-    clientId: client.id,
-    customer: client.customer,
-    rut: client.rut,
-    phone: client.phone,
-    email: client.email,
-    address: client.address || '',
-    matter: PRISON_VISIT_MATTER,
-    date: String(data.get('date') || '').trim(),
-    time: String(data.get('time') || '').trim(),
-    assignedTo: String(data.get('assignedTo') || '').trim(),
-    notes: String(data.get('notes') || '').trim(),
-    notificationsConsent: Boolean(client.notificationsConsent),
-    consentAt: client.consentAt || '',
-    status: 'nueva',
-    createdAt: new Date().toISOString(),
-    reminder24hSentAt: '',
-    reminder1hSentAt: '',
-    checkedInAt: ''
-  });
-  saveBookings(bookings);
-  await notifyVisitScheduled(bookings[0]);
-  prisonVisitForm.reset();
-  renderAll();
+  const ok = window.confirm(`Se enviará el listado de ${visits.length} visita(s) para ${visitDate} a Gendarmería. ¿Confirmas envío?`);
+  if (!ok) return;
+
+  const destination = window.prompt('Correo de Gendarmería', 'gendarmeria@ejemplo.cl');
+  if (!destination) return;
+
+  const message = buildGendarmeriaEmail(visitDate, visits);
+  const sent = await sendEmailViaBrevoToRecipient(destination.trim(), 'Gendarmería', `TACAM: listado de visitas ${visitDate}`, message);
+  showNotice(sent ? 'Correo enviado a Gendarmería correctamente' : 'No se pudo enviar el correo a Gendarmería', sent ? 'success' : 'error');
 });
 
 clientRutInput.addEventListener('input', () => {
@@ -1860,8 +2043,9 @@ profileForm.addEventListener('submit', event => {
   const name = String(data.get('name') || '').trim();
   const username = String(data.get('username') || '').trim();
   const role = String(data.get('role') || '').trim();
+  const password = String(data.get('password') || '').trim();
 
-  if (!name || !username || !role) return;
+  if (!name || !username || !role || !password) return;
 
   const permissions = [];
   if (data.get('permBookings')) permissions.push('Reservas');
@@ -1875,12 +2059,14 @@ profileForm.addEventListener('submit', event => {
   if (existing) {
     existing.name = name;
     existing.role = role;
+    existing.password = password;
     existing.permissions = permissions;
   } else {
     profiles.unshift({
       id: crypto.randomUUID(),
       name,
       username,
+      password,
       role,
       permissions
     });
