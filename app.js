@@ -333,8 +333,17 @@ const ALLOWED_CREDENTIALS = [
 const LAWYER_COLORS = ['#8f203a', '#2166a5', '#2a9d8f', '#e76f51', '#6a4c93', '#e9c46a', '#4f772d'];
 const PRISON_VISIT_MATTER = 'Visita a la Cárcel';
 const UNASSIGNED_LAWYER_LABEL = 'No asignado aún';
-const GENDARMERIA_EMAIL_KEY = 'tacam_gendarmeria_email';
-const GENDARMERIA_EMAIL2_KEY = 'tacam_gendarmeria_email_2';
+const GENDARMERIA_RECIPIENTS = [
+  'Omar.sepulveda@gendarmeria.cl',
+  'christian.bravo@gendarmeria.cl'
+];
+const DEFAULT_LAWYER_EMAILS = [
+  'kserranokserrano@tacam.cl',
+  'ccliment@tacam.cl',
+  'vreichert@tacam.cl',
+  'stapia@tacam.cl',
+  'daracena@tacam.cl'
+];
 
 function normalizeMatterLabel(value) {
   const clean = String(value || '').trim();
@@ -354,9 +363,11 @@ function normalizeAssignedToValue(value) {
 }
 
 function getProfileByCredentials(username, password) {
+  const cleanUser = String(username || '').trim().toLowerCase();
   return getProfiles().find(profile =>
-    String(profile.username || '').trim() === username &&
-    String(profile.password || '').trim() === password
+    (String(profile.username || '').trim().toLowerCase() === cleanUser ||
+      String(profile.email || '').trim().toLowerCase() === cleanUser) &&
+    String(profile.password || '').trim() === String(password || '').trim()
   ) || null;
 }
 
@@ -394,6 +405,38 @@ function applyRoleAccess() {
   prisonLawyerFilter.disabled = role === 'Abogada';
   lawyerCalendarFilter.disabled = role === 'Abogada';
   sharedOnlyInput.disabled = role === 'Abogada';
+}
+
+function ensureDefaultLawyerAccessProfiles() {
+  const profiles = getProfiles();
+  let changedProfiles = false;
+  DEFAULT_LAWYER_EMAILS.forEach(email => {
+    const cleanEmail = email.toLowerCase();
+    const username = cleanEmail.split('@')[0];
+    const existing = profiles.find(profile =>
+      (String(profile.email || '').trim().toLowerCase() === cleanEmail) ||
+      (String(profile.username || '').trim().toLowerCase() === username)
+    );
+    if (existing) {
+      if (!existing.email) existing.email = cleanEmail;
+      if (!existing.username) existing.username = username;
+      if (!existing.password) existing.password = 'tacam123';
+      if (!existing.role) existing.role = 'Abogada';
+      changedProfiles = true;
+      return;
+    }
+    profiles.unshift({
+      id: crypto.randomUUID(),
+      name: username.toUpperCase(),
+      username,
+      password: 'tacam123',
+      role: 'Abogada',
+      email: cleanEmail,
+      permissions: ['Visitas', 'Imputados', 'Editar contactos']
+    });
+    changedProfiles = true;
+  });
+  if (changedProfiles) saveProfiles(profiles);
 }
 
 function hasNotificationConsent(booking) {
@@ -1764,21 +1807,20 @@ function getFilteredPrisonVisitsForReport() {
 function buildGendarmeriaListMessage(visits) {
   const titleMonth = prisonMonthInput.value || monthValueFromDate(new Date());
   const header = [
-    `NÓMINA DE VISITAS A LA CÁRCEL - ${titleMonth}`,
+    `FICHA VISITA INTERNO - ${titleMonth}`,
     '',
-    'Detalle de personas agendadas:'
+    'NOMBRE INTERNO | FECHA | HORA | MÓDULO | TIEMPO VISITA | ABOGADA'
   ];
   const rows = visits.map((booking, index) => {
     const modulo = booking.prisonModule || booking.representative?.modulo || '-';
-    return `${index + 1}. ${booking.customer || '-'} | RUT: ${booking.rut || '-'} | Módulo: ${modulo} | Hora: ${booking.time || '--:--'} | Abogada: ${booking.assignedTo || 'Sin asignar'}`;
+    const visitTime = booking.notes ? String(booking.notes).slice(0, 40) : '30 minutos';
+    return `${index + 1}. ${booking.customer || '-'} | ${booking.date || '-'} | ${booking.time || '--:--'} | ${modulo} | ${visitTime} | ${booking.assignedTo || 'Sin asignar'} (RUT: ${booking.rut || '-'})`;
   });
   return [...header, ...rows, '', 'TACAM - Sistema de Reservas'].join('\n');
 }
 
 function getGendarmeriaRecipients() {
-  return [gendarmeriaEmailInput.value, gendarmeriaEmail2Input.value]
-    .map(value => String(value || '').trim())
-    .filter(Boolean);
+  return [...GENDARMERIA_RECIPIENTS];
 }
 
 async function sendGendarmeriaRoster(visits, subject, options = {}) {
@@ -1789,8 +1831,15 @@ async function sendGendarmeriaRoster(visits, subject, options = {}) {
     return false;
   }
   const textContent = buildGendarmeriaListMessage(visits);
+  const lawyerEmails = [...new Set(visits
+    .map(booking => {
+      const lawyer = getLawyers().find(item => (item.name || '').trim() === (booking.assignedTo || '').trim());
+      return String(lawyer?.email || '').trim();
+    })
+    .filter(Boolean))];
+  const allRecipients = [...new Set([...recipients, ...lawyerEmails])];
   try {
-    for (const toEmail of recipients) {
+    for (const toEmail of allRecipients) {
       const response = await fetch('brevo-email.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2442,12 +2491,6 @@ prisonLawyerFilter.addEventListener('change', () => {
   renderPrisonCalendar();
   renderPrisonVisitsList();
 });
-gendarmeriaEmailInput.addEventListener('change', () => {
-  localStorage.setItem(GENDARMERIA_EMAIL_KEY, String(gendarmeriaEmailInput.value || '').trim());
-});
-gendarmeriaEmail2Input.addEventListener('change', () => {
-  localStorage.setItem(GENDARMERIA_EMAIL2_KEY, String(gendarmeriaEmail2Input.value || '').trim());
-});
 sendGendarmeriaEmailBtn.addEventListener('click', async () => {
   if (!getGendarmeriaRecipients().length) {
     showToast('Ingresa los correos de Gendarmería.');
@@ -2730,9 +2773,15 @@ lawyerForm.addEventListener('submit', async event => {
 
   saveLawyers(lawyers);
   const profiles = getProfiles();
-  const profile = profiles.find(item => (item.username || '').trim().toLowerCase() === email);
+  const username = email.split('@')[0] || email;
+  const profile = profiles.find(item => {
+    const currentUser = (item.username || '').trim().toLowerCase();
+    const currentEmail = (item.email || '').trim().toLowerCase();
+    return currentUser === username.toLowerCase() || currentEmail === email;
+  });
   if (profile) {
     profile.name = name;
+    profile.username = username;
     profile.role = 'Abogada';
     profile.email = email;
     profile.phone = phone ? formatPhone(phone) : profile.phone || '';
@@ -2742,7 +2791,7 @@ lawyerForm.addEventListener('submit', async event => {
     profiles.unshift({
       id: crypto.randomUUID(),
       name,
-      username: email,
+      username,
       password: 'tacam123',
       role: 'Abogada',
       email,
@@ -2842,8 +2891,8 @@ const currentMonth = monthValueFromDate(new Date());
 agendaMonthInput.value = currentMonth;
 prisonMonthInput.value = currentMonth;
 lawyerCalendarMonth.value = currentMonth;
-gendarmeriaEmailInput.value = localStorage.getItem(GENDARMERIA_EMAIL_KEY) || '';
-gendarmeriaEmail2Input.value = localStorage.getItem(GENDARMERIA_EMAIL2_KEY) || '';
+gendarmeriaEmailInput.value = GENDARMERIA_RECIPIENTS[0];
+gendarmeriaEmail2Input.value = GENDARMERIA_RECIPIENTS[1];
 clientPhoneInput.value = '+569';
 assignedToSelect.disabled = !hiredLawyerInput.checked;
 updateImputadoModuleVisibility();
@@ -2853,6 +2902,7 @@ bookingImputadoStatusInput.dataset.manualChange = '0';
 updateBookingRepresentativeVisibility();
 updateSyncIndicator('pending', 'Sincronización: pendiente');
 updateChileClock();
+ensureDefaultLawyerAccessProfiles();
 
 saveSession({ loggedIn: false });
 showLogin();

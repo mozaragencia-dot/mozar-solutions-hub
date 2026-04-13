@@ -283,13 +283,12 @@
           </label>
         </div>
         <div class="grid">
-          <label class="full">Correo Gendarmería
-            <input id="gendarmeria-email" type="email" placeholder="gendarmeria@institucion.cl" />
+          <label class="full">Correo Gendarmería 1
+            <input id="gendarmeria-email" type="email" readonly />
           </label>
           <label class="full">Correo Gendarmería 2
-            <input id="gendarmeria-email-2" type="email" placeholder="gendarmeria2@institucion.cl" />
+            <input id="gendarmeria-email-2" type="email" readonly />
           </label>
-          <button id="send-gendarmeria-email" type="button">Enviar nómina a Gendarmería</button>
         </div>
         <form id="prison-booking-form" class="grid">
           <label>Contacto
@@ -308,7 +307,10 @@
           <label class="full checkbox-inline consent-box">
             <input name="notificationsConsent" type="checkbox" checked /> Contacto consiente el recibir mensajes de WhatsApp y correos.
           </label>
-          <button type="submit">Agendar visita a la cárcel</button>
+          <div class="full">
+            <button type="submit">Agendar visita a la cárcel</button>
+            <button id="send-gendarmeria-email" type="button">Enviar a Gendarmería</button>
+          </div>
         </form>
         <div id="prison-calendar-legend" class="calendar-legend"></div>
         <div id="prison-calendar" class="calendar"></div>
