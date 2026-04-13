@@ -29,6 +29,7 @@ const agendaLegend = document.getElementById('agenda-color-legend');
 const prisonMonthInput = document.getElementById('prison-month');
 const prisonLawyerFilter = document.getElementById('prison-lawyer-filter');
 const gendarmeriaEmailInput = document.getElementById('gendarmeria-email');
+const gendarmeriaEmail2Input = document.getElementById('gendarmeria-email-2');
 const sendGendarmeriaEmailBtn = document.getElementById('send-gendarmeria-email');
 const prisonCalendar = document.getElementById('prison-calendar');
 const prisonCalendarLegend = document.getElementById('prison-calendar-legend');
@@ -333,6 +334,7 @@ const LAWYER_COLORS = ['#8f203a', '#2166a5', '#2a9d8f', '#e76f51', '#6a4c93', '#
 const PRISON_VISIT_MATTER = 'Visita a la Cárcel';
 const UNASSIGNED_LAWYER_LABEL = 'No asignado aún';
 const GENDARMERIA_EMAIL_KEY = 'tacam_gendarmeria_email';
+const GENDARMERIA_EMAIL2_KEY = 'tacam_gendarmeria_email_2';
 
 function normalizeMatterLabel(value) {
   const clean = String(value || '').trim();
@@ -506,6 +508,7 @@ async function notifyUpcomingAppointments() {
   const now = new Date();
   const bookings = getBookings();
   let hasUpdates = false;
+  const gendarmeriaPending = [];
 
   for (const booking of bookings) {
     const appointment = getAppointmentDateTime(booking);
@@ -522,12 +525,28 @@ async function notifyUpcomingAppointments() {
       }
     }
 
+    if (isPrisonVisit(booking) && diffMinutes <= 1440 && !booking.gendarmeriaNotifiedAt) {
+      gendarmeriaPending.push(booking);
+    }
+
     if (diffMinutes <= 60 && !booking.reminder1hSentAt) {
       const sent1h = await notifyBookingChannels(booking, buildReminderMessage(booking, diffMinutes), 'Recordatorio TACAM: vas a tener una cita');
       if (sent1h) {
         booking.reminder1hSentAt = now.toISOString();
         hasUpdates = true;
       }
+    }
+  }
+
+  if (gendarmeriaPending.length) {
+    const subject = `TACAM: Nómina próxima de visitas a la cárcel (${monthValueFromDate(new Date(gendarmeriaPending[0].date || now.toISOString()))})`;
+    const sentRoster = await sendGendarmeriaRoster(gendarmeriaPending, subject, { silentMissingRecipients: true });
+    if (sentRoster) {
+      gendarmeriaPending.forEach(booking => {
+        booking.gendarmeriaNotifiedAt = now.toISOString();
+      });
+      hasUpdates = true;
+      showToast('Nómina automática enviada a Gendarmería.');
     }
   }
 
@@ -1756,6 +1775,41 @@ function buildGendarmeriaListMessage(visits) {
   return [...header, ...rows, '', 'TACAM - Sistema de Reservas'].join('\n');
 }
 
+function getGendarmeriaRecipients() {
+  return [gendarmeriaEmailInput.value, gendarmeriaEmail2Input.value]
+    .map(value => String(value || '').trim())
+    .filter(Boolean);
+}
+
+async function sendGendarmeriaRoster(visits, subject, options = {}) {
+  const { silentMissingRecipients = false } = options;
+  const recipients = getGendarmeriaRecipients();
+  if (!recipients.length) {
+    if (!silentMissingRecipients) showToast('Ingresa al menos un correo de Gendarmería.');
+    return false;
+  }
+  const textContent = buildGendarmeriaListMessage(visits);
+  try {
+    for (const toEmail of recipients) {
+      const response = await fetch('brevo-email.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          toEmail,
+          toName: 'Gendarmería',
+          subject,
+          textContent
+        })
+      });
+      if (!response.ok) throw new Error(await response.text());
+    }
+    return true;
+  } catch (error) {
+    console.error('No se pudo enviar nómina a Gendarmería', error);
+    return false;
+  }
+}
+
 function renderPrisonCalendar() {
   const selectedMonth = prisonMonthInput.value;
   const role = getCurrentSessionRole();
@@ -2391,10 +2445,12 @@ prisonLawyerFilter.addEventListener('change', () => {
 gendarmeriaEmailInput.addEventListener('change', () => {
   localStorage.setItem(GENDARMERIA_EMAIL_KEY, String(gendarmeriaEmailInput.value || '').trim());
 });
+gendarmeriaEmail2Input.addEventListener('change', () => {
+  localStorage.setItem(GENDARMERIA_EMAIL2_KEY, String(gendarmeriaEmail2Input.value || '').trim());
+});
 sendGendarmeriaEmailBtn.addEventListener('click', async () => {
-  const toEmail = String(gendarmeriaEmailInput.value || '').trim();
-  if (!toEmail) {
-    showToast('Ingresa el correo de Gendarmería.');
+  if (!getGendarmeriaRecipients().length) {
+    showToast('Ingresa los correos de Gendarmería.');
     gendarmeriaEmailInput.focus();
     return;
   }
@@ -2406,19 +2462,9 @@ sendGendarmeriaEmailBtn.addEventListener('click', async () => {
   if (!window.confirm('¿Confirmar envío de nómina a Gendarmería?')) return;
 
   const subject = `TACAM: Nómina de visitas a la cárcel (${prisonMonthInput.value || monthValueFromDate(new Date())})`;
-  const textContent = buildGendarmeriaListMessage(visits);
   try {
-    const response = await fetch('brevo-email.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        toEmail,
-        toName: 'Gendarmería',
-        subject,
-        textContent
-      })
-    });
-    if (!response.ok) throw new Error(await response.text());
+    const sent = await sendGendarmeriaRoster(visits, subject);
+    if (!sent) throw new Error('No se pudo enviar');
     showToast('Nómina enviada a Gendarmería.');
   } catch (error) {
     console.error('No se pudo enviar nómina a Gendarmería', error);
@@ -2658,29 +2704,57 @@ lawyerForm.addEventListener('submit', async event => {
   if (!(file instanceof File) || !file.size) return;
 
   const name = String(data.get('name') || '').trim();
-  if (!name) return;
+  const email = String(data.get('email') || '').trim().toLowerCase();
+  const specialty = String(data.get('specialty') || '').trim();
+  const phone = String(data.get('phone') || '').trim();
+  if (!name || !email) return;
 
   const lawyers = getLawyers();
   const existing = lawyers.find(lawyer => (lawyer.name || '').trim().toLowerCase() === name.toLowerCase());
 
   if (existing) {
-    existing.specialty = String(data.get('specialty') || '').trim();
-    existing.phone = String(data.get('phone') || '').trim();
+    existing.specialty = specialty;
+    existing.phone = phone;
+    existing.email = email;
     existing.photo = await fileToDataUrl(file);
   } else {
     lawyers.unshift({
       id: crypto.randomUUID(),
       name,
-      specialty: String(data.get('specialty') || '').trim(),
-      phone: String(data.get('phone') || '').trim(),
+      specialty,
+      phone,
+      email,
       photo: await fileToDataUrl(file)
     });
   }
 
   saveLawyers(lawyers);
+  const profiles = getProfiles();
+  const profile = profiles.find(item => (item.username || '').trim().toLowerCase() === email);
+  if (profile) {
+    profile.name = name;
+    profile.role = 'Abogada';
+    profile.email = email;
+    profile.phone = phone ? formatPhone(phone) : profile.phone || '';
+    profile.specialty = specialty;
+    if (!profile.password) profile.password = 'tacam123';
+  } else {
+    profiles.unshift({
+      id: crypto.randomUUID(),
+      name,
+      username: email,
+      password: 'tacam123',
+      role: 'Abogada',
+      email,
+      phone: phone ? formatPhone(phone) : '',
+      specialty,
+      permissions: ['Visitas', 'Imputados', 'Editar contactos']
+    });
+  }
+  saveProfiles(profiles);
   lawyerForm.reset();
   renderAll();
-  showToast('Perfil de abogada guardado.');
+  showToast('Perfil de abogada guardado. Usuario: correo, clave inicial: tacam123');
 });
 
 profileForm.addEventListener('submit', event => {
@@ -2769,6 +2843,7 @@ agendaMonthInput.value = currentMonth;
 prisonMonthInput.value = currentMonth;
 lawyerCalendarMonth.value = currentMonth;
 gendarmeriaEmailInput.value = localStorage.getItem(GENDARMERIA_EMAIL_KEY) || '';
+gendarmeriaEmail2Input.value = localStorage.getItem(GENDARMERIA_EMAIL2_KEY) || '';
 clientPhoneInput.value = '+569';
 assignedToSelect.disabled = !hiredLawyerInput.checked;
 updateImputadoModuleVisibility();
