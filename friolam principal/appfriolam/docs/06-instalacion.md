@@ -1,7 +1,7 @@
 # 6) Instalación rápida
 
 ## Backend (Laravel)
-1. `cd "friolam principal/backend"`
+1. `cd "friolam principal/appfriolam/backend"`
 2. `cp .env.example .env`
 3. Configurar DB MySQL/MariaDB en `.env`
 4. `composer install`
@@ -10,7 +10,7 @@
 7. `php artisan serve`
 
 ## App PWA (React)
-1. `cd "friolam principal/mobile-pwa"`
+1. `cd "friolam principal/appfriolam/mobile-pwa"`
 2. `npm install`
 3. Crear `.env` con `VITE_API_URL=http://127.0.0.1:8000/api`
 4. `npm run dev`

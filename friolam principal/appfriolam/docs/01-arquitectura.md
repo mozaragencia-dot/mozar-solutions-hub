@@ -1,5 +1,7 @@
 # 1) Arquitectura del sistema
 
+> Esta implementación vive bajo el contenedor principal `appfriolam` en esta rama.
+
 ## Visión de alto nivel
 - **Admin Web (Laravel Blade):** gestión operativa, filtros, asignación, reportes, PDF.
 - **API REST (Laravel):** autenticación, servicios asignados, actualización técnica en terreno.
