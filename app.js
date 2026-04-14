@@ -46,6 +46,8 @@ const generalStatsChart = document.getElementById('general-stats-chart');
 const lawyerStatsChart = document.getElementById('lawyer-stats-chart');
 const prisonStatsChart = document.getElementById('prison-stats-chart');
 const lawyerRankingChart = document.getElementById('lawyer-ranking-chart');
+const prisonPersonChart = document.getElementById('prison-person-chart');
+const reportLawyerFilter = document.getElementById('report-lawyer-filter');
 const downloadGeneralReportBtn = document.getElementById('download-general-report');
 const downloadLawyerReportBtn = document.getElementById('download-lawyer-report');
 const downloadBookingsReportBtn = document.getElementById('download-bookings-report');
@@ -783,6 +785,7 @@ function renderLawyerOptions() {
   fillSelectWithNames(prisonLawyerFilter, names, 'Todas');
   fillSelectWithNames(lawyerFilter, names, 'Todos');
   fillSelectWithNames(lawyerCalendarFilter, names, 'Todas');
+  fillSelectWithNames(reportLawyerFilter, names, 'Todas');
 }
 
 function renderClientOptions() {
@@ -1306,6 +1309,22 @@ function getLawyerRankingStats() {
     });
 }
 
+function getPrisonPersonStats(selectedLawyer = '') {
+  const map = new Map();
+  getBookings()
+    .filter(booking => isPrisonVisit(booking) && booking.prisonAttendance === 'asistio')
+    .filter(booking => !selectedLawyer || (booking.assignedTo || '').trim() === selectedLawyer)
+    .forEach(booking => {
+      const key = `${booking.customer || 'Sin nombre'}|${booking.rut || '-'}`;
+      if (!map.has(key)) map.set(key, 0);
+      map.set(key, map.get(key) + 1);
+    });
+  return [...map.entries()]
+    .map(([key, total]) => ({ label: key.replace('|', ' · RUT '), total }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 12);
+}
+
 function getAttentionPerformanceColor(attended) {
   const value = Number(attended) || 0;
   if (value <= 2) return '#d63a55';
@@ -1565,6 +1584,18 @@ function renderReports() {
     ranking.map(item => item.attended),
     ranking.map(item => getVisitRangeColor(item.attended)),
     'Ranking por atenciones (abogadas)'
+  );
+
+  const selectedLawyer = String(reportLawyerFilter.value || '').trim();
+  const personStats = getPrisonPersonStats(selectedLawyer);
+  drawHorizontalBarChart(
+    prisonPersonChart,
+    personStats.map(item => item.label),
+    personStats.map(item => item.total),
+    personStats.map(item => getVisitRangeColor(item.total)),
+    selectedLawyer
+      ? `Internas visitadas por ${selectedLawyer}`
+      : 'Internas visitadas (todas las abogadas)'
   );
 }
 
@@ -2555,6 +2586,7 @@ sendGendarmeriaEmailBtn.addEventListener('click', async () => {
 lawyerCalendarFilter.addEventListener('change', renderLawyerCalendar);
 lawyerCalendarMonth.addEventListener('change', renderLawyerCalendar);
 sharedOnlyInput.addEventListener('change', renderLawyerCalendar);
+reportLawyerFilter.addEventListener('change', renderReports);
 
 imputadosBody.addEventListener('click', event => {
   const target = event.target;

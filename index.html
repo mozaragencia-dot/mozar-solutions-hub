@@ -385,6 +385,11 @@
       <section class="card module-panel" data-module-panel="reports">
         <h2>Reportes de Atenciones</h2>
         <p class="muted">Visualiza métricas generales y separadas por abogada. Puedes descargar los datos en formato Excel (CSV).</p>
+        <label>Filtrar internas por abogada
+          <select id="report-lawyer-filter">
+            <option value="">Todas</option>
+          </select>
+        </label>
 
         <div class="report-grid">
           <article class="report-card">
@@ -406,6 +411,11 @@
             <h3>Ranking de abogadas</h3>
             <canvas id="lawyer-ranking-chart" width="1200" height="420"></canvas>
             <button type="button" class="print-chart-btn" data-print-chart="lawyer-ranking-chart">Imprimir gráfico</button>
+          </article>
+          <article class="report-card">
+            <h3>Visitas por interna (abogada seleccionada)</h3>
+            <canvas id="prison-person-chart" width="1200" height="420"></canvas>
+            <button type="button" class="print-chart-btn" data-print-chart="prison-person-chart">Imprimir gráfico</button>
           </article>
         </div>
 
